@@ -1,4 +1,4 @@
-const Category = require('../models_temp/Category');
+const Category = require('../models/Category');
 
 // Get all categories
 exports.getAll = async (req, res) => {
@@ -60,7 +60,7 @@ exports.delete = async (req, res) => {
         // We check BOTH because:
         // - Older data might store the Category Name.
         // - Newer data stores the Category ID (from Frontend Select).
-        const MenuItem = require('../models_temp/MenuItem');
+        const MenuItem = require('../models/MenuItem');
 
         const query = {
             $or: [

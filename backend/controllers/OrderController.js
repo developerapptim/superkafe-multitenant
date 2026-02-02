@@ -1,11 +1,11 @@
-const Order = require('../models_temp/Order');
-const MenuItem = require('../models_temp/MenuItem');
-const Recipe = require('../models_temp/Recipe');
-const Ingredient = require('../models_temp/Ingredient');
-const StockHistory = require('../models_temp/StockHistory');
-const Shift = require('../models_temp/Shift');
-const Customer = require('../models_temp/Customer');
-const Settings = require('../models_temp/Settings');
+const Order = require('../models/Order');
+const MenuItem = require('../models/MenuItem');
+const Recipe = require('../models/Recipe');
+const Ingredient = require('../models/Ingredient');
+const StockHistory = require('../models/StockHistory');
+const Shift = require('../models/Shift');
+const Customer = require('../models/Customer');
+const Settings = require('../models/Settings');
 
 exports.createOrder = async (req, res) => {
     try {

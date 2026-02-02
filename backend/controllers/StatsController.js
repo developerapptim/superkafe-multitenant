@@ -1,4 +1,4 @@
-const Order = require('../models_temp/Order');
+const Order = require('../models/Order');
 
 exports.getDashboardStats = async (req, res) => {
     try {

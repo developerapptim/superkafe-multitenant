@@ -1,17 +1,17 @@
 const mongoose = require('mongoose');
-const MenuItem = require('../models_temp/MenuItem');
-const Category = require('../models_temp/Category');
-const Order = require('../models_temp/Order');
-const Table = require('../models_temp/Table');
-const Employee = require('../models_temp/Employee');
-const CashTransaction = require('../models_temp/CashTransaction');
-const Customer = require('../models_temp/Customer');
-const Ingredient = require('../models_temp/Ingredient');
-const Gramasi = require('../models_temp/Gramasi');
-const StockHistory = require('../models_temp/StockHistory');
-const Recipe = require('../models_temp/Recipe');
-const Shift = require('../models_temp/Shift');
-const Settings = require('../models_temp/Settings');
+const MenuItem = require('../models/MenuItem');
+const Category = require('../models/Category');
+const Order = require('../models/Order');
+const Table = require('../models/Table');
+const Employee = require('../models/Employee');
+const CashTransaction = require('../models/CashTransaction');
+const Customer = require('../models/Customer');
+const Ingredient = require('../models/Ingredient');
+const Gramasi = require('../models/Gramasi');
+const StockHistory = require('../models/StockHistory');
+const Recipe = require('../models/Recipe');
+const Shift = require('../models/Shift');
+const Settings = require('../models/Settings');
 
 const MASTER_PIN = process.env.MASTER_PIN || '123456';
 

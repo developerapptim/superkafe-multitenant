@@ -1,7 +1,7 @@
-const Expense = require('../models_temp/Expense');
-const Shift = require('../models_temp/Shift');
-const CashTransaction = require('../models_temp/CashTransaction');
-const Debt = require('../models_temp/Debt');
+const Expense = require('../models/Expense');
+const Shift = require('../models/Shift');
+const CashTransaction = require('../models/CashTransaction');
+const Debt = require('../models/Debt');
 
 // === EXPENSES (Legacy Support?) ===
 // Kept if other parts use it, but generic generic CashTransaction is preferred.

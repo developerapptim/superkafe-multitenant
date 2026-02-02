@@ -1,6 +1,6 @@
-const MenuItem = require('../models_temp/MenuItem');
-const Recipe = require('../models_temp/Recipe');
-const Ingredient = require('../models_temp/Ingredient');
+const MenuItem = require('../models/MenuItem');
+const Recipe = require('../models/Recipe');
+const Ingredient = require('../models/Ingredient');
 const logActivity = require('../utils/activityLogger'); // NEW: Activity Logger
 
 exports.getMenus = async (req, res) => {

@@ -1,4 +1,4 @@
-const Settings = require('../models_temp/Settings');
+const Settings = require('../models/Settings');
 
 exports.uploadSound = async (req, res) => {
     try {

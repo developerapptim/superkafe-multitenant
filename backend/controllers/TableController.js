@@ -1,5 +1,5 @@
-const Table = require('../models_temp/Table');
-const Order = require('../models_temp/Order');
+const Table = require('../models/Table');
+const Order = require('../models/Order');
 
 exports.getTables = async (req, res) => {
     try {

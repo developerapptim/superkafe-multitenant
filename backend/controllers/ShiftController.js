@@ -1,6 +1,6 @@
-const Shift = require('../models_temp/Shift');
-const Order = require('../models_temp/Order');
-const ActivityLog = require('../models_temp/ActivityLog'); // NEW: Activity Log Model
+const Shift = require('../models/Shift');
+const Order = require('../models/Order');
+const ActivityLog = require('../models/ActivityLog'); // NEW: Activity Log Model
 const logActivity = require('../utils/activityLogger'); // NEW: Activity Logger
 
 exports.startShift = async (req, res) => {

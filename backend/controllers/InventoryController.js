@@ -1,8 +1,8 @@
-const Ingredient = require('../models_temp/Ingredient');
-const Gramasi = require('../models_temp/Gramasi');
-const StockHistory = require('../models_temp/StockHistory');
-const MenuItem = require('../models_temp/MenuItem'); // For error msg
-const Recipe = require('../models_temp/Recipe'); // For safety check
+const Ingredient = require('../models/Ingredient');
+const Gramasi = require('../models/Gramasi');
+const StockHistory = require('../models/StockHistory');
+const MenuItem = require('../models/MenuItem'); // For error msg
+const Recipe = require('../models/Recipe'); // For safety check
 const logActivity = require('../utils/activityLogger'); // NEW: Activity Logger
 
 exports.getInventory = async (req, res) => {

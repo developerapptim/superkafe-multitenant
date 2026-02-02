@@ -1,6 +1,6 @@
 // Basic Payroll Calculation
-const Attendance = require('../models_temp/Attendance');
-const Employee = require('../models_temp/Employee');
+const Attendance = require('../models/Attendance');
+const Employee = require('../models/Employee');
 
 exports.calculate = async (req, res) => {
     try {

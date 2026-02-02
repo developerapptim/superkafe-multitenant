@@ -1,5 +1,5 @@
 const jwt = require('jsonwebtoken');
-const Settings = require('../models_temp/Settings');
+const Settings = require('../models/Settings');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'change_this_secret';
 const EXPECTED_KEY = 'warkop_secret_123';

@@ -1,5 +1,5 @@
-const Attendance = require('../models_temp/Attendance');
-const Employee = require('../models_temp/Employee');
+const Attendance = require('../models/Attendance');
+const Employee = require('../models/Employee');
 
 // Get all attendance records
 exports.getAll = async (req, res) => {

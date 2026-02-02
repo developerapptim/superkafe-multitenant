@@ -4,7 +4,7 @@
  */
 const mongoose = require('mongoose');
 
-const Order = require('../models_temp/Order');
+const Order = require('../models/Order');
 
 // Removed dependency injection
 const setOrderModel = (orderModel) => { };

@@ -1,4 +1,4 @@
-const Customer = require('../models_temp/Customer');
+const Customer = require('../models/Customer');
 
 exports.searchCustomers = async (req, res) => {
     try {
