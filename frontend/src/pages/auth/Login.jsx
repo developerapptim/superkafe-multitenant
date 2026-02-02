@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import axios from 'axios';
+import api from '../../services/api';
 
 function Login() {
     const navigate = useNavigate();
@@ -22,7 +22,8 @@ function Login() {
 
         try {
             // Adjust API URL based on your proxy setup or direct
-            const response = await axios.post('/api/auth/login', {
+            const response = await api.post('/auth/login', {
+                ...
                 username,
                 password
             });
