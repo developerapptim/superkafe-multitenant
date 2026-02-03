@@ -155,11 +155,40 @@ exports.createOrder = async (req, res) => {
             }
         }
 
-        // 4. Update Customer Loyalty (if customer attached)
-        if (newOrder.customerId && newOrder.customerId !== 'guest') {
-            const customer = await Customer.findOne({ id: newOrder.customerId });
-            if (customer) {
-                // Fetch Settings for point ratio
+        // 4. Update Customer Loyalty & Auto-create Customer
+        if (newOrder.customerPhone && newOrder.customerPhone.length > 5) {
+            let customer = await Customer.findOne({
+                $or: [{ id: newOrder.customerId }, { phone: newOrder.customerPhone }]
+            });
+
+            if (!customer) {
+                // Create new Customer automatically
+                customer = new Customer({
+                    id: `cust_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+                    name: newOrder.customerName || 'Pelanggan Baru',
+                    phone: newOrder.customerPhone,
+                    tier: 'regular',
+                    points: 0,
+                    totalSpent: 0,
+                    visitCount: 0,
+                    createdAt: new Date()
+                });
+            }
+
+            // Link customer to order if wasn't linked
+            if (newOrder.customerId !== customer.id) {
+                newOrder.customerId = customer.id;
+                await newOrder.save();
+            }
+
+            // Sync/Update Customer Name if it was default/empty
+            if (newOrder.customerName && (!customer.name || customer.name === 'Pelanggan Baru')) {
+                customer.name = newOrder.customerName;
+            }
+
+            // Calculate Loyalty Points (ONLY IF PAID)
+            // If unpaid, points will be added in payOrder
+            if (newOrder.status === 'done' || newOrder.paymentStatus === 'paid') {
                 const settings = await Settings.findOne({ key: 'businessSettings' });
                 const ratio = settings?.loyaltySettings?.pointRatio || 10000;
                 const pointsEarned = Math.floor(newOrder.total / ratio);
@@ -169,9 +198,9 @@ exports.createOrder = async (req, res) => {
                 customer.points += pointsEarned;
                 customer.lastOrderDate = new Date();
                 if (pointsEarned > 0) customer.lastPointsEarned = new Date();
-
-                await customer.save();
             }
+
+            await customer.save();
         }
 
         res.status(201).json(newOrder);
@@ -254,22 +283,39 @@ exports.payOrder = async (req, res) => {
             await activeShift.save();
         }
 
-        // 3. Update Customer Loyalty
+        // 3. Update Customer Loyalty & Auto-create
+        let customer = null;
         if (order.customerId && order.customerId !== 'guest') {
-            const customer = await Customer.findOne({ id: order.customerId });
-            if (customer) {
-                const settings = await Settings.findOne({ key: 'businessSettings' });
-                const ratio = settings?.loyaltySettings?.pointRatio || 10000;
-                const pointsEarned = Math.floor(order.total / ratio);
-
-                customer.totalSpent += order.total;
-                customer.visitCount += 1;
-                customer.points += pointsEarned;
-                customer.lastOrderDate = new Date();
-                if (pointsEarned > 0) customer.lastPointsEarned = new Date();
-
-                await customer.save();
+            customer = await Customer.findOne({ id: order.customerId });
+        } else if (order.customerPhone && order.customerPhone.length > 5) {
+            // If no ID linked, try finding by phone
+            customer = await Customer.findOne({ phone: order.customerPhone });
+            if (!customer) {
+                // Create new Customer
+                customer = new Customer({
+                    id: `cust_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+                    name: order.customerName || 'Pelanggan Baru',
+                    phone: order.customerPhone,
+                    tier: 'regular',
+                    createdAt: new Date()
+                });
             }
+            // Link to order
+            order.customerId = customer.id;
+        }
+
+        if (customer) {
+            const settings = await Settings.findOne({ key: 'businessSettings' });
+            const ratio = settings?.loyaltySettings?.pointRatio || 10000;
+            const pointsEarned = Math.floor(order.total / ratio);
+
+            customer.totalSpent += order.total;
+            customer.visitCount += 1;
+            customer.points += pointsEarned;
+            customer.lastOrderDate = new Date();
+            if (pointsEarned > 0) customer.lastPointsEarned = new Date();
+
+            await customer.save();
         }
 
         await order.save();
