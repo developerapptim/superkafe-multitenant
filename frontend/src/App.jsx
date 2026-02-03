@@ -37,12 +37,13 @@ function App() {
     <BrowserRouter>
       <Toaster
         position="top-right"
-        containerStyle={{ zIndex: 99999 }}
+        containerStyle={{ zIndex: 99999, pointerEvents: 'none' }}
         toastOptions={{
           style: {
             background: '#1E1B4B',
             color: '#fff',
-            border: '1px solid #8B5CF6'
+            border: '1px solid #8B5CF6',
+            pointerEvents: 'auto'
           }
         }}
       />

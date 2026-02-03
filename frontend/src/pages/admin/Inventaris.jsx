@@ -560,7 +560,7 @@ function Inventaris() {
             {/* Header */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <h2 className="text-2xl font-bold">📦 Inventaris</h2>
-                <div className="flex flex-col md:flex-row gap-2 w-full md:w-auto">
+                <div className="flex flex-col md:flex-row gap-2 w-full md:w-auto relative z-10">
                     <button
                         onClick={() => setShowUnitsModal(true)}
                         className="w-full md:w-auto bg-white/10 hover:bg-white/20 px-4 py-2 rounded-lg text-sm font-medium flex items-center justify-center gap-2 transition-all whitespace-nowrap"

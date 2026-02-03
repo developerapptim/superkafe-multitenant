@@ -56,3 +56,16 @@ body {
 .animate-fade {
   animation: fadeIn 0.3s ease-out;
 }
+
+/* Modal Overlay - Fix for missing class */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background-color: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
