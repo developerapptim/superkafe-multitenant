@@ -7,6 +7,8 @@ import useSWR from 'swr';
 import api, { ordersAPI } from '../../services/api';
 import { useCart } from '../../context/CartContext';
 import Struk from '../../components/Struk';
+import { toPng } from 'html-to-image';
+import jsPDF from 'jspdf';
 
 // Fetcher for SWR
 const fetcher = url => api.get(url).then(res => res.data);
@@ -226,8 +228,42 @@ function Keranjang() {
     };
 
 
-    const handlePrint = () => {
-        window.print();
+    const handleDownloadPDF = async () => {
+        const element = document.getElementById('printable-receipt');
+        if (!element) return;
+
+        const toastId = toast.loading('Memproses PDF...');
+
+        try {
+            // Use html-to-image for better support of modern CSS (like oklch)
+            const dataUrl = await toPng(element, {
+                cacheBust: true,
+                pixelRatio: 3, // High resolution
+                backgroundColor: '#ffffff'
+            });
+
+            // Calculate dimensions based on element size
+            const w = element.offsetWidth;
+            const h = element.offsetHeight;
+
+            // Standard thermal receipt width ~80mm
+            const pdfWidth = 80;
+            const pdfHeight = (h * pdfWidth) / w;
+
+            const pdf = new jsPDF({
+                orientation: 'portrait',
+                unit: 'mm',
+                format: [pdfWidth, pdfHeight]
+            });
+
+            pdf.addImage(dataUrl, 'PNG', 0, 0, pdfWidth, pdfHeight);
+            pdf.save(`Struk-${submittedOrder.id}.pdf`);
+
+            toast.success('Struk berhasil didownload!', { id: toastId });
+        } catch (err) {
+            console.error('PDF Error:', err);
+            toast.error('Gagal membuat PDF. Coba refresh halaman.', { id: toastId });
+        }
     };
 
     // Order Success View
@@ -242,7 +278,10 @@ function Keranjang() {
 
                 {/* Receipt Preview */}
                 <div className="flex justify-center">
-                    <div className="bg-white rounded-lg overflow-hidden shadow-2xl transform scale-95 origin-top">
+                    <div
+                        id="printable-receipt"
+                        className="bg-white rounded-lg overflow-hidden shadow-2xl transform scale-95 origin-top"
+                    >
                         <Struk order={submittedOrder} settings={settings} />
                     </div>
                 </div>
@@ -250,10 +289,10 @@ function Keranjang() {
                 {/* Actions */}
                 <div className="space-y-3 no-print">
                     <button
-                        onClick={handlePrint}
-                        className="w-full py-3 rounded-xl bg-purple-600 font-bold flex items-center justify-center gap-2 hover:bg-purple-700 transition-colors"
+                        onClick={handleDownloadPDF}
+                        className="w-full py-3 rounded-xl bg-purple-600 font-bold flex items-center justify-center gap-2 hover:bg-purple-700 transition-colors shadow-lg shadow-purple-600/30"
                     >
-                        🖨️ Cetak Struk
+                        📥 Download Struk (PDF)
                     </button>
 
                     <button
