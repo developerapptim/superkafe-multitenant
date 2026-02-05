@@ -640,20 +640,40 @@ function Inventaris() {
                         🔥 Bahan Terlaris Hari Ini
                     </h3>
                     <div className="flex flex-wrap gap-4">
-                        {topUsage.map((item, idx) => (
-                            <div key={item._id || idx} className="flex items-center gap-3 bg-white/5 px-4 py-2 rounded-lg border border-white/5">
-                                <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${idx === 0 ? 'bg-yellow-500 text-black' :
-                                    idx === 1 ? 'bg-gray-400 text-black' :
-                                        'bg-orange-700 text-white'
-                                    }`}>
-                                    {idx + 1}
+                        {topUsage.map((item, idx) => {
+                            // Robust Data Fallback
+                            const name = item.ingName || item.name || item.nama_bahan || 'Unknown Item';
+                            const usage = item.totalUsed || item.totalUsage || item.qty || 0;
+
+                            // Find ingredient for unit lookup
+                            const ingredient = ingredients.find(i => i.id === item._id || i.nama === name);
+                            const unit = ingredient?.satuan || item.unit || 'unit';
+
+                            // Formatting
+                            const qty = Math.abs(Number(usage)).toLocaleString('id-ID', { maximumFractionDigits: 2 });
+
+                            return (
+                                <div key={item._id || idx} className="flex items-center gap-3 bg-white/5 px-4 py-2 rounded-lg border border-white/5 min-w-[200px]">
+                                    {/* Ranking Circle */}
+                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold shrink-0 ${idx === 0 ? 'bg-yellow-500 text-black shadow-lg shadow-yellow-500/20' :
+                                        idx === 1 ? 'bg-gray-400 text-black' :
+                                            idx === 2 ? 'bg-orange-700 text-white' : 'bg-white/10 text-white'
+                                        }`}>
+                                        {idx + 1}
+                                    </div>
+
+                                    {/* Info Text */}
+                                    <div>
+                                        <p className="text-sm">
+                                            <span className="font-bold text-white">{name}</span>
+                                        </p>
+                                        <p className="text-xs text-gray-400 mt-0.5">
+                                            Terpakai: <span className="text-gray-200">{qty} {unit}</span>
+                                        </p>
+                                    </div>
                                 </div>
-                                <div>
-                                    <p className="text-sm font-medium">{item.name}</p>
-                                    <p className="text-xs text-gray-400">{item.totalQty} unit keluar</p>
-                                </div>
-                            </div>
-                        ))}
+                            );
+                        })}
                     </div>
                 </div>
             )}
