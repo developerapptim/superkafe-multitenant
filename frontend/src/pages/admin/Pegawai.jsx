@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import CustomSelect from '../../components/CustomSelect';
 import toast from 'react-hot-toast';
 import useSWR, { mutate } from 'swr';
-import { employeesAPI, attendanceAPI, payrollAPI, debtsAPI } from '../../services/api';
+import api, { employeesAPI, attendanceAPI, payrollAPI, debtsAPI } from '../../services/api';
 
 // Fetchers
 const employeesFetcher = () => employeesAPI.getAll().then(res => res.data);
@@ -15,6 +15,7 @@ function Pegawai() {
     const [activeTab, setActiveTab] = useState('employees'); // employees, attendance, payroll
     const [showKioskMode, setShowKioskMode] = useState(false);
     const [showModal, setShowModal] = useState(false);
+    const [showResetConfirm, setShowResetConfirm] = useState(false);
     const [editingEmployee, setEditingEmployee] = useState(null);
     const [showPassword, setShowPassword] = useState(false);
     const [attendanceDate, setAttendanceDate] = useState(new Date().toISOString().split('T')[0]);
@@ -181,6 +182,17 @@ function Pegawai() {
         }
     };
 
+    const handleResetSessions = async () => {
+        setShowResetConfirm(false);
+        const toastId = toast.loading('Mereset sesi...');
+        try {
+            await api.post('/users/reset-sessions');
+            toast.success('Sesi staff berhasil di-reset', { id: toastId });
+        } catch (e) {
+            toast.error('Gagal reset sesi', { id: toastId });
+        }
+    };
+
     // ===== KIOSK MODE =====
     const handleNumpadClick = (num) => {
         if (pinInput.length < 6) {
@@ -301,7 +313,7 @@ function Pegawai() {
     if (isLoading) {
         return (
             <section className="p-4 md:p-6 space-y-6">
-                <h2 className="text-2xl font-bold">👥 Manajemen Pegawai</h2>
+                <h2 className="text-2xl font-bold hidden md:block">👥 Manajemen Pegawai</h2>
                 <div className="flex items-center justify-center h-64">
                     <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500"></div>
                 </div>
@@ -313,19 +325,10 @@ function Pegawai() {
         <section className="p-4 md:p-6 space-y-6">
             {/* Header */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-                <h2 className="text-2xl font-bold">👥 Manajemen Pegawai</h2>
+                <h2 className="text-2xl font-bold hidden md:block">👥 Manajemen Pegawai</h2>
                 <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
                     <button
-                        onClick={async () => {
-                            if (!window.confirm('Reset semua sesi staff? Ini akan memaksa logout semua staff yang sedang aktif.')) return;
-                            const toastId = toast.loading('Mereset sesi...');
-                            try {
-                                await api.post('/users/reset-sessions');
-                                toast.success('Sesi staff berhasil di-reset', { id: toastId });
-                            } catch (e) {
-                                toast.error('Gagal reset sesi', { id: toastId });
-                            }
-                        }}
+                        onClick={() => setShowResetConfirm(true)}
                         className="px-4 py-2 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30 font-medium flex items-center justify-center gap-2"
                     >
                         🔄 Reset Sesi
@@ -370,55 +373,57 @@ function Pegawai() {
                 <div className="space-y-4">
                     {/* Employee Table */}
                     <div className="glass rounded-xl overflow-hidden">
-                        <table className="w-full">
-                            <thead className="bg-white/5">
-                                <tr>
-                                    <th className="text-left p-3 font-medium text-gray-400">Nama</th>
-                                    <th className="text-left p-3 font-medium text-gray-400">Posisi</th>
-                                    <th className="text-left p-3 font-medium text-gray-400 hidden md:table-cell">Telepon</th>
-                                    <th className="text-left p-3 font-medium text-gray-400 hidden lg:table-cell">Gaji Harian</th>
-                                    <th className="text-left p-3 font-medium text-gray-400">Status</th>
-                                    <th className="text-left p-3 font-medium text-gray-400">PIN</th>
-                                    <th className="text-right p-3 font-medium text-gray-400">Aksi</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {employees.length === 0 ? (
+                        <div className="overflow-x-auto">
+                            <table className="w-full min-w-[600px] md:min-w-0">
+                                <thead className="bg-white/5">
                                     <tr>
-                                        <td colSpan="7" className="p-8 text-center text-gray-500">
-                                            Belum ada data pegawai
-                                        </td>
+                                        <th className="text-left p-3 font-medium text-gray-400">Nama</th>
+                                        <th className="text-left p-3 font-medium text-gray-400">Posisi</th>
+                                        <th className="text-left p-3 font-medium text-gray-400 hidden md:table-cell">Telepon</th>
+                                        <th className="text-left p-3 font-medium text-gray-400 hidden lg:table-cell">Gaji Harian</th>
+                                        <th className="text-left p-3 font-medium text-gray-400">Status</th>
+                                        <th className="text-left p-3 font-medium text-gray-400">PIN</th>
+                                        <th className="text-right p-3 font-medium text-gray-400">Aksi</th>
                                     </tr>
-                                ) : employees.map(emp => (
-                                    <tr key={emp.id} className="border-t border-white/5 hover:bg-white/5">
-                                        <td className="p-3">
-                                            <div className="flex items-center gap-3">
-                                                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center text-sm font-bold">
-                                                    {emp.name?.charAt(0).toUpperCase()}
+                                </thead>
+                                <tbody>
+                                    {employees.length === 0 ? (
+                                        <tr>
+                                            <td colSpan="7" className="p-8 text-center text-gray-500">
+                                                Belum ada data pegawai
+                                            </td>
+                                        </tr>
+                                    ) : employees.map(emp => (
+                                        <tr key={emp.id} className="border-t border-white/5 hover:bg-white/5">
+                                            <td className="p-3">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center text-sm font-bold">
+                                                        {emp.name?.charAt(0).toUpperCase()}
+                                                    </div>
+                                                    <span className="font-medium">{emp.name}</span>
                                                 </div>
-                                                <span className="font-medium">{emp.name}</span>
-                                            </div>
-                                        </td>
-                                        <td className="p-3 text-gray-400">{getRoleLabel(emp.role)}</td>
-                                        <td className="p-3 text-gray-400 hidden md:table-cell">{emp.phone || '-'}</td>
-                                        <td className="p-3 text-gray-400 hidden lg:table-cell">{formatCurrency(emp.daily_rate)}</td>
-                                        <td className="p-3">
-                                            <span className={`px-2 py-1 rounded-full text-xs ${emp.status === 'active' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
-                                                }`}>
-                                                {emp.status === 'active' ? 'Aktif' : 'Nonaktif'}
-                                            </span>
-                                        </td>
-                                        <td className="p-3 text-gray-400 font-mono">{emp.pin_code ? '••••••' : '-'}</td>
-                                        <td className="p-3">
-                                            <div className="flex gap-2 justify-end">
-                                                <button onClick={() => openEditModal(emp)} className="px-3 py-1 rounded bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 text-sm">✏️</button>
-                                                <button onClick={() => handleDelete(emp.id)} className="px-3 py-1 rounded bg-red-500/20 text-red-400 hover:bg-red-500/30 text-sm">🗑️</button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                                            </td>
+                                            <td className="p-3 text-gray-400">{getRoleLabel(emp.role)}</td>
+                                            <td className="p-3 text-gray-400 hidden md:table-cell">{emp.phone || '-'}</td>
+                                            <td className="p-3 text-gray-400 hidden lg:table-cell">{formatCurrency(emp.daily_rate)}</td>
+                                            <td className="p-3">
+                                                <span className={`px-2 py-1 rounded-full text-xs ${emp.status === 'active' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
+                                                    }`}>
+                                                    {emp.status === 'active' ? 'Aktif' : 'Nonaktif'}
+                                                </span>
+                                            </td>
+                                            <td className="p-3 text-gray-400 font-mono">{emp.pin_code ? '••••••' : '-'}</td>
+                                            <td className="p-3">
+                                                <div className="flex gap-2 justify-end">
+                                                    <button onClick={() => openEditModal(emp)} className="px-3 py-1 rounded bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 text-sm">✏️</button>
+                                                    <button onClick={() => handleDelete(emp.id)} className="px-3 py-1 rounded bg-red-500/20 text-red-400 hover:bg-red-500/30 text-sm">🗑️</button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             )}
@@ -926,6 +931,36 @@ function Pegawai() {
                     )}
                 </div>
                 , document.body)}
+
+            {/* Reset Confirmation Modal */}
+            {showResetConfirm && createPortal(
+                <div className="modal-overlay">
+                    <div className="glass rounded-2xl p-6 w-full max-w-sm animate-scale-up text-center border-2 border-red-500/30 shadow-[0_0_50px_-10px_rgba(239,68,68,0.3)]">
+                        <div className="w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl">
+                            ⚠️
+                        </div>
+                        <h3 className="text-xl font-bold mb-2">Reset Semua Sesi?</h3>
+                        <p className="text-gray-400 mb-6 text-sm">
+                            Tindakan ini akan memaksa <strong>LOGOUT</strong> semua staff yang sedang aktif. Gunakan hanya jika diperlukan.
+                        </p>
+                        <div className="flex gap-3 justify-center">
+                            <button
+                                onClick={() => setShowResetConfirm(false)}
+                                className="flex-1 py-2.5 rounded-xl bg-gray-600 hover:bg-gray-500 text-white font-medium transition-all"
+                            >
+                                Batal
+                            </button>
+                            <button
+                                onClick={handleResetSessions}
+                                className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-500 hover:to-orange-500 text-white font-bold shadow-lg shadow-red-500/30 transition-all transform hover:scale-[1.02]"
+                            >
+                                Ya, Reset!
+                            </button>
+                        </div>
+                    </div>
+                </div>,
+                document.body
+            )}
         </section>
     );
 }

@@ -600,7 +600,7 @@ function Kasir() {
             <section className="flex flex-col h-[calc(100vh-80px)]">
                 {/* Header Bar Skeleton */}
                 <div className="flex items-center justify-between p-4 border-b border-purple-500/20 bg-surface/50">
-                    <h2 className="text-2xl font-bold">🧾 Kasir (POS)</h2>
+                    <h2 className="text-2xl font-bold hidden md:block">🧾 Kasir (POS)</h2>
                 </div>
                 <div className="flex-1 flex items-center justify-center">
                     <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500"></div>
@@ -681,115 +681,238 @@ function Kasir() {
     return (
         <section className="flex flex-col h-[calc(100vh-80px)]">
             {/* Header Bar */}
-            {/* Header Bar */}
             <div className="flex flex-col p-3 md:p-4 border-b border-purple-500/20 bg-surface/50 gap-3">
+                {/* Desktop Header */}
+                <div className="hidden md:flex flex-col gap-3">
+                    {/* Top Row: Title & Actions */}
+                    <div className="flex items-center justify-between">
+                        {/* Title Group */}
+                        <div className="flex items-center gap-2">
+                            <h2 className="text-xl md:text-2xl font-bold text-left hidden md:block">🧾 Kasir</h2>
+                            {isAdmin && (
+                                <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-yellow-500/10 border border-yellow-500/20 text-yellow-500 text-xs font-medium animate-fade-in select-none whitespace-nowrap">
+                                    <span>👁️</span>
+                                    <span>Mode Pantau</span>
+                                </div>
+                            )}
+                        </div>
 
-                {/* Top Row: Title & Actions */}
-                <div className="flex items-center justify-between">
-                    {/* Title Group */}
-                    <div className="flex items-center gap-2">
-                        <h2 className="text-xl md:text-2xl font-bold text-left">🧾 Kasir</h2>
-                        {isAdmin && (
-                            <div className="flex items-center gap-1.5 px-2 py-0.5 md:px-3 md:py-1 rounded-full bg-yellow-500/10 border border-yellow-500/20 text-yellow-500 text-[10px] md:text-xs font-medium animate-fade-in select-none whitespace-nowrap">
-                                <span>👁️</span>
-                                <span className="hidden sm:inline">Mode Pantau</span>
-                                <span className="sm:hidden">Pantau</span>
-                            </div>
-                        )}
+                        {/* Actions Group */}
+                        <div className="flex items-center gap-2">
+                            {/* Refresh Button */}
+                            <button
+                                onClick={handleManualRefresh}
+                                disabled={isRefreshing}
+                                className={`w-11 h-11 flex items-center justify-center rounded-xl bg-surface border border-purple-500/30 hover:bg-surface/80 text-gray-300 hover:text-white transition-all ${isRefreshing ? 'opacity-50' : ''}`}
+                                title="Refresh Data"
+                            >
+                                <span className={`text-xl ${isRefreshing ? 'animate-spin' : ''}`}>🔄</span>
+                            </button>
+
+                            {/* Notification Button */}
+                            <button
+                                onClick={toggleMute}
+                                className={`w-11 h-11 flex items-center justify-center rounded-xl border border-purple-500/30 transition-all ${!isMuted
+                                    ? 'bg-purple-500/20 text-purple-400 hover:bg-purple-500/30 border-purple-500/50'
+                                    : 'bg-surface text-gray-400 hover:text-white hover:bg-surface/80'
+                                    }`}
+                                title={!isMuted ? 'Matikan Suara' : 'Hidupkan Suara'}
+                            >
+                                <span className="text-2xl">{!isMuted ? '🔊' : '🔇'}</span>
+                            </button>
+
+                            {!isAdmin && (
+                                <button
+                                    onClick={() => setShowModal(true)}
+                                    className="h-11 bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 text-white px-4 rounded-xl font-bold flex items-center gap-2 shadow-lg shadow-purple-500/40 whitespace-nowrap transition-all"
+                                >
+                                    <span className="text-xl">➕</span> <span className="text-base">Pesanan Baru</span>
+                                </button>
+                            )}
+                        </div>
                     </div>
 
-                    {/* Actions Group */}
-                    <div className="flex items-center gap-2">
+                    {/* Second Row: Search & Filters */}
+                    <div className="flex flex-row gap-3 items-center justify-between">
+                        {/* Search Bar */}
+                        <div className="relative flex-1 max-w-md">
+                            <input
+                                type="text"
+                                placeholder="🔍 Cari nama..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                className="w-full px-4 py-2 pl-4 pr-10 rounded-lg bg-white/5 border border-purple-500/30 text-white placeholder-gray-400 text-sm focus:ring-2 focus:ring-purple-500/50 transition-all focus:outline-none"
+                            />
+                            {searchQuery && (
+                                <button
+                                    onClick={() => setSearchQuery('')}
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white"
+                                >
+                                    ✕
+                                </button>
+                            )}
+                        </div>
+
+                        {/* Category Filter */}
+                        <div className="overflow-x-auto pb-1 -mb-1 flex-1 hide-scrollbar">
+                            <div className="flex gap-2 min-w-max md:justify-end">
+                                <button
+                                    onClick={() => setFilter('all')}
+                                    className={`px-3 py-1.5 rounded-lg text-sm transition-all whitespace-nowrap ${filter === 'all'
+                                        ? 'bg-purple-600 text-white'
+                                        : 'bg-white/5 text-gray-400 hover:bg-white/10'
+                                        }`}
+                                >
+                                    Semua
+                                </button>
+                                <button
+                                    onClick={() => setFilter('new')}
+                                    className={`px-3 py-1.5 rounded-lg text-sm transition-all whitespace-nowrap flex items-center gap-1 ${filter === 'new'
+                                        ? 'bg-yellow-500 text-white'
+                                        : 'bg-white/5 text-gray-400 hover:bg-white/10'
+                                        }`}
+                                >
+                                    🪙 Baru <span className="bg-white/20 px-1.5 rounded text-xs ml-1">{orderCounts.new}</span>
+                                </button>
+                                <button
+                                    onClick={() => setFilter('pending_payment')}
+                                    className={`px-3 py-1.5 rounded-lg text-sm transition-all whitespace-nowrap flex items-center gap-1 ${filter === 'pending_payment'
+                                        ? 'bg-orange-500 text-white'
+                                        : 'bg-white/5 text-gray-400 hover:bg-white/10'
+                                        }`}
+                                >
+                                    🟠 Bayar
+                                </button>
+                                <button
+                                    onClick={() => setFilter('process')}
+                                    className={`px-3 py-1.5 rounded-lg text-sm transition-all whitespace-nowrap flex items-center gap-1 ${filter === 'process'
+                                        ? 'bg-blue-500 text-white'
+                                        : 'bg-white/5 text-gray-400 hover:bg-white/10'
+                                        }`}
+                                >
+                                    🔵 Diproses
+                                </button>
+                                <button
+                                    onClick={() => setFilter('ready')}
+                                    className={`px-3 py-1.5 rounded-lg text-sm transition-all whitespace-nowrap flex items-center gap-1 ${filter === 'ready'
+                                        ? 'bg-teal-500 text-white'
+                                        : 'bg-white/5 text-gray-400 hover:bg-white/10'
+                                        }`}
+                                >
+                                    ✅ Siap
+                                </button>
+                                <button
+                                    onClick={() => setFilter('done')}
+                                    className={`px-3 py-1.5 rounded-lg text-sm transition-all whitespace-nowrap flex items-center gap-1 ${filter === 'done'
+                                        ? 'bg-green-500 text-white'
+                                        : 'bg-white/5 text-gray-400 hover:bg-white/10'
+                                        }`}
+                                >
+                                    🟢 Selesai
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Mobile Header Optimization */}
+                <div className="flex md:hidden flex-col gap-3">
+                    {/* Row 1: Search + Actions */}
+                    <div className="flex gap-2 items-center w-full">
+                        {/* Search Input (Grow) */}
+                        <div className="relative flex-1">
+                            <input
+                                type="text"
+                                placeholder="🔍 Cari nama..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                className="w-full pl-3 pr-8 py-2 rounded-xl bg-white/5 border border-purple-500/30 text-white placeholder-gray-400 text-sm focus:ring-2 focus:ring-purple-500/50 transition-all focus:outline-none h-11"
+                            />
+                            {searchQuery && (
+                                <button
+                                    onClick={() => setSearchQuery('')}
+                                    className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white p-1"
+                                >
+                                    ✕
+                                </button>
+                            )}
+                        </div>
+
                         {/* Refresh Button */}
                         <button
                             onClick={handleManualRefresh}
                             disabled={isRefreshing}
-                            className={`w-9 h-9 md:w-11 md:h-11 flex items-center justify-center rounded-xl bg-surface border border-purple-500/30 hover:bg-surface/80 text-gray-300 hover:text-white transition-all ${isRefreshing ? 'opacity-50' : ''}`}
-                            title="Refresh Data"
+                            className={`w-11 h-11 flex items-center justify-center rounded-xl bg-surface border border-purple-500/30 hover:bg-surface/80 text-gray-300 hover:text-white transition-all shrink-0 ${isRefreshing ? 'opacity-50' : ''}`}
                         >
-                            <span className={`text-base md:text-xl ${isRefreshing ? 'animate-spin' : ''}`}>🔄</span>
+                            <span className={`text-lg ${isRefreshing ? 'animate-spin' : ''}`}>🔄</span>
                         </button>
 
-                        {/* Notification Button */}
+                        {/* Sound Button */}
                         <button
                             onClick={toggleMute}
-                            className={`w-9 h-9 md:w-11 md:h-11 flex items-center justify-center rounded-xl border border-purple-500/30 transition-all ${!isMuted
-                                ? 'bg-purple-500/20 text-purple-400 hover:bg-purple-500/30 border-purple-500/50'
-                                : 'bg-surface text-gray-400 hover:text-white hover:bg-surface/80'
+                            className={`w-11 h-11 flex items-center justify-center rounded-xl border border-purple-500/30 transition-all shrink-0 ${!isMuted
+                                ? 'bg-purple-500/20 text-purple-400 border-purple-500/50'
+                                : 'bg-surface text-gray-400'
                                 }`}
-                            title={!isMuted ? 'Matikan Suara' : 'Hidupkan Suara'}
                         >
-                            <span className="text-base md:text-2xl">{!isMuted ? '🔊' : '🔇'}</span>
+                            <span className="text-lg">{!isMuted ? '🔊' : '🔇'}</span>
                         </button>
+                    </div>
 
+                    {/* Row 2: Filters + New Order (Scrollable) */}
+                    <div className="flex gap-2 overflow-x-auto pb-1 -mb-1 hide-scrollbar">
                         {!isAdmin && (
                             <button
                                 onClick={() => setShowModal(true)}
-                                className="h-9 md:h-11 bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 text-white px-3 md:px-4 rounded-xl font-bold flex items-center gap-2 shadow-lg shadow-purple-500/40 whitespace-nowrap transition-all"
+                                className="h-9 px-3 bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white rounded-lg font-bold flex items-center gap-1 shadow-lg shadow-purple-500/40 whitespace-nowrap shrink-0 text-sm"
                             >
-                                <span className="text-lg md:text-xl">➕</span> <span className="hidden sm:inline text-sm md:text-base">Pesanan Baru</span>
+                                <span>➕</span> Baru
                             </button>
                         )}
-                    </div>
-                </div>
-
-                {/* Second Row: Search & Filters */}
-                <div className="flex flex-col md:flex-row gap-3 md:items-center justify-between">
-                    {/* Search Bar */}
-                    <div className="relative w-full md:w-auto md:flex-1 md:max-w-md">
-                        <input
-                            type="text"
-                            placeholder="🔍 Cari nama..."
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-full px-4 py-2 pl-4 pr-10 rounded-lg bg-white/5 border border-purple-500/30 text-white placeholder-gray-400 text-sm focus:ring-2 focus:ring-purple-500/50 transition-all focus:outline-none"
-                        />
-                        {searchQuery && (
-                            <button
-                                onClick={() => setSearchQuery('')}
-                                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white"
-                            >
-                                ✕
-                            </button>
-                        )}
-                    </div>
-
-                    {/* Status Filter Pills */}
-                    <div className="flex gap-2 w-full md:w-auto overflow-x-auto pb-2 md:pb-0 hide-scrollbar">
                         <button
                             onClick={() => setFilter('all')}
-                            className={`px-3 py-1 rounded-full text-xs md:text-sm whitespace-nowrap transition-all ${filter === 'all' ? 'bg-purple-500/30 text-purple-300' : 'bg-purple-500/10 text-purple-400 hover:bg-purple-500/20'
+                            className={`px-3 py-1.5 rounded-lg text-sm transition-all whitespace-nowrap ${filter === 'all'
+                                ? 'bg-purple-600 text-white'
+                                : 'bg-white/5 text-gray-400'
                                 }`}
                         >
                             Semua
                         </button>
                         <button
                             onClick={() => setFilter('new')}
-                            className={`px-3 py-1 rounded-full text-xs md:text-sm whitespace-nowrap transition-all ${filter === 'new' ? 'bg-yellow-500/30 text-yellow-300' : 'bg-yellow-500/10 text-yellow-400 hover:bg-yellow-500/20'
+                            className={`px-3 py-1.5 rounded-lg text-sm transition-all whitespace-nowrap flex items-center gap-1 ${filter === 'new'
+                                ? 'bg-yellow-500 text-white'
+                                : 'bg-white/5 text-gray-400'
                                 }`}
                         >
-                            🟡 Baru <span className="ml-1 font-bold">{orderCounts.new}</span>
+                            🪙 Baru <span className="bg-white/20 px-1.5 rounded text-xs ml-1">{orderCounts.new}</span>
                         </button>
                         <button
                             onClick={() => setFilter('pending_payment')}
-                            className={`px-3 py-1 rounded-full text-xs md:text-sm whitespace-nowrap transition-all ${filter === 'pending_payment' ? 'bg-orange-500/30 text-orange-300' : 'bg-orange-500/10 text-orange-400 hover:bg-orange-500/20'
+                            className={`px-3 py-1.5 rounded-lg text-sm transition-all whitespace-nowrap flex items-center gap-1 ${filter === 'pending_payment'
+                                ? 'bg-orange-500 text-white'
+                                : 'bg-white/5 text-gray-400'
                                 }`}
                         >
                             🟠 Bayar
                         </button>
                         <button
                             onClick={() => setFilter('process')}
-                            className={`px-3 py-1 rounded-full text-xs md:text-sm whitespace-nowrap transition-all ${filter === 'process' ? 'bg-blue-500/30 text-blue-300' : 'bg-blue-500/10 text-blue-400 hover:bg-blue-500/20'
+                            className={`px-3 py-1.5 rounded-lg text-sm transition-all whitespace-nowrap flex items-center gap-1 ${filter === 'process'
+                                ? 'bg-blue-500 text-white'
+                                : 'bg-white/5 text-gray-400'
                                 }`}
                         >
-                            🔵 Diproses <span className="ml-1 font-bold">{orderCounts.process}</span>
+                            🔵 Proses
                         </button>
                         <button
                             onClick={() => setFilter('done')}
-                            className={`px-3 py-1 rounded-full text-xs md:text-sm whitespace-nowrap transition-all ${filter === 'done' ? 'bg-green-500/30 text-green-300' : 'bg-green-500/10 text-green-400 hover:bg-green-500/20'
+                            className={`px-3 py-1.5 rounded-lg text-sm transition-all whitespace-nowrap flex items-center gap-1 ${filter === 'done'
+                                ? 'bg-green-500 text-white'
+                                : 'bg-white/5 text-gray-400'
                                 }`}
                         >
-                            🟢 Selesai <span className="ml-1 font-bold">{orderCounts.done}</span>
+                            🟢 Selesai
                         </button>
                     </div>
                 </div>

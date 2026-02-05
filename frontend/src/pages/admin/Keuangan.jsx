@@ -182,7 +182,7 @@ function Keuangan() {
     if (loading) {
         return (
             <section className="p-4 md:p-6 space-y-6">
-                <h2 className="text-2xl font-bold">💰 Keuangan & Kas</h2>
+                <h2 className="text-2xl font-bold hidden md:block">💰 Keuangan & Kas</h2>
                 <div className="flex items-center justify-center h-64">
                     <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500"></div>
                 </div>
@@ -194,7 +194,7 @@ function Keuangan() {
         <section className="p-4 md:p-6 space-y-6">
             {/* Header */}
             <div className="flex items-center justify-between flex-wrap gap-4">
-                <h2 className="text-2xl font-bold">💰 Keuangan & Kas</h2>
+                <h2 className="text-2xl font-bold hidden md:block">💰 Keuangan & Kas</h2>
                 <button
                     onClick={() => openModal('transaction', 'in')}
                     className="bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-all"

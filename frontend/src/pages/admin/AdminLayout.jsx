@@ -1,4 +1,4 @@
-import { Outlet, useNavigate } from 'react-router-dom';
+import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useState, useEffect, useRef } from 'react';
 import toast from 'react-hot-toast';
 import useSWR from 'swr';
@@ -12,6 +12,7 @@ const fetcher = url => api.get(url).then(res => res.data);
 
 function AdminLayout() {
     const navigate = useNavigate();
+    const location = useLocation();
     const constraintsRef = useRef(null);
 
     const [showCmd, setShowCmd] = useState(false);
@@ -69,6 +70,9 @@ function AdminLayout() {
         navigate('/login');
     };
 
+    const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+    const toggleSidebar = () => setIsSidebarCollapsed(prev => !prev);
+
     return (
         <div
             id="adminPage"
@@ -79,16 +83,62 @@ function AdminLayout() {
             }}
         >
             {/* Sidebar Wrapper */}
-            <div className="w-20 lg:w-64 flex-shrink-0 h-full transition-all duration-300">
-                <Sidebar onLogout={handleLogout} />
+            <div className={`${isSidebarCollapsed ? 'w-0 lg:w-20' : 'w-20 lg:w-64'} flex-shrink-0 h-full transition-all duration-300 relative`}>
+                <Sidebar onLogout={handleLogout} isCollapsed={isSidebarCollapsed} toggleSidebar={toggleSidebar} />
             </div>
 
-            {/* Main Content */}
-            <main className="flex-1 overflow-y-auto p-4 content-container relative">
-                <div className="max-w-[1600px] mx-auto pb-24">
-                    <Outlet />
+            {/* Main Content Area (with Mini Header on Mobile) */}
+            <div className="flex-1 flex flex-col overflow-hidden">
+                {/* Mini Header Bar (Mobile Only, When Sidebar Collapsed) */}
+                <div
+                    className="flex lg:hidden h-14 items-center px-4 gap-3 border-b border-purple-500/30 bg-[#151235] transition-all duration-300"
+                >
+                    {/* Toggle Logo */}
+                    <div
+                        onClick={toggleSidebar}
+                        className="w-8 h-8 rounded bg-gradient-to-br from-purple-600 to-blue-600 flex items-center justify-center text-white font-bold shadow-lg cursor-pointer hover:scale-105 transition-transform shrink-0"
+                    >
+                        WS
+                    </div>
+                    {/* Page Title */}
+                    <h1 className="text-white font-semibold text-lg truncate flex-1">
+                        {(() => {
+                            const path = location.pathname;
+                            const titles = {
+                                '/admin/dashboard': '📊 Dashboard',
+                                '/admin/menu': '🍽️ Manajemen Menu',
+                                '/admin/kasir': '🧾 Kasir (POS)',
+                                '/admin/gramasi': '⚖️ Gramasi & HPP',
+                                '/admin/inventaris': '📦 Inventaris',
+                                '/admin/keuangan': '💰 Keuangan & Kas',
+                                '/admin/pegawai': '👥 Pegawai',
+                                '/admin/meja': '🪑 Meja & Reservasi',
+                                '/admin/laporan': '📈 Laporan & Analitik',
+                                '/admin/shift': '🔐 Laporan Shift',
+                                '/admin/pelanggan': '❤️ Pelanggan & CRM',
+                                '/admin/pengaturan': '⚙️ Pengaturan',
+                                '/admin/data-center': '🗄️ Pusat Data',
+                            };
+                            return titles[path] || 'Admin Panel';
+                        })()}
+                    </h1>
+
+                    {/* Monitor Mode Badge - Mobile Only */}
+                    {(user.role === 'admin' || user.role === 'owner') && location.pathname === '/admin/kasir' && (
+                        <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-yellow-500/10 border border-yellow-500/20 text-yellow-500 text-[10px] font-medium animate-fade-in select-none whitespace-nowrap shrink-0">
+                            <span>👁️</span>
+                            <span>Pantau</span>
+                        </div>
+                    )}
                 </div>
-            </main>
+
+                {/* Main Content */}
+                <main className="flex-1 overflow-y-auto p-4 content-container relative">
+                    <div className="max-w-[1600px] mx-auto pb-24">
+                        <Outlet />
+                    </div>
+                </main>
+            </div>
 
             <CommandPalette isOpen={showCmd} onClose={() => setShowCmd(false)} />
 

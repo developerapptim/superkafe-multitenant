@@ -273,7 +273,7 @@ function Meja() {
     if (loading && tables.length === 0) {
         return (
             <section className="p-4 md:p-6 space-y-6">
-                <h2 className="text-2xl font-bold">🪑 Meja & Reservasi</h2>
+                <h2 className="text-2xl font-bold hidden md:block">🪑 Meja & Reservasi</h2>
                 <div className="flex items-center justify-center h-64">
                     <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500"></div>
                 </div>
@@ -284,7 +284,7 @@ function Meja() {
     if (error) {
         return (
             <section className="p-4 md:p-6 space-y-6">
-                <h2 className="text-2xl font-bold">🪑 Meja & Reservasi</h2>
+                <h2 className="text-2xl font-bold hidden md:block">🪑 Meja & Reservasi</h2>
                 <div className="glass rounded-xl p-6 text-center">
                     <p className="text-red-400">{error}</p>
                     <button onClick={fetchTables} className="mt-4 px-4 py-2 bg-purple-500 rounded-lg hover:bg-purple-600">
@@ -299,7 +299,7 @@ function Meja() {
         <section className="p-4 md:p-6 space-y-6">
             {/* Header */}
             <div className="flex flex-wrap items-center justify-between gap-3">
-                <h2 className="text-2xl font-bold">🪑 Meja & Reservasi</h2>
+                <h2 className="text-2xl font-bold hidden md:block">🪑 Meja & Reservasi</h2>
                 <div className="flex gap-2">
                     <button
                         onClick={openGeneralQRModal}

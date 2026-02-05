@@ -34,7 +34,7 @@ const menuItems = [
   },
 ];
 
-function Sidebar({ onLogout }) {
+function Sidebar({ onLogout, isCollapsed, toggleSidebar }) {
   // Safe User Parsing
   let user = {};
   try {
@@ -44,7 +44,7 @@ function Sidebar({ onLogout }) {
   }
   const userRole = user?.role || 'staf';
   const userRoleAccess = user?.role_access || [];
-  console.log('Sidebar User:', user, 'Role:', userRole, 'Access:', userRoleAccess);
+  // console.log('Sidebar User:', user, 'Role:', userRole, 'Access:', userRoleAccess);
   const location = useLocation();
   const [expanded, setExpanded] = useState({ settings: true });
 
@@ -111,7 +111,6 @@ function Sidebar({ onLogout }) {
   };
 
 
-
   const toggleExpand = (section) => {
     setExpanded(prev => ({ ...prev, [section]: !prev[section] }));
   };
@@ -119,15 +118,19 @@ function Sidebar({ onLogout }) {
   return (
     <aside
       id="sidebar"
-      className="h-full w-full bg-[#1E1B4B]/95 backdrop-blur-xl border-r border-purple-500/20 flex flex-col transition-all duration-300 shadow-2xl"
+      className="h-full w-full bg-[#1E1B4B]/95 backdrop-blur-xl border-r border-purple-500/20 flex flex-col transition-all duration-300 shadow-2xl relative"
     >
       {/* Header */}
-      <div className="h-16 flex items-center justify-center lg:justify-start px-2 lg:px-4 border-b border-purple-500/30 bg-[#151235]">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded bg-gradient-to-br from-purple-600 to-blue-600 flex items-center justify-center text-white font-bold shrink-0">
+      <div
+        onClick={toggleSidebar}
+        className="hidden lg:flex h-16 items-center justify-center lg:justify-start px-2 lg:px-4 border-b border-purple-500/30 bg-[#151235] cursor-pointer hover:bg-white/5 transition-colors group relative overflow-hidden"
+        title={isCollapsed ? "Klik untuk expand" : "Klik untuk collapse"}
+      >
+        <div className={`flex items-center gap-3 transition-all duration-300 ${isCollapsed ? 'justify-center w-full' : ''}`}>
+          <div className="w-8 h-8 rounded bg-gradient-to-br from-purple-600 to-blue-600 flex items-center justify-center text-white font-bold shrink-0 shadow-lg group-hover:scale-105 transition-transform">
             WS
           </div>
-          <div className="hidden lg:block overflow-hidden">
+          <div className={`overflow-hidden transition-all duration-300 ${isCollapsed ? 'w-0 opacity-0' : 'w-auto opacity-100 hidden lg:block'}`}>
             <h1 className="font-bold text-white text-sm whitespace-nowrap">Admin Panel</h1>
             <p className="text-xs text-gray-400 whitespace-nowrap">
               {userRole === 'admin' || userRole === 'owner' ? 'Administrator' :
@@ -135,15 +138,19 @@ function Sidebar({ onLogout }) {
             </p>
           </div>
         </div>
+
+        {/* Mobile: Arrow indicator when collapsed (optional, maybe too cluttered) */}
+        {/* {isCollapsed && (
+            <div className="absolute right-1 top-1/2 -translate-y-1/2 lg:hidden text-gray-500 text-[10px]">
+                ▶
+            </div>
+         )} */}
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto py-4 custom-scrollbar">
+      <nav className={`flex-1 overflow-y-auto py-4 custom-scrollbar transition-all duration-300 ${isCollapsed ? 'hidden lg:block opacity-0 lg:opacity-100' : 'block opacity-100'}`}>
         <ul className="space-y-1 px-2">
           {filteredItems.map((item) => {
-            // Removed redundant check that caused crash (item.roles is undefined now)
-            // if (!item.roles?.includes(userRole)) return null;
-
             if (item.children) {
               const isExpanded = expanded[item.section];
               // Check if any child is active
@@ -159,14 +166,14 @@ function Sidebar({ onLogout }) {
                   >
                     <div className="flex items-center gap-3">
                       <span className="text-lg lg:text-xl shrink-0 leading-none group-hover:scale-110 transition-transform">{item.icon}</span>
-                      <span className="hidden lg:block text-sm font-medium whitespace-nowrap">{item.label}</span>
+                      <span className={`hidden lg:block text-sm font-medium whitespace-nowrap transition-all duration-300 ${isCollapsed ? 'w-0 opacity-0 overflow-hidden' : 'w-auto opacity-100'}`}>{item.label}</span>
                     </div>
-                    <span className="hidden lg:block text-xs opacity-50">{isExpanded ? '▲' : '▼'}</span>
+                    <span className={`hidden lg:block text-xs opacity-50 transition-all duration-300 ${isCollapsed ? 'w-0 opacity-0 overflow-hidden' : 'w-auto opacity-50'}`}>{isExpanded ? '▲' : '▼'}</span>
                   </button>
 
                   {/* Submenu */}
-                  {isExpanded && (
-                    <ul className="mt-1 space-y-1 pl-0 lg:pl-4 bg-black/20 rounded-lg lg:bg-transparent p-1 lg:p-0">
+                  {isExpanded && !isCollapsed && (
+                    <ul className="mt-1 space-y-1 pl-0 lg:pl-4 bg-black/20 rounded-lg lg:bg-transparent p-1 lg:p-0 animate-slide-down">
                       {item.children.map((child) => (
                         <li key={child.path}>
                           <NavLink
@@ -178,19 +185,9 @@ function Sidebar({ onLogout }) {
                               } justify-center lg:justify-start text-sm`
                             }
                           >
-                            {/* Small dot for submenu items on desktop */}
-                            <span className="hidden lg:block w-1.5 h-1.5 rounded-full bg-current opacity-50"></span>
+                            <span className="hidden lg:block w-1.5 h-1.5 rounded-full bg-current opacity-50 shrink-0"></span>
                             <span className="hidden lg:block truncate">{child.label}</span>
-                            {/* Mobile: Show first letter or full label? Mobile sidebar is 16px (w-16), so hidden lg:block hides text. 
-                                 For mobile submenu, maybe just show Icon if available or simple dot? 
-                                 Current simple sidebar hides text on mobile. Submenu on mobile w-16 is tricky. 
-                                 Let's keep it simple: On mobile, expanding shows children but they have no icon, so they might be invisible text?
-                                 Wait, the parent logic: <span className="hidden lg:block ...">{item.label}</span>
-                                 So on mobile, only Icon is visible.
-                                 For children, I didn't verify mobile view. 
-                                 Let's add a small icon/char for children on mobile.
-                             */}
-                            <span className="lg:hidden text-[10px]">{child.label.substring(0, 2)}</span>
+                            <span className="lg:hidden text-[10px] text-center w-full">{child.label.substring(0, 2)}</span>
                           </NavLink>
                         </li>
                       ))}
@@ -213,7 +210,7 @@ function Sidebar({ onLogout }) {
                   title={item.label}
                 >
                   <span className="text-lg lg:text-xl shrink-0 leading-none">{item.icon}</span>
-                  <span className="hidden lg:block text-sm font-medium whitespace-nowrap">{item.label}</span>
+                  <span className={`hidden lg:block text-sm font-medium whitespace-nowrap transition-all duration-300 ${isCollapsed ? 'w-0 opacity-0 overflow-hidden' : 'w-auto opacity-100'}`}>{item.label}</span>
                 </NavLink>
               </li>
             );
@@ -222,14 +219,14 @@ function Sidebar({ onLogout }) {
       </nav>
 
       {/* Footer / Logout */}
-      <div className="p-4 border-t border-purple-500/30 bg-[#151235]">
+      <div className={`p-4 border-t border-purple-500/30 bg-[#151235] transition-all duration-300 ${isCollapsed ? 'hidden lg:flex justify-center' : 'block'}`}>
         <button
           onClick={handleLogoutClick}
-          className="w-full flex items-center gap-3 px-2 lg:px-3 py-2 rounded-lg text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-colors justify-center lg:justify-start"
+          className={`w-full flex items-center gap-3 px-2 lg:px-3 py-2 rounded-lg text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-colors justify-center lg:justify-start`}
           title="Keluar"
         >
           <span className="text-lg lg:text-xl leading-none">🚪</span>
-          <span className="hidden lg:block text-sm font-medium">Keluar</span>
+          <span className={`hidden lg:block text-sm font-medium whitespace-nowrap transition-all duration-300 ${isCollapsed ? 'w-0 opacity-0 overflow-hidden' : 'w-auto'}`}>Keluar</span>
         </button>
       </div>
 

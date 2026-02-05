@@ -480,7 +480,7 @@ function MenuManagement() {
     if (loading) {
         return (
             <section className="p-4 md:p-6 space-y-6">
-                <h2 className="text-2xl font-bold">🍽️ Manajemen Menu</h2>
+                <h2 className="text-2xl font-bold hidden md:block">🍽️ Manajemen Menu</h2>
                 <div className="flex items-center justify-center h-64">
                     <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500"></div>
                 </div>
@@ -491,7 +491,7 @@ function MenuManagement() {
     if (error) {
         return (
             <section className="p-4 md:p-6 space-y-6">
-                <h2 className="text-2xl font-bold">🍽️ Manajemen Menu</h2>
+                <h2 className="text-2xl font-bold hidden md:block">🍽️ Manajemen Menu</h2>
                 <div className="glass rounded-xl p-6 text-center">
                     <p className="text-red-400">{error}</p>
                     <button onClick={() => mutate('/menu')} className="mt-4 px-4 py-2 bg-purple-500 rounded-lg hover:bg-purple-600">
@@ -506,7 +506,7 @@ function MenuManagement() {
         <section className="p-4 md:p-6 space-y-6">
             {/* Header */}
             <div className="flex items-center justify-between">
-                <h2 className="text-2xl font-bold">🍽️ Manajemen Menu</h2>
+                <h2 className="text-2xl font-bold hidden md:block">🍽️ Manajemen Menu</h2>
                 <button
                     onClick={openAddModal}
                     className="bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-all"

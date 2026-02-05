@@ -216,7 +216,7 @@ function Gramasi() {
     if (isLoading) {
         return (
             <section className="p-4 md:p-6 space-y-6">
-                <h2 className="text-2xl font-bold">⚖️ Gramasi & HPP</h2>
+                <h2 className="text-2xl font-bold hidden md:block">⚖️ Gramasi & HPP</h2>
                 <div className="flex items-center justify-center h-64">
                     <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500"></div>
                 </div>
@@ -231,7 +231,7 @@ function Gramasi() {
         <section className="p-4 md:p-6 space-y-6">
             {/* Header */}
             <div className="flex items-center justify-between">
-                <h2 className="text-2xl font-bold">⚖️ Gramasi & HPP</h2>
+                <h2 className="text-2xl font-bold hidden md:block">⚖️ Gramasi & HPP</h2>
                 {canEdit && (
                     <button
                         onClick={() => {
@@ -250,22 +250,30 @@ function Gramasi() {
 
             {/* Stats - Hide financial cards for Staf */}
             {isAdmin && (
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                    <div className="glass rounded-xl p-4">
-                        <p className="text-xs text-gray-400">Total HPP</p>
-                        <p className="text-xl font-bold text-red-400">{formatCurrency(stats.totalHPP)}</p>
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+                    <div className="glass rounded-xl p-3 md:p-4">
+                        <p className="text-[10px] md:text-xs text-gray-400">Total HPP</p>
+                        <p className="text-sm md:text-xl font-bold text-red-400 truncate" title={formatCurrency(stats.totalHPP)}>
+                            {formatCurrency(stats.totalHPP)}
+                        </p>
                     </div>
-                    <div className="glass rounded-xl p-4">
-                        <p className="text-xs text-gray-400">Total Harga Jual</p>
-                        <p className="text-xl font-bold text-green-400">{formatCurrency(stats.totalSelling)}</p>
+                    <div className="glass rounded-xl p-3 md:p-4">
+                        <p className="text-[10px] md:text-xs text-gray-400">Total Harga Jual</p>
+                        <p className="text-sm md:text-xl font-bold text-green-400 truncate" title={formatCurrency(stats.totalSelling)}>
+                            {formatCurrency(stats.totalSelling)}
+                        </p>
                     </div>
-                    <div className="glass rounded-xl p-4">
-                        <p className="text-xs text-gray-400">Total Keuntungan</p>
-                        <p className="text-xl font-bold text-purple-400">{formatCurrency(stats.totalProfit)}</p>
+                    <div className="glass rounded-xl p-3 md:p-4">
+                        <p className="text-[10px] md:text-xs text-gray-400">Total Keuntungan</p>
+                        <p className="text-sm md:text-xl font-bold text-purple-400 truncate" title={formatCurrency(stats.totalProfit)}>
+                            {formatCurrency(stats.totalProfit)}
+                        </p>
                     </div>
-                    <div className="glass rounded-xl p-4">
-                        <p className="text-xs text-gray-400">Avg Margin</p>
-                        <p className="text-xl font-bold text-blue-400">{stats.avgMargin.toFixed(1)}%</p>
+                    <div className="glass rounded-xl p-3 md:p-4">
+                        <p className="text-[10px] md:text-xs text-gray-400">Avg Margin</p>
+                        <p className="text-sm md:text-xl font-bold text-blue-400 truncate" title={`${stats.avgMargin.toFixed(1)}%`}>
+                            {stats.avgMargin.toFixed(1)}%
+                        </p>
                     </div>
                 </div>
             )}

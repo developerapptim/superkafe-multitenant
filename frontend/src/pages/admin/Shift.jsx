@@ -240,7 +240,7 @@ function Shift() {
         <section className="p-4 md:p-6 space-y-6">
             {/* Header */}
             <div className="flex items-center justify-between">
-                <h2 className="text-2xl font-bold">🔐 Laporan Shift & Audit Kas</h2>
+                <h2 className="text-2xl font-bold hidden md:block">🔐 Laporan Shift & Audit Kas</h2>
                 <button
                     onClick={() => { fetchShiftHistory(1); fetchActivities(1); }}
                     className="px-4 py-2 rounded-lg bg-purple-500/20 text-purple-400 hover:bg-purple-500/30 flex items-center gap-2"
