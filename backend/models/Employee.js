@@ -15,6 +15,7 @@ const EmployeeSchema = new mongoose.Schema({
     salary: { type: Number, default: 0 }, // Monthly salary
     daily_rate: { type: Number, default: 0 }, // Daily rate for payroll calculation
     status: { type: String, enum: ['active', 'inactive'], default: 'active' },
+    is_logged_in: { type: Boolean, default: false },
     isActive: { type: Boolean, default: true },
     createdAt: { type: Date, default: Date.now }
 });

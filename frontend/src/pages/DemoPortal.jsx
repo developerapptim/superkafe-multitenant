@@ -106,7 +106,7 @@ const DemoPortal = () => {
                 className="mt-12 text-center z-10"
             >
                 <p className="text-xs text-slate-500 border-t border-white/5 pt-6 px-12">
-                    Demo Version v1.0 • Powered by <span className="text-slate-400 font-semibold">MarosDev</span>
+                    Demo Version v1.0 • Powered by <span className="text-slate-400 font-semibold">LockApp.id</span>
                 </p>
             </motion.div>
         </div>

@@ -77,7 +77,7 @@ function Bantuan() {
 
             {/* Credits */}
             <div className="text-center text-xs text-gray-500 py-4">
-                <p>Powered by MarosTech</p>
+                <p>Powered by LockApp.id</p>
                 <p className="mt-1">© 2026 All Rights Reserved</p>
             </div>
         </div>

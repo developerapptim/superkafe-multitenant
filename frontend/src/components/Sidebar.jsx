@@ -83,6 +83,12 @@ function Sidebar({ onLogout }) {
   const { data: currentShift } = useSWR('/shifts/current', fetcher);
 
   const handleLogoutClick = () => {
+    // Admin/Owner Bypass: Don't show "Close Shift" popup
+    if ((userRole === 'admin' || userRole === 'owner') && currentShift) {
+      onLogout();
+      return;
+    }
+
     if (currentShift) {
       setShowCloseShiftModal(true);
     } else {

@@ -68,7 +68,8 @@ exports.getCurrentBalance = async (req, res) => {
             currentCash: shift.currentCash || 0,
             currentNonCash: shift.currentNonCash || 0, // This is tracked in OrderController now
             cashSales: shift.cashSales || 0, // Or calculate from orders?
-            nonCashSales: shift.nonCashSales || 0
+            nonCashSales: shift.nonCashSales || 0,
+            cashierName: shift.cashierName // Return cashier name for UI display
         });
 
     } catch (err) {

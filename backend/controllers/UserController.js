@@ -47,4 +47,26 @@ exports.changePassword = async (req, res) => {
         console.error('Change Password Error:', err);
         res.status(500).json({ error: 'Terjadi kesalahan server' });
     }
+}
+
+exports.resetSessions = async (req, res) => {
+    try {
+        // Ensure only admin/owner can do this (Middleware checkJwt already ran, check role here or in routes)
+        // Assuming checkRole('admin') middleware will be used, or check here:
+        if (req.user.role !== 'admin' && req.user.role !== 'owner') {
+            return res.status(403).json({ error: 'Akses ditolak' });
+        }
+
+        const restrictedRoles = ['kasir', 'staf', 'waiter', 'barista', 'kitchen'];
+
+        await Employee.updateMany(
+            { role: { $in: restrictedRoles } },
+            { $set: { is_logged_in: false } }
+        );
+
+        res.json({ message: 'Sesi staff berhasil di-reset' });
+    } catch (err) {
+        console.error('Reset Session Error:', err);
+        res.status(500).json({ error: 'Gagal mereset sesi' });
+    }
 };

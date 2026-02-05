@@ -79,7 +79,17 @@ const CustomSelect = ({ label, value, options, onChange, disabled, placeholder =
     );
 };
 
+
 function Kasir() {
+    // Get User Role
+    let user = {};
+    try {
+        user = JSON.parse(localStorage.getItem('user') || '{}');
+    } catch (e) {
+        console.error('Error parsing user:', e);
+    }
+    const isAdmin = user.role === 'admin' || user.role === 'owner';
+
     // SWR Data Fetching
     const { data: menuData } = useSWR('/menu', fetcher, { refreshInterval: 60000 }); // Refresh menu every 1 min
     const { data: ordersData } = useSWR('/orders', fetcher, { refreshInterval: 5000 }); // Refresh orders every 5s
@@ -132,7 +142,11 @@ function Kasir() {
     const [showSuggestions, setShowSuggestions] = useState(false);
     const customerInputRef = useRef(null);
 
-    // Menu Grid Filter States
+    // Shift Logic State
+    const [startCash, setStartCash] = useState('');
+    const [isStartingShift, setIsStartingShift] = useState(false);
+
+    // Initial loading state (only when no data is in cache)
     const [menuCategory, setMenuCategory] = useState('all');
     const [menuSearchQuery, setMenuSearchQuery] = useState('');
 
@@ -201,7 +215,13 @@ function Kasir() {
         openingCash: shiftData?.startCash || 0,
         totalCash: shiftData?.totalCash || shiftData?.currentCash || 0,
         nonCash: shiftData?.totalNonCash || shiftData?.currentNonCash || 0,
-        kasirName: shiftData?.employeeName || 'Admin',
+        // LOGIC UPDATE:
+        // 1. If Staff: Show their name (user.name)
+        // 2. If Admin: Show the active shift's cashier name
+        // 3. If Admin & No Shift: Show "- (Tutup)"
+        kasirName: !isAdmin
+            ? (user.name || 'Staff')
+            : (shiftData?.cashierName ? shiftData.cashierName : null), // Null if closed to handle styling later
     };
 
     const formatCurrency = (amount) => {
@@ -530,12 +550,91 @@ function Kasir() {
         );
     }
 
+    // BLOCKING LOGIC: If Shift is Closed
+    const isShiftOpen = shiftData?.shiftId;
+
+    // Helper to start shift
+    const handleStartShift = async (e) => {
+        e.preventDefault();
+        if (!startCash) return toast.error('Masukkan modal awal!');
+
+        const toastId = toast.loading('Membuka shift...');
+        setIsStartingShift(true);
+        try {
+            // Get user info again to be sure
+            const user = JSON.parse(localStorage.getItem('user') || '{}');
+            await shiftAPI.startShift({
+                cashierName: user.name || 'Staff',
+                userId: user.id,
+                startCash: Number(startCash)
+            });
+            mutate('/shift/current-balance'); // Refresh SWR
+            toast.success('Shift berhasil dibuka! Selamat bekerja  semangat! 💪', { id: toastId });
+        } catch (err) {
+            console.error(err);
+            toast.error('Gagal buka shift', { id: toastId });
+        } finally {
+            setIsStartingShift(false);
+        }
+    };
+
+    // 1. If Staff AND Shift Closed -> BLOCK ACCESS (Show Open Shift UI)
+    if (!isAdmin && !isShiftOpen) {
+        return (
+            <section className="flex flex-col h-[calc(100vh-80px)] items-center justify-center p-4">
+                <div className="glass max-w-md w-full p-8 rounded-2xl border border-purple-500/30 text-center shadow-2xl animate-scale-up">
+                    <div className="w-20 h-20 bg-purple-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <span className="text-4xl">🔐</span>
+                    </div>
+                    <h2 className="text-2xl font-bold mb-2">Kasir Belum Dibuka</h2>
+                    <p className="text-gray-400 mb-8">Silakan masukkan modal awal (petty cash) untuk memulai shift hari ini.</p>
+
+                    <form onSubmit={handleStartShift} className="space-y-4 text-left">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-400 mb-1">Modal Awal (Rp)</label>
+                            <div className="relative">
+                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-bold">Rp</span>
+                                <input
+                                    type="number"
+                                    value={startCash}
+                                    onChange={(e) => setStartCash(e.target.value)}
+                                    className="w-full pl-10 pr-4 py-3 rounded-xl bg-white/5 border border-purple-500/30 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 outline-none text-white text-lg font-bold placeholder-gray-600 transition-all"
+                                    placeholder="0"
+                                    autoFocus
+                                    min="0"
+                                    required
+                                />
+                            </div>
+                        </div>
+                        <button
+                            type="submit"
+                            disabled={isStartingShift}
+                            className="w-full py-4 rounded-xl bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white font-bold text-lg shadow-lg shadow-purple-500/25 transition-all transform hover:scale-[1.02] active:scale-95 disabled:opacity-50 disabled:grayscale"
+                        >
+                            {isStartingShift ? '⏳ Membuka Shift...' : '🚀 Buka Kasir'}
+                        </button>
+                    </form>
+                </div>
+            </section>
+        );
+    }
+
     return (
         <section className="flex flex-col h-[calc(100vh-80px)]">
             {/* Header Bar */}
             <div className="flex flex-col md:flex-row items-center justify-between p-4 border-b border-purple-500/20 bg-surface/50 gap-4">
+
+
                 <div className="flex flex-col md:flex-row items-center gap-4 w-full md:w-auto">
-                    <h2 className="text-2xl font-bold w-full md:w-auto text-left">🧾 Kasir (POS)</h2>
+                    <div className="flex items-center gap-2 w-full md:w-auto">
+                        <h2 className="text-2xl font-bold text-left">🧾 Kasir (POS)</h2>
+                        {isAdmin && (
+                            <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-yellow-500/10 border border-yellow-500/20 text-yellow-500 text-xs font-medium animate-fade-in select-none">
+                                <span>👁️</span>
+                                <span>Mode Pantau</span>
+                            </div>
+                        )}
+                    </div>
 
                     {/* Search Bar */}
                     <div className="relative w-full md:w-auto">
@@ -604,12 +703,14 @@ function Kasir() {
                         <span>{soundEnabled ? '🔊' : '🔇'}</span>
                         <span className="hidden lg:inline">Notifikasi</span>
                     </button>
-                    <button
-                        onClick={() => setShowModal(true)}
-                        className="flex-1 md:flex-none justify-center bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 text-white px-4 py-2 rounded-lg font-bold flex items-center gap-2 shadow-lg shadow-purple-500/40 whitespace-nowrap transition-all"
-                    >
-                        <span className="text-lg md:text-xl">➕</span> <span className="text-sm md:text-base">Pesanan Baru</span>
-                    </button>
+                    {!isAdmin && (
+                        <button
+                            onClick={() => setShowModal(true)}
+                            className="flex-1 md:flex-none justify-center bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 text-white px-4 py-2 rounded-lg font-bold flex items-center gap-2 shadow-lg shadow-purple-500/40 whitespace-nowrap transition-all"
+                        >
+                            <span className="text-lg md:text-xl">➕</span> <span className="text-sm md:text-base">Pesanan Baru</span>
+                        </button>
+                    )}
                 </div>
             </div>
 
@@ -734,8 +835,8 @@ function Kasir() {
                                         {order.status === 'new' && (
                                             <button
                                                 onClick={() => updateOrderStatus(order.id, 'process')}
-                                                disabled={processingOrderId === order.id}
-                                                className={`px-3 py-1 bg-blue-500/20 text-blue-400 rounded-lg text-sm hover:bg-blue-500/30 ${processingOrderId === order.id ? 'opacity-50 cursor-wait' : ''}`}
+                                                disabled={processingOrderId === order.id || isAdmin}
+                                                className={`px-3 py-1 bg-blue-500/20 text-blue-400 rounded-lg text-sm hover:bg-blue-500/30 ${processingOrderId === order.id ? 'opacity-50 cursor-wait' : ''} ${isAdmin ? 'opacity-50 cursor-not-allowed' : ''}`}
                                             >
                                                 {processingOrderId === order.id ? '⏳ Proses...' : '▶️ Proses'}
                                             </button>
@@ -743,8 +844,8 @@ function Kasir() {
                                         {order.status === 'pending_payment' && (
                                             <button
                                                 onClick={() => updateOrderStatus(order.id, 'process')}
-                                                disabled={processingOrderId === order.id}
-                                                className={`px-3 py-1 bg-blue-500/20 text-blue-400 rounded-lg text-sm hover:bg-blue-500/30 flex items-center gap-1 ${processingOrderId === order.id ? 'opacity-50 cursor-wait' : ''}`}
+                                                disabled={processingOrderId === order.id || isAdmin}
+                                                className={`px-3 py-1 bg-blue-500/20 text-blue-400 rounded-lg text-sm hover:bg-blue-500/30 flex items-center gap-1 ${processingOrderId === order.id ? 'opacity-50 cursor-wait' : ''} ${isAdmin ? 'opacity-50 cursor-not-allowed' : ''}`}
                                             >
                                                 {processingOrderId === order.id ? '⏳ Proses...' : <><span>💰</span> Bayar & Proses</>}
                                             </button>
@@ -761,7 +862,8 @@ function Kasir() {
                                             ) : (
                                                 <button
                                                     onClick={() => handleOpenPayment(order)}
-                                                    className="px-3 py-1 bg-purple-500/20 text-purple-400 rounded-lg text-sm hover:bg-purple-500/30 flex items-center gap-1"
+                                                    disabled={isAdmin}
+                                                    className={`px-3 py-1 bg-purple-500/20 text-purple-400 rounded-lg text-sm hover:bg-purple-500/30 flex items-center gap-1 ${isAdmin ? 'opacity-50 cursor-not-allowed' : ''}`}
                                                 >
                                                     <span>💸</span> Bayar
                                                 </button>
@@ -810,10 +912,13 @@ function Kasir() {
 
                         <div className="bg-white/5 rounded-lg border border-purple-500/20 px-3 py-1 text-right">
                             <p className="text-xs text-gray-400">Kasir:</p>
-                            <p className="font-bold text-sm">{cashDrawer.kasirName}</p>
+                            {cashDrawer.kasirName ? (
+                                <p className="font-bold text-sm truncate max-w-[120px]">{cashDrawer.kasirName}</p>
+                            ) : (
+                                <p className="font-bold text-sm text-red-500">TUTUP</p>
+                            )}
                         </div>
                     </div>
-                    <div className="text-xs text-gray-400 mb-3">Kasir: {cashDrawer.kasirName}</div>
                     <div className="space-y-2">
                         <div className="flex justify-between items-center p-2 rounded-lg bg-surface/50">
                             <span className="text-xs text-gray-400">📥 Modal Awal</span>

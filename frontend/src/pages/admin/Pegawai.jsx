@@ -316,6 +316,21 @@ function Pegawai() {
                 <h2 className="text-2xl font-bold">👥 Manajemen Pegawai</h2>
                 <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
                     <button
+                        onClick={async () => {
+                            if (!window.confirm('Reset semua sesi staff? Ini akan memaksa logout semua staff yang sedang aktif.')) return;
+                            const toastId = toast.loading('Mereset sesi...');
+                            try {
+                                await api.post('/users/reset-sessions');
+                                toast.success('Sesi staff berhasil di-reset', { id: toastId });
+                            } catch (e) {
+                                toast.error('Gagal reset sesi', { id: toastId });
+                            }
+                        }}
+                        className="px-4 py-2 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30 font-medium flex items-center justify-center gap-2"
+                    >
+                        🔄 Reset Sesi
+                    </button>
+                    <button
                         onClick={() => setShowKioskMode(true)}
                         className="px-4 py-2 rounded-lg bg-green-500/20 text-green-400 hover:bg-green-500/30 font-medium flex items-center justify-center gap-2"
                     >
