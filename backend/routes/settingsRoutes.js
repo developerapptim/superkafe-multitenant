@@ -3,6 +3,9 @@ const router = express.Router();
 const SettingsController = require('../controllers/SettingsController');
 const { checkJwt } = require('../middleware/auth');
 
+// Public
+router.get('/public', SettingsController.getPublicSettings);
+
 // Protected
 router.use(checkJwt);
 

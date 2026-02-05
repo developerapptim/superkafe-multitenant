@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import api from '../../services/api';
@@ -8,6 +8,30 @@ function Login() {
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [isLoading, setIsLoading] = useState(false);
+    const [appSettings, setAppSettings] = useState({
+        businessName: 'SuperKafe Apps',
+        tagline: 'Sistem Manajemen Kafe Modern',
+        logo: 'https://res.cloudinary.com/dhjqb65mf/image/upload/v1770018588/Picsart_26-02-02_15-46-53-772_vw9xc3.png'
+    });
+
+    useEffect(() => {
+        const fetchSettings = async () => {
+            try {
+                const res = await api.get('/settings/public');
+                if (res.data) {
+                    setAppSettings(prev => ({
+                        ...prev,
+                        businessName: res.data.businessName || 'SuperKafe Apps',
+                        tagline: res.data.tagline || prev.tagline,
+                        logo: res.data.logo || prev.logo
+                    }));
+                }
+            } catch (error) {
+                console.error('Failed to fetch public settings:', error);
+            }
+        };
+        fetchSettings();
+    }, []);
 
     const handleLogin = async (e) => {
         e.preventDefault();
@@ -55,15 +79,21 @@ function Login() {
 
             <div className="glass rounded-2xl p-8 md:p-10 w-full max-w-lg relative z-10 border border-purple-500/30 shadow-2xl backdrop-blur-xl bg-[#1E1B4B]/70">
                 <div className="text-center mb-8">
-                    <div className="w-24 h-24 rounded-2xl bg-gradient-to-br from-purple-600 to-blue-600 mx-auto flex items-center justify-center mb-6 shadow-lg shadow-purple-500/20 transform hover:scale-105 transition-transform duration-300">
-                        <svg className="w-12 h-12 text-white" fill="currentColor" viewBox="0 0 24 24">
-                            <path d="M2,21H20V19H2M20,8H18V5H20M20,3H4V13A4,4 0 0,0 8,17H14A4,4 0 0,0 18,13V10H20A2,2 0 0,0 22,8V5C22,3.89 21.1,3 20,3Z" />
-                        </svg>
-                    </div>
+                    {appSettings.logo ? (
+                        <div className="w-24 h-24 mx-auto mb-6 transform hover:scale-105 transition-transform duration-300">
+                            <img src={appSettings.logo} alt="Logo" className="w-full h-full object-contain drop-shadow-lg" />
+                        </div>
+                    ) : (
+                        <div className="w-24 h-24 rounded-2xl bg-gradient-to-br from-purple-600 to-blue-600 mx-auto flex items-center justify-center mb-6 shadow-lg shadow-purple-500/20 transform hover:scale-105 transition-transform duration-300">
+                            <svg className="w-12 h-12 text-white" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M2,21H20V19H2M20,8H18V5H20M20,3H4V13A4,4 0 0,0 8,17H14A4,4 0 0,0 18,13V10H20A2,2 0 0,0 22,8V5C22,3.89 21.1,3 20,3Z" />
+                            </svg>
+                        </div>
+                    )}
                     <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-400 to-blue-400 bg-clip-text text-transparent mb-2">
-                        Warkop Santai
+                        {appSettings.businessName}
                     </h1>
-                    <p className="text-gray-300 text-base">Sistem Manajemen Warkop Modern</p>
+                    <p className="text-gray-300 text-base">{appSettings.tagline}</p>
                 </div>
 
                 <form onSubmit={handleLogin} className="space-y-6">
@@ -116,10 +146,6 @@ function Login() {
                     <p className="text-xs text-gray-400">
                         Belum punya akun? Hubungi Administrator
                     </p>
-                    <div className="mt-4 flex flex-wrap justify-center gap-2 text-[10px] text-gray-400 bg-black/30 p-2 rounded-lg border border-white/5">
-                        <span className="bg-purple-900/40 text-purple-300 px-2 py-1 rounded">Admin: password</span>
-                        <span className="bg-blue-900/40 text-blue-300 px-2 py-1 rounded">Kasir: 123456</span>
-                    </div>
                 </div>
             </div>
         </div>

@@ -12,6 +12,20 @@ exports.getSettings = async (req, res) => {
     } catch (err) {
         res.status(500).json({ error: 'Server error' });
     }
+}
+
+exports.getPublicSettings = async (req, res) => {
+    try {
+        const settings = await Setting.find({ key: { $in: ['businessName', 'tagline', 'logo', 'showLogo'] } });
+        const settingsMap = {};
+        settings.forEach(s => {
+            settingsMap[s.key] = s.value;
+        });
+        res.json(settingsMap);
+    } catch (err) {
+        console.error('Get public settings error:', err);
+        res.status(500).json({ error: 'Server error' });
+    }
 };
 
 exports.updateSettings = async (req, res) => {
