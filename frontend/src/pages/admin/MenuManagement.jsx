@@ -24,6 +24,118 @@ const itemVars = {
     show: { opacity: 1, y: 0 }
 };
 
+const MenuItem = ({ item, saveOrder, getCategoryEmoji, getCategoryName, formatCurrency, handleToggleStatus, openEditModal, handleDelete }) => {
+    const dragControls = useDragControls();
+
+    return (
+        <Reorder.Item
+            value={item}
+            variants={itemVars}
+            initial="hidden"
+            animate="show"
+            exit="hidden"
+            layoutId={item.id}
+            dragListener={false}
+            dragControls={dragControls}
+            onDragEnd={saveOrder}
+            className="p-3 md:p-4 bg-white/5 border border-white/5 rounded-xl hover:border-purple-500/30 transition-colors relative group"
+        >
+            <div className="flex flex-col md:flex-row md:items-center gap-3 md:gap-4">
+                {/* Top Section: Drag + Image + Info */}
+                <div className="flex items-start md:items-center gap-3 flex-1 min-w-0">
+                    {/* Drag Handle */}
+                    <div
+                        className="cursor-grab active:cursor-grabbing text-gray-500 hover:text-white pt-2 md:pt-0 touch-none p-2"
+                        onPointerDown={(e) => dragControls.start(e)}
+                        title="Geser untuk mengurutkan"
+                    >
+                        ⋮⋮
+                    </div>
+
+                    {/* Image */}
+                    <div className="w-14 h-14 md:w-16 md:h-16 rounded-lg bg-surface/50 overflow-hidden flex-shrink-0 select-none pointer-events-none">
+                        {item.image ? (
+                            <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
+                        ) : (
+                            <div className="w-full h-full flex items-center justify-center text-2xl">
+                                {getCategoryEmoji(item.category)}
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Info */}
+                    <div className="flex-1 min-w-0 select-none">
+                        <div className="flex flex-wrap items-center gap-2">
+                            <h4 className="font-bold truncate text-base md:text-lg text-white">
+                                {item.name}
+                            </h4>
+                            <div className="flex gap-1">
+                                {item.label === 'best-seller' && <span title="Best Seller" className="text-sm">🔥</span>}
+                                {item.label === 'signature' && <span title="Signature" className="text-sm">⭐</span>}
+                                {item.label === 'new' && <span title="New" className="text-sm">🆕</span>}
+                            </div>
+                            {!item.is_active && (
+                                <span className="px-2 py-0.5 text-[10px] bg-red-500/20 text-red-400 rounded-full border border-red-500/20 whitespace-nowrap">Nonaktif</span>
+                            )}
+                        </div>
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs md:text-sm mt-1">
+                            <span className="text-gray-400 flex items-center gap-1 bg-white/5 px-2 py-0.5 rounded">
+                                {getCategoryEmoji(item.category)} {getCategoryName(item.category)}
+                            </span>
+                            <span className="text-green-400 font-bold font-mono text-sm md:text-base">{formatCurrency(item.price)}</span>
+                        </div>
+                        {/* Stock Indicator */}
+                        <div className="mt-1">
+                            {!item.use_stock_check ? (
+                                <span className="text-[10px] text-blue-400 flex items-center gap-1">
+                                    📦 Stok: Unlimited
+                                </span>
+                            ) : (
+                                <span className={`text-[10px] flex items-center gap-1 ${item.available_qty < 5 ? 'text-yellow-400' : 'text-gray-400'}`}>
+                                    📦 Stok: {item.available_qty}
+                                </span>
+                            )}
+                        </div>
+                    </div>
+                </div>
+
+                {/* Actions Section */}
+                <div className="flex items-center justify-end gap-2 w-full md:w-auto pt-2 md:pt-0 border-t border-white/5 md:border-none">
+                    {/* STATUS TOGGLE */}
+                    <button
+                        onClick={() => handleToggleStatus(item)}
+                        className={`flex-1 md:flex-none py-1.5 md:py-2 px-3 rounded-lg transition-all text-sm font-medium flex items-center justify-center gap-2 ${item.is_active
+                            ? 'bg-green-500/10 text-green-400 hover:bg-green-500/20'
+                            : 'bg-red-500/10 text-red-500 hover:bg-red-500/20'}`}
+                        title={item.is_active ? "Nonaktifkan" : "Aktifkan"}
+                    >
+                        {item.is_active ? (
+                            <><span>⚡</span> <span className="md:hidden">Aktif</span></>
+                        ) : (
+                            <><span>⛔</span> <span className="md:hidden">Off</span></>
+                        )}
+                    </button>
+
+                    <button
+                        onClick={() => openEditModal(item)}
+                        className="flex-1 md:flex-none py-1.5 md:py-2 px-3 rounded-lg bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 transition-colors flex items-center justify-center gap-2"
+                        title="Edit"
+                    >
+                        <span>✏️</span> <span className="md:hidden text-sm">Edit</span>
+                    </button>
+                    <button
+                        onClick={() => handleDelete(item)}
+                        className="flex-1 md:flex-none py-1.5 md:py-2 px-3 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors flex items-center justify-center gap-2"
+                        title="Hapus"
+                    >
+                        <span>🗑️</span> <span className="md:hidden text-sm">Hapus</span>
+                    </button>
+                </div>
+            </div>
+        </Reorder.Item>
+    );
+};
+
 function MenuManagement() {
     // SWR Data Fetching
     const { data: menuData, error: menuError } = useSWR('/menu', fetcher);
@@ -513,106 +625,17 @@ function MenuManagement() {
                             </motion.div>
                         ) : (
                             localItems.map(item => (
-                                <Reorder.Item
+                                <MenuItem
                                     key={item.id}
-                                    value={item}
-                                    variants={itemVars}
-                                    initial="hidden"
-                                    animate="show"
-                                    exit="hidden"
-                                    layoutId={item.id}
-                                    onDragEnd={saveOrder} // Save when drop happens
-                                    className="p-3 md:p-4 bg-white/5 border border-white/5 rounded-xl hover:border-purple-500/30 transition-colors relative group"
-                                >
-                                    <div className="flex flex-col md:flex-row md:items-center gap-3 md:gap-4">
-                                        {/* Top Section: Drag + Image + Info */}
-                                        <div className="flex items-start md:items-center gap-3 flex-1 min-w-0">
-                                            {/* Drag Handle */}
-                                            <div className="cursor-grab active:cursor-grabbing text-gray-500 hover:text-white pt-2 md:pt-0">
-                                                ⋮⋮
-                                            </div>
-
-                                            {/* Image */}
-                                            <div className="w-14 h-14 md:w-16 md:h-16 rounded-lg bg-surface/50 overflow-hidden flex-shrink-0 select-none pointer-events-none">
-                                                {item.image ? (
-                                                    <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
-                                                ) : (
-                                                    <div className="w-full h-full flex items-center justify-center text-2xl">
-                                                        {getCategoryEmoji(item.category)}
-                                                    </div>
-                                                )}
-                                            </div>
-
-                                            {/* Info */}
-                                            <div className="flex-1 min-w-0 select-none">
-                                                <div className="flex flex-wrap items-center gap-2">
-                                                    <h4 className="font-bold truncate text-base md:text-lg text-white">
-                                                        {item.name}
-                                                    </h4>
-                                                    <div className="flex gap-1">
-                                                        {item.label === 'best-seller' && <span title="Best Seller" className="text-sm">🔥</span>}
-                                                        {item.label === 'signature' && <span title="Signature" className="text-sm">⭐</span>}
-                                                        {item.label === 'new' && <span title="New" className="text-sm">🆕</span>}
-                                                    </div>
-                                                    {!item.is_active && (
-                                                        <span className="px-2 py-0.5 text-[10px] bg-red-500/20 text-red-400 rounded-full border border-red-500/20 whitespace-nowrap">Nonaktif</span>
-                                                    )}
-                                                </div>
-                                                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs md:text-sm mt-1">
-                                                    <span className="text-gray-400 flex items-center gap-1 bg-white/5 px-2 py-0.5 rounded">
-                                                        {getCategoryEmoji(item.category)} {getCategoryName(item.category)}
-                                                    </span>
-                                                    <span className="text-green-400 font-bold font-mono text-sm md:text-base">{formatCurrency(item.price)}</span>
-                                                </div>
-                                                {/* Stock Indicator */}
-                                                <div className="mt-1">
-                                                    {!item.use_stock_check ? (
-                                                        <span className="text-[10px] text-blue-400 flex items-center gap-1">
-                                                            📦 Stok: Unlimited
-                                                        </span>
-                                                    ) : (
-                                                        <span className={`text-[10px] flex items-center gap-1 ${item.available_qty < 5 ? 'text-yellow-400' : 'text-gray-400'}`}>
-                                                            📦 Stok: {item.available_qty}
-                                                        </span>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        {/* Actions Section */}
-                                        <div className="flex items-center justify-end gap-2 w-full md:w-auto pt-2 md:pt-0 border-t border-white/5 md:border-none">
-                                            {/* STATUS TOGGLE */}
-                                            <button
-                                                onClick={() => handleToggleStatus(item)}
-                                                className={`flex-1 md:flex-none py-1.5 md:py-2 px-3 rounded-lg transition-all text-sm font-medium flex items-center justify-center gap-2 ${item.is_active
-                                                    ? 'bg-green-500/10 text-green-400 hover:bg-green-500/20'
-                                                    : 'bg-red-500/10 text-red-500 hover:bg-red-500/20'}`}
-                                                title={item.is_active ? "Nonaktifkan" : "Aktifkan"}
-                                            >
-                                                {item.is_active ? (
-                                                    <><span>⚡</span> <span className="md:hidden">Aktif</span></>
-                                                ) : (
-                                                    <><span>⛔</span> <span className="md:hidden">Off</span></>
-                                                )}
-                                            </button>
-
-                                            <button
-                                                onClick={() => openEditModal(item)}
-                                                className="flex-1 md:flex-none py-1.5 md:py-2 px-3 rounded-lg bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 transition-colors flex items-center justify-center gap-2"
-                                                title="Edit"
-                                            >
-                                                <span>✏️</span> <span className="md:hidden text-sm">Edit</span>
-                                            </button>
-                                            <button
-                                                onClick={() => handleDelete(item)}
-                                                className="flex-1 md:flex-none py-1.5 md:py-2 px-3 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors flex items-center justify-center gap-2"
-                                                title="Hapus"
-                                            >
-                                                <span>🗑️</span> <span className="md:hidden text-sm">Hapus</span>
-                                            </button>
-                                        </div>
-                                    </div>
-                                </Reorder.Item>
+                                    item={item}
+                                    saveOrder={saveOrder}
+                                    getCategoryEmoji={getCategoryEmoji}
+                                    getCategoryName={getCategoryName}
+                                    formatCurrency={formatCurrency}
+                                    handleToggleStatus={handleToggleStatus}
+                                    openEditModal={openEditModal}
+                                    handleDelete={handleDelete}
+                                />
                             ))
                         )}
                     </AnimatePresence>
