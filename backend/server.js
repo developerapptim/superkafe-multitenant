@@ -8,7 +8,10 @@ const compression = require('compression');
 // Initialize App
 const app = express();
 app.use(compression());
-app.use(cors());
+app.use(cors({
+  origin: true,
+  credentials: true
+}));
 app.use(express.json({ limit: '50mb' }));
 
 // ===== STATIC FILES =====
