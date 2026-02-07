@@ -218,7 +218,7 @@ function Pegawai() {
                         onClick={() => setShowResetConfirm(true)}
                         className="flex-1 md:flex-initial px-4 py-2 rounded-xl bg-red-500/20 text-red-400 hover:bg-red-500/30 flex items-center justify-center gap-2 transition-all font-medium"
                     >
-                        ⚡ Reset Seisi
+                        ⚡ Reset Sesi
                     </button>
                     <button
                         onClick={openAddModal}

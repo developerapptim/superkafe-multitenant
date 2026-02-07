@@ -1,6 +1,7 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
-import { Suspense, lazy } from 'react';
+import { Suspense, lazy, useEffect } from 'react';
+import { App as CapacitorApp } from '@capacitor/app';
 import Loading from './components/Loading';
 import './App.css';
 
@@ -32,9 +33,29 @@ const PesananSaya = lazy(() => import('./pages/customer/PesananSaya'));
 const Bantuan = lazy(() => import('./pages/customer/Bantuan'));
 const DemoPortal = lazy(() => import('./pages/DemoPortal'));
 
+const BackButtonHandler = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    CapacitorApp.removeAllListeners();
+
+    CapacitorApp.addListener('backButton', ({ canGoBack }) => {
+      if (location.pathname === '/' || location.pathname === '/login') {
+        CapacitorApp.exitApp();
+      } else {
+        navigate(-1);
+      }
+    });
+  }, [navigate, location]);
+
+  return null;
+};
+
 function App() {
   return (
     <BrowserRouter>
+      <BackButtonHandler />
       <Toaster
         position="top-right"
         containerStyle={{ zIndex: 99999, pointerEvents: 'none' }}
@@ -50,17 +71,15 @@ function App() {
 
       <Suspense fallback={<Loading />}>
         <Routes>
-          {/* Public Routes */}
-          <Route path="/" element={<DemoPortal />} />
-          <Route path="/login" element={<Login />} />
-
-          {/* Customer Routes - Public Access */}
-          <Route path="/customer" element={<CustomerLayout />}>
+          {/* Public Routes (Customer Menu as Default) */}
+          <Route path="/" element={<CustomerLayout />}>
             <Route index element={<MenuCustomer />} />
             <Route path="keranjang" element={<Keranjang />} />
             <Route path="pesanan" element={<PesananSaya />} />
             <Route path="bantuan" element={<Bantuan />} />
           </Route>
+
+          <Route path="/login" element={<Login />} />
 
           {/* Admin Routes - Protected (Admin & Kasir) */}
           <Route path="/admin" element={
@@ -117,7 +136,7 @@ function App() {
           </Route>
 
           {/* 404 - Redirect to customer menu */}
-          <Route path="*" element={<Navigate to="/customer" replace />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Suspense>
     </BrowserRouter>

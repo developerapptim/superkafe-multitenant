@@ -206,7 +206,7 @@ function Keranjang() {
             clearCart();
 
             // Navigate to order status
-            navigate('/customer/pesanan');
+            navigate('/pesanan');
         } catch (err) {
             console.error('Error merging order:', err);
             toast.error(err.response?.data?.error || 'Gagal menggabungkan pesanan', { id: toastId });
@@ -296,14 +296,14 @@ function Keranjang() {
                     </button>
 
                     <button
-                        onClick={() => navigate(`/customer${tableId ? `?meja=${tableId}` : ''}`)}
+                        onClick={() => navigate(`/${tableId ? `?meja=${tableId}` : ''}`)}
                         className="w-full py-3 rounded-xl bg-white/10 font-bold hover:bg-white/20 transition-colors"
                     >
                         🏠 Menu Utama
                     </button>
 
                     <button
-                        onClick={() => navigate('/customer/pesanan')}
+                        onClick={() => navigate('/pesanan')}
                         className="w-full py-3 rounded-xl border border-blue-500/30 text-blue-400 font-bold hover:bg-blue-500/10 transition-colors"
                     >
                         📋 Lihat Status Pesanan
@@ -330,7 +330,7 @@ function Keranjang() {
                 <h2 className="text-xl font-bold mb-2">Keranjang Kosong</h2>
                 <p className="text-gray-400 mb-6">Yuk pilih menu favoritmu!</p>
                 <button
-                    onClick={() => navigate(`/customer${tableId ? `?meja=${tableId}` : ''}`)}
+                    onClick={() => navigate(`/${tableId ? `?meja=${tableId}` : ''}`)}
                     className="px-6 py-3 rounded-xl bg-gradient-to-r from-purple-600 to-blue-600 font-medium"
                 >
                     Lihat Menu

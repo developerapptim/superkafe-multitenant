@@ -35,6 +35,30 @@ const menuItems = [
 ];
 
 function Sidebar({ onLogout, isCollapsed, toggleSidebar }) {
+  const [settings, setSettings] = useState(() => {
+    const saved = localStorage.getItem('appSettings');
+    return saved ? JSON.parse(saved) : {
+      businessName: 'SuperKafe',
+      tagline: 'Sistem Manajemen Kafe Modern',
+      logo: 'https://res.cloudinary.com/dhjqb65mf/image/upload/v1770018588/Picsart_26-02-02_15-46-53-772_vw9xc3.png'
+    };
+  });
+
+  // Fetch settings to keep it updated
+  useSWR('/settings', fetcher, {
+    onSuccess: (data) => {
+      if (data) {
+        const newSettings = {
+          businessName: data.name || data.businessName || 'SuperKafe',
+          tagline: data.tagline || 'Sistem Manajemen Kafe Modern',
+          logo: data.logo || 'https://res.cloudinary.com/dhjqb65mf/image/upload/v1770018588/Picsart_26-02-02_15-46-53-772_vw9xc3.png'
+        };
+        setSettings(newSettings);
+        localStorage.setItem('appSettings', JSON.stringify(newSettings));
+      }
+    }
+  });
+
   // Safe User Parsing
   let user = {};
   try {
@@ -128,12 +152,12 @@ function Sidebar({ onLogout, isCollapsed, toggleSidebar }) {
       >
         <div className={`flex items-center gap-3 transition-all duration-300 ${isCollapsed ? 'justify-center w-full' : ''}`}>
           <img
-            src="https://res.cloudinary.com/dhjqb65mf/image/upload/v1770018588/Picsart_26-02-02_15-46-53-772_vw9xc3.png"
+            src={settings.logo}
             alt="Logo"
             className="w-8 h-8 rounded bg-transparent object-cover shrink-0 shadow-lg group-hover:scale-105 transition-transform"
           />
           <div className={`overflow-hidden transition-all duration-300 ${isCollapsed ? 'w-0 opacity-0' : 'w-auto opacity-100 hidden lg:block'}`}>
-            <h1 className="font-bold text-white text-sm whitespace-nowrap">Admin Panel</h1>
+            <h1 className="font-bold text-white text-sm whitespace-nowrap">{settings.businessName}</h1>
             <p className="text-xs text-gray-400 whitespace-nowrap">
               {userRole === 'admin' || userRole === 'owner' ? 'Administrator' :
                 userRole === 'staf' ? 'Staf Server' : 'Kasir'}

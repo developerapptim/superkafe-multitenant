@@ -41,11 +41,15 @@ function CustomerLayout() {
     };
 
     const [cart, setCart] = useState([]);
-    const [settings, setSettings] = useState({
-        businessName: 'Warkop Santai',
-        tagline: 'Ngopi Enak, Harga Merakyat',
-        logo: null
+    const [settings, setSettings] = useState(() => {
+        const saved = localStorage.getItem('appSettings');
+        return saved ? JSON.parse(saved) : {
+            businessName: 'SuperKafe',
+            tagline: 'Sistem Manajemen Kafe Modern',
+            logo: 'https://res.cloudinary.com/dhjqb65mf/image/upload/v1770018588/Picsart_26-02-02_15-46-53-772_vw9xc3.png'
+        };
     });
+    const [loadingSettings, setLoadingSettings] = useState(!settings.businessName);
 
     useEffect(() => {
         fetchSettings();
@@ -55,15 +59,19 @@ function CustomerLayout() {
         try {
             const res = await settingsAPI.get();
             if (res.data) {
-                setSettings({
+                const newSettings = {
                     ...res.data,
-                    businessName: res.data.name || res.data.businessName || 'Warkop Santai',
-                    tagline: res.data.tagline || 'Ngopi Enak, Harga Merakyat',
-                    logo: res.data.logo || null
-                });
+                    businessName: res.data.name || res.data.businessName || 'SuperKafe',
+                    tagline: res.data.tagline || 'Sistem Manajemen Kafe Modern',
+                    logo: res.data.logo || 'https://res.cloudinary.com/dhjqb65mf/image/upload/v1770018588/Picsart_26-02-02_15-46-53-772_vw9xc3.png'
+                };
+                setSettings(newSettings);
+                localStorage.setItem('appSettings', JSON.stringify(newSettings));
             }
         } catch (err) {
             console.error('Error fetching settings:', err);
+        } finally {
+            setLoadingSettings(false);
         }
     };
 
@@ -119,28 +127,39 @@ function CustomerLayout() {
                 {/* Header */}
                 <header className="sticky top-0 z-40 bg-[#1E1B4B]/90 backdrop-blur-lg border-b border-purple-500/20">
                     <div className="max-w-md mx-auto md:max-w-7xl px-4 md:px-8 py-3">
-                        <div className="flex justify-between items-center h-16">
-                            {/* Logo & Brand (Left) */}
-                            <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-600 to-blue-600 flex items-center justify-center overflow-hidden shadow-lg shadow-purple-500/20">
-                                    {settings.logo ? (
-                                        <img src={settings.logo} alt="Logo" className="w-full h-full object-cover" />
-                                    ) : (
-                                        <span className="text-xl">☕</span>
-                                    )}
+                        <div className="flex items-center h-16">
+                            {loadingSettings && !settings.businessName ? (
+                                /* Skeleton Loading */
+                                <div className="flex items-center gap-3 animate-pulse">
+                                    <div className="w-10 h-10 rounded-xl bg-white/10"></div>
+                                    <div>
+                                        <div className="h-4 w-32 bg-white/10 rounded mb-1"></div>
+                                        <div className="h-3 w-24 bg-white/10 rounded"></div>
+                                    </div>
                                 </div>
-                                <div>
-                                    <h1 className="text-lg font-bold bg-gradient-to-r from-purple-400 to-blue-400 bg-clip-text text-transparent">
-                                        {settings.businessName}
-                                    </h1>
-                                    <p className="text-xs text-gray-400">{settings.tagline}</p>
+                            ) : (
+                                /* Actual Branding */
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-600 to-blue-600 flex items-center justify-center overflow-hidden shadow-lg shadow-purple-500/20">
+                                        {settings.logo ? (
+                                            <img src={settings.logo} alt="Logo" className="w-full h-full object-cover" />
+                                        ) : (
+                                            <span className="text-xl">☕</span>
+                                        )}
+                                    </div>
+                                    <div>
+                                        <h1 className="text-lg font-bold bg-gradient-to-r from-purple-400 to-blue-400 bg-clip-text text-transparent">
+                                            {settings.businessName || 'Loading...'}
+                                        </h1>
+                                        <p className="text-xs text-gray-400">{settings.tagline || '...'}</p>
+                                    </div>
                                 </div>
-                            </div>
+                            )}
 
                             {/* Desktop Navigation (Right) */}
-                            <nav className="hidden md:flex items-center gap-8">
+                            <nav className="hidden md:flex items-center gap-8 ml-auto mr-8">
                                 <NavLink
-                                    to={`/customer${tableId ? `?meja=${tableId}` : ''}`}
+                                    to={`/${tableId ? `?meja=${tableId}` : ''}`}
                                     end
                                     className="relative py-2 group outline-none"
                                 >
@@ -165,7 +184,7 @@ function CustomerLayout() {
                                 </NavLink>
 
                                 <NavLink
-                                    to={`/customer/keranjang${tableId ? `?meja=${tableId}` : ''}`}
+                                    to={`/keranjang${tableId ? `?meja=${tableId}` : ''}`}
                                     className="relative py-2 group flex items-center gap-2 outline-none"
                                 >
                                     {({ isActive }) => (
@@ -203,7 +222,7 @@ function CustomerLayout() {
                                 </NavLink>
 
                                 <NavLink
-                                    to={`/customer/pesanan${tableId ? `?meja=${tableId}` : ''}`}
+                                    to={`/pesanan${tableId ? `?meja=${tableId}` : ''}`}
                                     className="relative py-2 group outline-none"
                                 >
                                     {({ isActive }) => (
@@ -227,7 +246,7 @@ function CustomerLayout() {
                                 </NavLink>
 
                                 <NavLink
-                                    to={`/customer/bantuan${tableId ? `?meja=${tableId}` : ''}`}
+                                    to={`/bantuan${tableId ? `?meja=${tableId}` : ''}`}
                                     className="relative py-2 group outline-none"
                                 >
                                     {({ isActive }) => (
@@ -251,22 +270,23 @@ function CustomerLayout() {
                                 </NavLink>
                             </nav>
 
-                            {/* Table Badge for Desktop (Optional addition to keep layout balanced or hidden if not needed in standard nav) */}
-                            {/* We can place table badge next to right nav or keep existing logic. 
-                                Since user asked for 'justify-between' (Logo Left, Nav Right), 
-                                let's put the table indicator inside the 'Nav' or just outside it. 
-                                I will place it inside the 'Nav' container or right after it if needed. 
-                                But let's follow the requested structure: Logo Left, Menu Right. 
-                                I'll append the Table Badge at the end of the Right section or next to the logo?
-                                Actually, 'Meja' badge is important information. Let's keep it visible.
-                                I will put it to the far right, after the menu, or integrate it. 
-                                Let's add it to the Right group.
-                            */}
-                            {tableId && (
-                                <div className="hidden md:block absolute left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-purple-500/20 text-purple-300 text-sm border border-purple-500/30">
-                                    🪑 Meja {tableId}
-                                </div>
-                            )}
+                            {/* Table Badge and Login */}
+                            <div className="flex items-center gap-4 ml-auto md:ml-0">
+                                {tableId && (
+                                    <div className="hidden md:block px-3 py-1 rounded-full bg-purple-500/20 text-purple-300 text-sm border border-purple-500/30">
+                                        🪑 Meja {tableId}
+                                    </div>
+                                )}
+
+                                {/* Staff Login Button (Subtle/Glassmorphism) */}
+                                <NavLink
+                                    to="/login"
+                                    className="w-8 h-8 flex items-center justify-center rounded-full bg-white/5 hover:bg-white/10 text-white/20 hover:text-white/80 transition-all backdrop-blur-sm border border-transparent hover:border-white/20"
+                                    title="Staff Login"
+                                >
+                                    🔒
+                                </NavLink>
+                            </div>
                         </div>
                     </div>
                 </header>
@@ -294,7 +314,7 @@ function CustomerLayout() {
                 <nav className="fixed bottom-0 left-0 right-0 z-50 bg-slate-900/90 backdrop-blur-md border-t border-slate-800 md:hidden">
                     <div className="max-w-md mx-auto md:max-w-7xl px-4 md:px-8 flex">
                         <NavLink
-                            to={`/customer${tableId ? `?meja=${tableId}` : ''}`}
+                            to={`/${tableId ? `?meja=${tableId}` : ''}`}
                             end
                             className="flex-1 relative group outline-none"
                         >
@@ -320,7 +340,7 @@ function CustomerLayout() {
                         </NavLink>
 
                         <NavLink
-                            to={`/customer/keranjang${tableId ? `?meja=${tableId}` : ''}`}
+                            to={`/keranjang${tableId ? `?meja=${tableId}` : ''}`}
                             className="flex-1 relative group outline-none"
                         >
                             {({ isActive }) => (
@@ -360,7 +380,7 @@ function CustomerLayout() {
                         </NavLink>
 
                         <NavLink
-                            to={`/customer/pesanan${tableId ? `?meja=${tableId}` : ''}`}
+                            to={`/pesanan${tableId ? `?meja=${tableId}` : ''}`}
                             className="flex-1 relative group outline-none"
                         >
                             {({ isActive }) => (
@@ -385,7 +405,7 @@ function CustomerLayout() {
                         </NavLink>
 
                         <NavLink
-                            to={`/customer/bantuan${tableId ? `?meja=${tableId}` : ''}`}
+                            to={`/bantuan${tableId ? `?meja=${tableId}` : ''}`}
                             className="flex-1 relative group outline-none"
                         >
                             {({ isActive }) => (

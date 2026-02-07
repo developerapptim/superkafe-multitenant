@@ -73,6 +73,26 @@ function AdminLayout() {
     const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
     const toggleSidebar = () => setIsSidebarCollapsed(prev => !prev);
 
+    const [settings, setSettings] = useState(() => {
+        const saved = localStorage.getItem('appSettings');
+        return saved ? JSON.parse(saved) : {
+            logo: 'https://res.cloudinary.com/dhjqb65mf/image/upload/v1770018588/Picsart_26-02-02_15-46-53-772_vw9xc3.png'
+        };
+    });
+
+    useSWR('/settings', fetcher, {
+        onSuccess: (data) => {
+            if (data) {
+                const newSettings = {
+                    ...data,
+                    logo: data.logo || 'https://res.cloudinary.com/dhjqb65mf/image/upload/v1770018588/Picsart_26-02-02_15-46-53-772_vw9xc3.png'
+                };
+                setSettings(newSettings);
+                localStorage.setItem('appSettings', JSON.stringify(newSettings));
+            }
+        }
+    });
+
     return (
         <div
             id="adminPage"
@@ -95,7 +115,7 @@ function AdminLayout() {
                 >
                     {/* Toggle Logo */}
                     <img
-                        src="https://res.cloudinary.com/dhjqb65mf/image/upload/v1770018588/Picsart_26-02-02_15-46-53-772_vw9xc3.png"
+                        src={settings.logo}
                         alt="Logo"
                         onClick={toggleSidebar}
                         className="w-8 h-8 rounded bg-transparent object-cover cursor-pointer hover:scale-105 transition-transform shrink-0"
