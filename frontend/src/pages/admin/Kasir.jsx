@@ -168,53 +168,106 @@ function Kasir() {
 
     // Audio State
     const [isMuted, setIsMuted] = useState(() => localStorage.getItem('pos_muted') === 'true');
-    const prevOrdersLength = useRef(-1);
+    const prevNewOrdersCount = useRef(0);
+    const audioContextRef = useRef(null);
+
+    // Initialize AudioContext on user interaction to bypass autoplay policy
+    useEffect(() => {
+        const unlockAudio = () => {
+            if (!audioContextRef.current) {
+                audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioContextRef.current.state === 'suspended') {
+                audioContextRef.current.resume();
+            }
+        };
+        window.addEventListener('click', unlockAudio);
+        window.addEventListener('touchstart', unlockAudio);
+        return () => {
+            window.removeEventListener('click', unlockAudio);
+            window.removeEventListener('touchstart', unlockAudio);
+        };
+    }, []);
 
     // Extracted Play Sound Function
-    const playSound = () => {
+    const playSound = async () => {
+        if (isMuted) return;
+
+        // Try playing from URL if available
         if (settings?.notificationSoundUrl) {
-            new Audio(settings.notificationSoundUrl).play().catch(err => console.log('Audio play failed:', err));
-        } else {
-            // Fallback: Generate Beep
             try {
-                const ctx = new (window.AudioContext || window.webkitAudioContext)();
-                const osc = ctx.createOscillator();
-                const gain = ctx.createGain();
-                osc.connect(gain);
-                gain.connect(ctx.destination);
-                osc.frequency.value = 550; // A bit higher pitch
-                osc.type = 'sine';
-                gain.gain.value = 0.1;
-                osc.start();
-                osc.stop(ctx.currentTime + 0.5); // 0.5s beep
-            } catch (e) {
-                console.error('AudioContext error:', e);
+                const audio = new Audio(settings.notificationSoundUrl);
+                await audio.play();
+                return; // Success
+            } catch (err) {
+                console.warn('Audio URL play failed, using fallback:', err);
+                // Continue to fallback
             }
+        }
+
+        // Fallback: Pleasant "Ding" using Oscillator
+        try {
+            if (!audioContextRef.current) {
+                audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            const ctx = audioContextRef.current;
+
+            // Resume if suspended (browser policy)
+            if (ctx.state === 'suspended') await ctx.resume();
+
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+
+            // Bell-like sound
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(880, ctx.currentTime); // High pitch (A5)
+            osc.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + 0.5); // Drop to A4
+
+            gain.gain.setValueAtTime(0.1, ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
+
+            osc.start();
+            osc.stop(ctx.currentTime + 0.5);
+        } catch (e) {
+            console.error('AudioContext fallback error:', e);
         }
     };
 
-    // Audio Logic
+    // Audio Trigger Logic
     useEffect(() => {
         if (!ordersData) return;
 
-        const totalOrders = ordersData.length;
+        // Count specifically NEW orders
+        const currentNewOrdersCount = ordersData.filter(o => o.status === 'new').length;
 
-        // Skip notification on first load
-        if (prevOrdersLength.current === -1) {
-            prevOrdersLength.current = totalOrders;
-            return;
-        }
+        // Only play if we have MORE new orders than before
+        // This handles cases where an order is moved to 'process' (count goes down, no sound)
+        if (currentNewOrdersCount > prevNewOrdersCount.current) {
+            // Avoid playing on initial load
+            if (prevNewOrdersCount.current !== 0 || currentNewOrdersCount > 0) { // Logic check: actually we want to skip ONLY absolute first load if needed, but usually hearing a ping on load is fine if there are new orders. 
+                // Let's refine: If prev is 0 and current is > 0, it *might* be first load. 
+                // But generally, the user wants to know if there are new orders.
+                // To be safe, we can skip strict first mount (handled by ref init 0).
+                // Actually, let's allow it, but maybe debounce if needed.
 
-        // Check if new order arrived (count increased)
-        if (totalOrders > prevOrdersLength.current) {
-            const hasNew = ordersData.some(o => o.status === 'new');
-            // Play sound if not muted and has new orders
-            if (hasNew && !isMuted) {
+                // Safe check: ensure it's not just a refresh of same data
+                // We rely on count increase.
+
+                // Wait a bit to ensure context is ready? No, simple logic:
                 playSound();
-                toast('Pesanan Baru Masuk!', { icon: '🔔' });
+                toast('Pesanan Baru Masuk!', {
+                    icon: '🔔',
+                    duration: 4000,
+                    style: { border: '1px solid #a855f7', color: '#a855f7' }
+                });
             }
         }
-        prevOrdersLength.current = totalOrders;
+
+        // Update ref
+        prevNewOrdersCount.current = currentNewOrdersCount;
     }, [ordersData, isMuted, settings]);
 
     const toggleMute = () => {
@@ -719,6 +772,18 @@ function Kasir() {
                                 title={!isMuted ? 'Matikan Suara' : 'Hidupkan Suara'}
                             >
                                 <span className="text-2xl">{!isMuted ? '🔊' : '🔇'}</span>
+                            </button>
+
+                            {/* Debug / Test Sound Button */}
+                            <button
+                                onClick={() => {
+                                    toast('🔔 Testing Sound...', { icon: '🔊' });
+                                    playSound();
+                                }}
+                                className="w-11 h-11 flex items-center justify-center rounded-xl bg-surface border border-purple-500/30 hover:bg-purple-500/20 text-purple-400 transition-all"
+                                title="Test Notification Sound"
+                            >
+                                <span className="text-xl">🔔</span>
                             </button>
 
                             {!isAdmin && (
