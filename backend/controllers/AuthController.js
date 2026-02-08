@@ -1,64 +1,70 @@
-const Employee = require('../models/Employee');
-const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
+const Employee = require('../models/Employee');
+const Shift = require('../models/Shift');
 
+const JWT_SECRET = process.env.JWT_SECRET || 'warkop_secret_jwt';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'change_this_secret';
+// Restricted roles that can only have one active session at a time
+const restrictedRoles = ['kasir', 'waiter', 'kitchen', 'barista', 'staf'];
 
 exports.login = async (req, res) => {
     try {
         const { username, password } = req.body;
-        console.log('Login attempt:', { username }); // Debug
 
-        // 1. Find employee by username
+        // 1. Find Employee by Username or Name
         const employee = await Employee.findOne({
-            username: { $regex: new RegExp(`^${username}$`, 'i') }
+            $or: [
+                { username: username },
+                { name: username }
+            ],
+            status: 'active'
         });
 
         if (!employee) {
-            return res.status(401).json({ error: 'Username tidak ditemukan' });
+            return res.status(404).json({ error: 'Karyawan tidak ditemukan atau tidak aktif' });
         }
 
-        // 2. Check status
-        if (employee.status !== 'active' && !employee.isActive) {
-            return res.status(403).json({ error: 'Akun dinonaktifkan. Hubungi admin.' });
-        }
-
-        // 3. Single Active Staff Guard
-        // Roles that are restricted to single session: 'kasir', 'staf', 'waiter', 'barista', 'kitchen'
-        const restrictedRoles = ['kasir', 'staf', 'waiter', 'barista', 'kitchen'];
-
+        // 2. Check for "Single Active Staff" Policy (Only for restricted roles)
         if (restrictedRoles.includes(employee.role)) {
-            // Check if ANY restricted staff is already logged in (excluding self if re-logging in on same device/session - though usually token is gone)
-            // But if 'is_logged_in' is true, it means they are active elsewhere or didn't logout.
-            // We want to block IF ANOTHER staff is active.
-            // Wait, the requirement says: "cek di database apakah ada user staff lain yang sedang memiliki status is_logged_in = true."
-            // "Jika ada, TOLAK LOGIN... Login Gagal. Staff [Nama] sedang aktif."
-
             const activeStaff = await Employee.findOne({
                 role: { $in: restrictedRoles },
-                is_logged_in: true,
-                id: { $ne: employee.id } // exclude self? Or should self also be blocked if already logged in? 
-                // If self is logged in, it might be same user. 
-                // Requirement: "user staff **lain**". So exclude self.
+                is_logged_in: true
             });
 
             if (activeStaff) {
-                return res.status(403).json({
-                    error: `Login Gagal. Staff ${activeStaff.name} sedang aktif. Harap hubungi Admin jika ini kesalahan.`
-                });
+                // 2a. Check if it's the SAME USER re-logging in
+                if (activeStaff.id === employee.id) {
+                    console.log(`ℹ️ User ${employee.name} re-logging in while active. Allowing.`);
+                    // Proceed (allow same user to refresh session)
+                } else {
+                    // 2b. It's a DIFFERENT user. Check if Mamat truly has an open shift.
+                    // Query for ANY open shift (not by userId, since old shifts may not have it)
+                    const openShift = await Shift.findOne({ status: 'OPEN' });
+
+                    if (openShift) {
+                        // There IS an open shift. Block the new user.
+                        return res.status(403).json({
+                            error: `Login Gagal. Staff ${activeStaff.name} sedang aktif. Harap hubungi Admin jika ini kesalahan.`
+                        });
+                    } else {
+                        // No open shift exists! This is a stuck session. Auto-logout Mamat.
+                        console.log(`⚠️ Auto-logging out stuck user: ${activeStaff.name} (No Open Shift found)`);
+                        activeStaff.is_logged_in = false;
+                        await activeStaff.save();
+                        // Proceed to allow Dika to login
+                    }
+                }
             }
         }
 
+        // 3. Validate Password or PIN
         let isMatch = false;
 
-        // 3. Try Password Match (if user has password)
         if (employee.password) {
             isMatch = await bcrypt.compare(password, employee.password);
         }
 
-        // 4. If Password didn't match (or wasn't set), Try PIN Match
-        // The frontend sends input in 'password' field. Check against pin_code or pin.
         if (!isMatch) {
             if (employee.pin_code === password || employee.pin === password) {
                 isMatch = true;
@@ -69,7 +75,7 @@ exports.login = async (req, res) => {
             return res.status(401).json({ error: 'Password atau PIN salah' });
         }
 
-        // 5. Generate Token
+        // 4. Generate Token
         const token = jwt.sign(
             {
                 id: employee.id,
@@ -80,7 +86,7 @@ exports.login = async (req, res) => {
             { expiresIn: '24h' }
         );
 
-        // 6. Update is_logged_in status
+        // 5. Update is_logged_in status
         employee.is_logged_in = true;
         await employee.save();
 
@@ -91,7 +97,7 @@ exports.login = async (req, res) => {
                 name: employee.name,
                 role: employee.role,
                 image: employee.image,
-                role_access: employee.role_access // Important for frontend permission checks
+                role_access: employee.role_access
             }
         });
     } catch (err) {
@@ -100,9 +106,7 @@ exports.login = async (req, res) => {
     }
 };
 
-
 exports.checkAuth = (req, res) => {
-    // If middleware passed, token is valid
     res.json({ valid: true, user: req.user });
 };
 

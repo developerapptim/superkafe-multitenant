@@ -14,7 +14,8 @@ const OrderSchema = new mongoose.Schema({
     timestamp: { type: Number, default: Date.now },
     note: String,
     paymentProofImage: String,
-    is_archived_from_pos: { type: Boolean, default: false }
+    is_archived_from_pos: { type: Boolean, default: false },
+    shiftId: String // Links order to a specific shift (for reporting)
 });
 
 module.exports = mongoose.model('Order', OrderSchema);

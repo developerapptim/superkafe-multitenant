@@ -2,6 +2,7 @@ const Shift = require('../models/Shift');
 const Order = require('../models/Order');
 const ActivityLog = require('../models/ActivityLog'); // NEW: Activity Log Model
 const logActivity = require('../utils/activityLogger'); // NEW: Activity Logger
+const Employee = require('../models/Employee'); // For auto-logout
 
 exports.startShift = async (req, res) => {
     try {
@@ -62,6 +63,11 @@ exports.getCurrentBalance = async (req, res) => {
             });
         }
 
+        // Calculate Transaction Counts based on shiftId (Backend Source of Truth)
+        const trxTotal = await Order.countDocuments({ shiftId: shift.id, status: { $ne: 'cancel' }, $or: [{ status: 'done' }, { paymentStatus: 'paid' }] });
+        const trxCash = await Order.countDocuments({ shiftId: shift.id, paymentMethod: 'cash', status: { $ne: 'cancel' }, $or: [{ status: 'done' }, { paymentStatus: 'paid' }] });
+        const trxNonCash = await Order.countDocuments({ shiftId: shift.id, paymentMethod: { $ne: 'cash' }, status: { $ne: 'cancel' }, $or: [{ status: 'done' }, { paymentStatus: 'paid' }] });
+
         res.json({
             shiftId: shift.id,
             startCash: shift.startCash || 0,
@@ -69,7 +75,12 @@ exports.getCurrentBalance = async (req, res) => {
             currentNonCash: shift.currentNonCash || 0, // This is tracked in OrderController now
             cashSales: shift.cashSales || 0, // Or calculate from orders?
             nonCashSales: shift.nonCashSales || 0,
-            cashierName: shift.cashierName // Return cashier name for UI display
+            cashierName: shift.cashierName, // Return cashier name for UI display
+            startTime: shift.startTime, // Needed for filtering orders
+            // Backend-calculated counts
+            trxTotal,
+            trxCash,
+            trxNonCash
         });
 
     } catch (err) {
@@ -82,28 +93,45 @@ exports.endShift = async (req, res) => {
     try {
         const { endCash } = req.body; // Actual cash in drawer
 
-        const shift = await Shift.findOne({ status: 'OPEN' });
-        if (!shift) {
+        // 1. Find ALL open shifts (Handling potential duplicates/ghosts)
+        const openShifts = await Shift.find({ status: 'OPEN' });
+
+        if (openShifts.length === 0) {
             return res.status(404).json({ error: 'No open shift found' });
         }
 
-        const expectedCash = shift.currentCash || 0;
         const actualEndCash = Number(endCash) || 0;
-        const difference = actualEndCash - expectedCash;
+        const endTime = new Date();
 
-        shift.status = 'CLOSED';
-        shift.endTime = new Date();
-        shift.endCash = actualEndCash;
-        shift.expectedCash = expectedCash;
-        shift.difference = difference;
+        // 2. Close ALL of them
+        for (const shift of openShifts) {
+            const expectedCash = shift.currentCash || 0;
+            // Note: The 'difference' here is calculated per shift based on the *same* actualEndCash
+            // If endCash is meant for a single primary shift, this logic might need adjustment.
+            // For closing all, it assumes actualEndCash is a global closing value or
+            // that each shift's difference is calculated against this single endCash.
+            const difference = actualEndCash - expectedCash;
 
-        await shift.save();
+            shift.status = 'CLOSED';
+            shift.endTime = endTime;
+            shift.endCash = actualEndCash; // This will be the same for all closed shifts
+            shift.expectedCash = expectedCash;
+            shift.difference = difference;
+            await shift.save();
 
-        await shift.save();
+            // Auto-logout the user who owned this shift
+            // Fallback to req.user.id if shift.userId is missing (legacy records)
+            const targetUserId = shift.userId || req.user?.id;
+            if (targetUserId) {
+                await Employee.updateOne({ id: targetUserId }, { is_logged_in: false });
+                console.log(`✅ Auto-logged out user ${targetUserId} for shift ${shift.id}`);
+            }
 
-        await logActivity({ req, action: 'CLOSE_SHIFT', module: 'SHIFT', description: `Shift closed. Expected: ${expectedCash}, Actual: ${actualEndCash}, Diff: ${difference}`, metadata: { shiftId: shift.id, difference } });
+            // Log for each closed shift
+            await logActivity({ req, action: 'CLOSE_SHIFT', module: 'SHIFT', description: `Shift closed (Cleanup). Expected: ${expectedCash}, Actual: ${actualEndCash}, Diff: ${difference}`, metadata: { shiftId: shift.id, difference } });
+        }
 
-        res.json({ success: true, shift });
+        res.json({ success: true, count: openShifts.length });
     } catch (err) {
         console.error('End shift error:', err);
         res.status(500).json({ error: 'Server error' });

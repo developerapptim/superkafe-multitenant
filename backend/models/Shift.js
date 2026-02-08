@@ -6,6 +6,7 @@ const ShiftSchema = new mongoose.Schema({
     status: { type: String, enum: ['OPEN', 'CLOSED'], default: 'OPEN' },
     startTime: { type: Date, default: Date.now },
     endTime: Date,
+    userId: { type: String }, // Link to Employee.id
     cashierName: String, // New field
     startCash: { type: Number, default: 0 },
     endCash: Number,

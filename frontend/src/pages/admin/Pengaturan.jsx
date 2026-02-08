@@ -42,7 +42,10 @@ function Pengaturan() {
         // Tax
         enableTax: false,
         taxPercent: 11,
-        notificationSoundUrl: ''
+        notificationSoundUrl: '',
+        // Cash Drawer Visibility
+        showCashToStaff: true,
+        showNonCashToStaff: true
     });
 
     const [passwordForm, setPasswordForm] = useState({
@@ -295,25 +298,31 @@ function Pengaturan() {
                 <div className="space-y-4">
                     <div className="p-4 bg-white/5 rounded-xl">
                         <label className="block text-sm text-gray-400 mb-2">Suara Notifikasi Pesanan Baru</label>
-                        <div className="flex items-center gap-4">
+                        <div className="flex flex-wrap items-center gap-4">
                             <input type="file" accept="audio/*" onChange={handleSoundUpload} className="hidden" id="soundInput" />
-                            <button
-                                onClick={() => document.getElementById('soundInput').click()}
-                                className="px-4 py-2 rounded-lg bg-white/10 hover:bg-white/20 transition-colors"
-                            >
-                                🎵 Upload Suara (.mp3/.wav)
-                            </button>
-                            {settings.notificationSoundUrl && (
+                            <div className="flex-1 min-w-[200px]">
                                 <button
-                                    onClick={handleTestSound}
-                                    className="px-4 py-2 rounded-lg bg-green-500/20 text-green-400 hover:bg-green-500/30 transition-colors flex items-center gap-2"
+                                    onClick={() => document.getElementById('soundInput').click()}
+                                    className="w-full px-4 py-3 rounded-lg bg-white/10 hover:bg-white/20 transition-colors flex items-center justify-center gap-2"
                                 >
-                                    ▶️ Test Suara
+                                    <span>🎵</span>
+                                    <span>Upload Suara (.mp3/.wav)</span>
                                 </button>
+                            </div>
+                            {settings.notificationSoundUrl && (
+                                <div className="flex-shrink-0">
+                                    <button
+                                        onClick={handleTestSound}
+                                        className="h-full px-4 py-3 rounded-lg bg-green-500/20 text-green-400 hover:bg-green-500/30 transition-colors flex items-center gap-2"
+                                    >
+                                        <span>▶️</span>
+                                        <span>Test Suara</span>
+                                    </button>
+                                </div>
                             )}
                         </div>
                         <p className="text-xs text-gray-500 mt-2">
-                            {settings.notificationSoundUrl ? '✅ File kustom aktif' : 'ℹ️ Menggunakan suara default'}
+                            {settings.notificationSoundUrl ? '✅ File kustom aktif (Disimpan di Database)' : 'ℹ️ Menggunakan suara default'}
                         </p>
                     </div>
                 </div>
@@ -500,6 +509,42 @@ function Pengaturan() {
                     >
                         <div className={`w-5 h-5 rounded-full bg-white transition-all ${settings.allowStaffEditInventory ? 'ml-6' : 'ml-0.5'}`}></div>
                     </button>
+                </div>
+
+                {/* Cash Drawer Visibility Settings */}
+                <div className="mt-8 border-t border-white/10 pt-6">
+                    <h3 className="font-bold mb-4 flex items-center gap-2">
+                        <span>💰</span> Pengaturan Kas Digital Kasir
+                    </h3>
+                    <div className="space-y-4">
+                        {/* Show Cash Toggle */}
+                        <div className="flex items-center justify-between p-4 bg-white/5 rounded-xl border border-green-500/20">
+                            <div>
+                                <p className="font-medium text-green-100">Tampilkan Saldo Tunai ke Staff</p>
+                                <p className="text-sm text-gray-400">Jika dimatikan, staff tidak bisa melihat total uang tunai di laci</p>
+                            </div>
+                            <button
+                                onClick={() => setSettings({ ...settings, showCashToStaff: !settings.showCashToStaff })}
+                                className={`w-12 h-6 rounded-full transition-all ${settings.showCashToStaff ? 'bg-green-600' : 'bg-gray-600'}`}
+                            >
+                                <div className={`w-5 h-5 rounded-full bg-white transition-all ${settings.showCashToStaff ? 'ml-6' : 'ml-0.5'}`}></div>
+                            </button>
+                        </div>
+
+                        {/* Show Non-Cash Toggle */}
+                        <div className="flex items-center justify-between p-4 bg-white/5 rounded-xl border border-purple-500/20">
+                            <div>
+                                <p className="font-medium text-purple-100">Tampilkan Saldo Non-Tunai ke Staff</p>
+                                <p className="text-sm text-gray-400">Jika dimatikan, staff tidak bisa melihat total pendapatan non-tunai (QRIS/Transfer)</p>
+                            </div>
+                            <button
+                                onClick={() => setSettings({ ...settings, showNonCashToStaff: !settings.showNonCashToStaff })}
+                                className={`w-12 h-6 rounded-full transition-all ${settings.showNonCashToStaff ? 'bg-purple-600' : 'bg-gray-600'}`}
+                            >
+                                <div className={`w-5 h-5 rounded-full bg-white transition-all ${settings.showNonCashToStaff ? 'ml-6' : 'ml-0.5'}`}></div>
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
 

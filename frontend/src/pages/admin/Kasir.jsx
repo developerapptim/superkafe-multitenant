@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import toast from 'react-hot-toast';
 import useSWR, { mutate } from 'swr';
 import api, { menuAPI, ordersAPI, tablesAPI, shiftAPI } from '../../services/api';
@@ -190,8 +190,8 @@ function Kasir() {
     }, []);
 
     // Extracted Play Sound Function
-    const playSound = async () => {
-        if (isMuted) return;
+    const playSound = async (force = false) => {
+        if (isMuted && !force) return;
 
         // Try playing from URL if available
         if (settings?.notificationSoundUrl) {
@@ -237,33 +237,29 @@ function Kasir() {
     };
 
     // Audio Trigger Logic
+    const isFirstLoad = useRef(true);
+
     useEffect(() => {
         if (!ordersData) return;
 
         // Count specifically NEW orders
         const currentNewOrdersCount = ordersData.filter(o => o.status === 'new').length;
 
+        // SKIP sound on first load (Page Navigation)
+        if (isFirstLoad.current) {
+            isFirstLoad.current = false;
+            prevNewOrdersCount.current = currentNewOrdersCount;
+            return;
+        }
+
         // Only play if we have MORE new orders than before
-        // This handles cases where an order is moved to 'process' (count goes down, no sound)
         if (currentNewOrdersCount > prevNewOrdersCount.current) {
-            // Avoid playing on initial load
-            if (prevNewOrdersCount.current !== 0 || currentNewOrdersCount > 0) { // Logic check: actually we want to skip ONLY absolute first load if needed, but usually hearing a ping on load is fine if there are new orders. 
-                // Let's refine: If prev is 0 and current is > 0, it *might* be first load. 
-                // But generally, the user wants to know if there are new orders.
-                // To be safe, we can skip strict first mount (handled by ref init 0).
-                // Actually, let's allow it, but maybe debounce if needed.
-
-                // Safe check: ensure it's not just a refresh of same data
-                // We rely on count increase.
-
-                // Wait a bit to ensure context is ready? No, simple logic:
-                playSound();
-                toast('Pesanan Baru Masuk!', {
-                    icon: '🔔',
-                    duration: 4000,
-                    style: { border: '1px solid #a855f7', color: '#a855f7' }
-                });
-            }
+            playSound();
+            toast('Pesanan Baru Masuk!', {
+                icon: '🔔',
+                duration: 4000,
+                style: { border: '1px solid #a855f7', color: '#a855f7' }
+            });
         }
 
         // Update ref
@@ -277,7 +273,7 @@ function Kasir() {
 
         // Play sound preview when turning ON
         if (!newState) {
-            playSound();
+            playSound(true); // FORCE PLAY because state update is async and isMuted is still true here
             toast.success('Suara Notifikasi Aktif', { icon: '🔊' });
         }
     };
@@ -315,6 +311,37 @@ function Kasir() {
             ? (user.name || 'Staff')
             : (shiftData?.cashierName ? shiftData.cashierName : null), // Null if closed to handle styling later
     };
+
+    // Transaction Counts (Paid/Done Orders Only) - Filtered by Valid Shift Time
+    const trxCounts = useMemo(() => {
+        if (!orders || !shiftData) return { total: 0, cash: 0, nonCash: 0 };
+
+        const shiftStartTime = shiftData.startTime ? new Date(shiftData.startTime).getTime() : 0;
+
+        const paidOrders = orders.filter(o => {
+            const isPaidOrDone = o.status !== 'cancel' && (o.paymentStatus === 'paid' || o.status === 'done');
+            const orderTime = new Date(o.timestamp || o.createdAt).getTime(); // Handle both timestamp formats
+            const isWithinShift = orderTime >= shiftStartTime;
+
+            return isPaidOrDone && isWithinShift;
+        });
+
+        return {
+            total: paidOrders.length,
+            cash: paidOrders.filter(o => o.paymentMethod === 'cash').length,
+            nonCash: paidOrders.filter(o => o.paymentMethod !== 'cash').length
+        };
+    }, [orders, shiftData]);
+
+    // Privacy & Visibility Logic
+    const [isFloatingBalanceVisible, setIsFloatingBalanceVisible] = useState(false);
+
+    // Strict Settings from Admin
+    const allowCashView = isAdmin || settings?.showCashToStaff !== false;
+    const allowNonCashView = isAdmin || settings?.showNonCashToStaff !== false;
+
+    // Eye Toggle Condition: Only show if USER HAS ACCESS TO ALL (Cash AND Non-Cash)
+    const canToggleVisibility = allowCashView && allowNonCashView;
 
     const formatCurrency = (amount) => {
         return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(amount);
@@ -774,18 +801,6 @@ function Kasir() {
                                 <span className="text-2xl">{!isMuted ? '🔊' : '🔇'}</span>
                             </button>
 
-                            {/* Debug / Test Sound Button */}
-                            <button
-                                onClick={() => {
-                                    toast('🔔 Testing Sound...', { icon: '🔊' });
-                                    playSound();
-                                }}
-                                className="w-11 h-11 flex items-center justify-center rounded-xl bg-surface border border-purple-500/30 hover:bg-purple-500/20 text-purple-400 transition-all"
-                                title="Test Notification Sound"
-                            >
-                                <span className="text-xl">🔔</span>
-                            </button>
-
                             {!isAdmin && (
                                 <button
                                     onClick={() => setShowModal(true)}
@@ -1162,25 +1177,21 @@ function Kasir() {
                 }
             </div >
 
-            {/* Cash Drawer Toggle Button */}
-            < button
-                onClick={() => setShowCashDrawer(!showCashDrawer)}
-                className="fixed bottom-4 right-4 z-30 p-3 rounded-xl bg-green-500 text-white shadow-lg hover:bg-green-600 flex items-center gap-2"
-            >
-                <span className="text-xl">💰</span>
-                <span className="font-bold">{formatCurrency(cashDrawer.totalCash)}</span>
-            </button >
 
-            {/* Cash Drawer Widget */}
-            {
-                showCashDrawer && (
-                    <div className="fixed bottom-20 right-4 z-40 glass rounded-xl p-4 border border-purple-500/30 shadow-2xl min-w-[280px]">
+
+            {/* FLOATING ACTION BUTTON (FAB) & WIDGET CONTAINER */}
+            <div className="fixed bottom-4 right-4 z-40 flex flex-col items-end gap-2">
+
+                {/* 1. Cash Drawer Widget (Modal) */}
+                {showCashDrawer && (
+                    <div className="mb-2 glass rounded-xl p-4 border border-purple-500/30 shadow-2xl min-w-[300px] animate-scale-up">
                         <div className="flex items-center justify-between mb-3">
                             <h4 className="font-bold text-sm flex items-center gap-2">💰 Laci Kas Digital</h4>
                             <button onClick={() => setShowCashDrawer(false)} className="text-gray-400 hover:text-white text-xs">✕</button>
                         </div>
-                        <div className="flex items-center gap-3">
-                            {/* Mute Button */}
+
+                        {/* Kasir Info */}
+                        <div className="flex items-center gap-3 mb-3">
                             <button
                                 onClick={toggleMute}
                                 className={`p-2 rounded-lg border ${isMuted ? 'bg-red-500/10 border-red-500/50 text-red-400' : 'bg-green-500/10 border-green-500/50 text-green-400'}`}
@@ -1188,36 +1199,98 @@ function Kasir() {
                             >
                                 {isMuted ? '🔇' : '🔊'}
                             </button>
-
-                            <div className="bg-white/5 rounded-lg border border-purple-500/20 px-3 py-1 text-right">
+                            <div className="bg-white/5 rounded-lg border border-purple-500/20 px-3 py-1 text-right flex-1">
                                 <p className="text-xs text-gray-400">Kasir:</p>
                                 {cashDrawer.kasirName ? (
-                                    <p className="font-bold text-sm truncate max-w-[120px]">{cashDrawer.kasirName}</p>
+                                    <p className="font-bold text-sm truncate">{cashDrawer.kasirName}</p>
                                 ) : (
                                     <p className="font-bold text-sm text-red-500">TUTUP</p>
                                 )}
                             </div>
                         </div>
+
+                        {/* Balances List */}
                         <div className="space-y-2">
+                            {/* Modal Awal (Always Visible) */}
                             <div className="flex justify-between items-center p-2 rounded-lg bg-surface/50">
                                 <span className="text-xs text-gray-400">📥 Modal Awal</span>
                                 <span className="font-bold text-blue-400">{formatCurrency(cashDrawer.openingCash)}</span>
                             </div>
+
+                            {/* Saldo Tunai */}
                             <div className="flex justify-between items-center p-2 rounded-lg bg-green-500/10 border border-green-500/20">
-                                <span className="text-xs text-green-400">💵 Saldo Tunai</span>
-                                <span className="font-bold text-green-400 text-lg">{formatCurrency(cashDrawer.totalCash)}</span>
+                                <div className="flex flex-col">
+                                    <span className="text-xs text-green-400">💵 Saldo Tunai</span>
+                                    <span className="text-[10px] text-green-500/60">({trxCounts.cash} Trx)</span>
+                                </div>
+                                <span className="font-bold text-green-400 text-lg">
+                                    {allowCashView ? formatCurrency(cashDrawer.totalCash) : <span className="tracking-widest font-mono">Rp ••••••</span>}
+                                </span>
                             </div>
+
+                            {/* Saldo Non-Tunai */}
                             <div className="flex justify-between items-center p-2 rounded-lg bg-purple-500/10 border border-purple-500/20">
-                                <span className="text-xs text-purple-400">💳 Non-Tunai</span>
-                                <span className="font-bold text-purple-400">{formatCurrency(cashDrawer.nonCash)}</span>
+                                <div className="flex flex-col">
+                                    <span className="text-xs text-purple-400">💳 Non-Tunai</span>
+                                    <span className="text-[10px] text-purple-500/60">({trxCounts.nonCash} Trx)</span>
+                                </div>
+                                <span className="font-bold text-purple-400">
+                                    {allowNonCashView ? formatCurrency(cashDrawer.nonCash) : <span className="tracking-widest font-mono">Rp ••••••</span>}
+                                </span>
+                            </div>
+
+                            {/* TOTAL ASET (Strict Logic: Both must be TRUE) */}
+                            <div className="flex justify-between items-center p-2 rounded-lg bg-white/5 border border-white/10 mt-2">
+                                <span className="text-xs text-gray-300 font-bold">💰 Total Aset</span>
+                                <span className={`font-bold ${allowCashView && allowNonCashView ? 'text-white' : 'text-gray-500'}`}>
+                                    {(allowCashView && allowNonCashView)
+                                        ? formatCurrency((cashDrawer.totalCash || 0) + (cashDrawer.nonCash || 0))
+                                        : <span className="tracking-widest font-mono">Rp ••••••</span>
+                                    }
+                                </span>
                             </div>
                         </div>
+
                         <div className="mt-3 pt-2 border-t border-white/10 text-xs text-gray-500 text-center">
                             Update: {new Date().toLocaleTimeString('id-ID')}
                         </div>
                     </div>
-                )
-            }
+                )}
+
+                {/* 2. Floating Action Button Group */}
+                <div className="flex items-center gap-2">
+                    {/* Eye Toggle (Only if FULL ACCESS) */}
+                    {canToggleVisibility && (
+                        <button
+                            onClick={() => setIsFloatingBalanceVisible(!isFloatingBalanceVisible)}
+                            className="w-10 h-10 rounded-full bg-gray-800 text-gray-400 hover:text-white hover:bg-gray-700 flex items-center justify-center shadow-lg transition-all"
+                            title={isFloatingBalanceVisible ? "Sembunyikan Saldo" : "Tampilkan Saldo"}
+                        >
+                            {isFloatingBalanceVisible ? '👁️' : '🙈'}
+                        </button>
+                    )}
+
+                    {/* Main Green Trigger Button */}
+                    <button
+                        onClick={() => setShowCashDrawer(!showCashDrawer)}
+                        className="h-12 px-4 rounded-full bg-green-500 hover:bg-green-600 text-white shadow-lg shadow-green-500/30 flex items-center gap-2 transition-all transform hover:scale-105 active:scale-95"
+                    >
+                        <span className="text-xl">💰</span>
+                        <div className="flex flex-col items-start leading-none">
+                            <span className="font-bold text-sm">
+                                {/* Floating Text Logic: Default Sensor, Toggle to Real */}
+                                {(canToggleVisibility && isFloatingBalanceVisible)
+                                    ? formatCurrency(cashDrawer.totalCash) // Show Real
+                                    : 'Rp ••••••' // Show Sensor
+                                }
+                            </span>
+                            <span className="text-[10px] opacity-80">
+                                ({trxCounts.total} Trx)
+                            </span>
+                        </div>
+                    </button>
+                </div>
+            </div>
 
             {/* Payment Confirmation Modal */}
             {

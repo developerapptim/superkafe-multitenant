@@ -187,6 +187,10 @@ exports.createOrder = async (req, res) => {
                 if (!activeShift.orders) activeShift.orders = [];
                 activeShift.orders.push(newOrder.id);
 
+                // Link Order to Shift ID
+                newOrder.shiftId = activeShift.id;
+                await newOrder.save(); // Save again with shiftId
+
                 await activeShift.save();
                 console.log("✅ Shift Updated");
             } else {
@@ -341,6 +345,9 @@ exports.payOrder = async (req, res) => {
         // 2. Update Shift (Record Sales)
         const activeShift = await Shift.findOne({ endTime: null });
         if (activeShift) {
+            // Link Order to Shift ID (for reporting)
+            order.shiftId = activeShift.id;
+
             if (order.paymentMethod === 'cash') {
                 activeShift.cashSales = (activeShift.cashSales || 0) + order.total;
                 activeShift.currentCash = (activeShift.currentCash || 0) + order.total;
