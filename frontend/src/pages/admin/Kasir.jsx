@@ -1617,13 +1617,18 @@ function Kasir() {
                                 ✕
                             </button>
                             <img
-                                src={selectedProof.startsWith('http') ? selectedProof : `${(import.meta.env.VITE_API_URL || 'https://superkafe-production.up.railway.app/api').replace('/api', '')}${selectedProof}`}
+                                src={selectedProof.startsWith('http') ? selectedProof : `${import.meta.env.DEV ? `http://${window.location.hostname}:3000` : 'https://superkafe-production.up.railway.app'}${selectedProof}`}
                                 alt="Bukti Pembayaran"
                                 className="w-full h-full object-contain rounded-xl shadow-2xl border border-white/10 bg-black/50"
+                                onError={(e) => {
+                                    e.target.onerror = null;
+                                    e.target.src = 'https://placehold.co/600x400/1a1a2e/FFF?text=Image+Not+Found';
+                                    toast.error('Gagal memuat gambar. File mungkin hilang dari server.');
+                                }}
                             />
                             <div className="mt-4 flex gap-3">
                                 <a
-                                    href={selectedProof.startsWith('http') ? selectedProof : `${(import.meta.env.VITE_API_URL || 'https://superkafe-production.up.railway.app/api').replace('/api', '')}${selectedProof}`}
+                                    href={selectedProof.startsWith('http') ? selectedProof : `${import.meta.env.DEV ? `http://${window.location.hostname}:3000` : 'https://superkafe-production.up.railway.app'}${selectedProof}`}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors"

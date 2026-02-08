@@ -2,7 +2,7 @@ import axios from 'axios';
 
 // Create axios instance with dynamic baseURL for development & production
 const api = axios.create({
-    baseURL: import.meta.env.VITE_API_URL || 'https://superkafe-production.up.railway.app/api',
+    baseURL: import.meta.env.VITE_API_URL || (import.meta.env.DEV ? `http://${window.location.hostname}:3000/api` : 'https://superkafe-production.up.railway.app/api'),
     withCredentials: true, // Required for cookies/sessions across domains
     headers: {
         'Content-Type': 'application/json',

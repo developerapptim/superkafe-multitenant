@@ -172,9 +172,41 @@ exports.createOrder = async (req, res) => {
             }
         }
 
-        // Attach Payment Proof
+        // Attach Payment Proof (Cloudinary Stream Upload)
         if (req.file) {
-            orderData.paymentProofImage = `/uploads/payments/${req.file.filename}`;
+            const cloudinary = require('../utils/cloudinary');
+            const streamUpload = (buffer) => {
+                return new Promise((resolve, reject) => {
+                    const stream = cloudinary.uploader.upload_stream(
+                        {
+                            folder: 'superkafe-payments',
+                            resource_type: 'image',
+                            transformation: [
+                                { width: 800, crop: 'limit', quality: 'auto', fetch_format: 'auto' }
+                            ]
+                        },
+                        (error, result) => {
+                            if (result) {
+                                resolve(result);
+                            } else {
+                                reject(error);
+                            }
+                        }
+                    );
+                    stream.write(buffer);
+                    stream.end();
+                });
+            };
+
+            try {
+                console.log("☁️ Uploading payment proof to Cloudinary...");
+                const result = await streamUpload(req.file.buffer);
+                console.log("✅ Cloudinary Upload Success:", result.secure_url);
+                orderData.paymentProofImage = result.secure_url;
+            } catch (uploadErr) {
+                console.error("❌ Cloudinary Upload Error:", uploadErr);
+                return res.status(500).json({ error: 'Failed to upload payment proof image' });
+            }
         }
 
         // GENERATE ORDER ID

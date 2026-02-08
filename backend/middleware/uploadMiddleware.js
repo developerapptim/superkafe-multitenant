@@ -16,14 +16,8 @@ const excelDir = path.join(publicDir, 'uploads', 'imports');
 });
 
 // 1. Payment Proof Storage
-const paymentStorage = multer.diskStorage({
-    destination: (req, file, cb) => cb(null, uploadsDir),
-    filename: (req, file, cb) => {
-        const ext = path.extname(file.originalname);
-        const uniqueName = `payment-${Date.now()}-${Math.random().toString(36).substr(2, 9)}${ext}`;
-        cb(null, uniqueName);
-    }
-});
+// 1. Payment Proof Storage (Memory Storage for Cloudinary)
+const paymentStorage = multer.memoryStorage();
 exports.uploadPayment = multer({
     storage: paymentStorage,
     limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
