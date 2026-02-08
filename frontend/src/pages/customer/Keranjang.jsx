@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useOutletContext } from 'react-router-dom';
 import { createPortal } from 'react-dom';
 import CustomSelect from '../../components/CustomSelect';
@@ -37,6 +37,46 @@ function Keranjang() {
     const [loading, setLoading] = useState(false);
     const [orderSuccess, setOrderSuccess] = useState(false);
     const [submittedOrder, setSubmittedOrder] = useState(null);
+
+    // Smart Autocomplete State
+    const [historyOptions, setHistoryOptions] = useState([]);
+
+    // Load history on mount
+    useEffect(() => {
+        try {
+            const history = JSON.parse(localStorage.getItem('customer_history') || '[]');
+            setHistoryOptions(history);
+
+            // Auto-fill if only one entry exists (Convenience)
+            if (history.length === 1 && !customerName && !phone) {
+                setCustomerName(history[0].name);
+                setPhone(history[0].phone);
+            }
+        } catch (e) {
+            console.error("Failed to load history", e);
+        }
+    }, []);
+
+    // Helper: Save unique history
+    const saveToHistory = (name, phoneNumber) => {
+        try {
+            let history = JSON.parse(localStorage.getItem('customer_history') || '[]');
+
+            // Remove duplicates (same name AND phone)
+            history = history.filter(h => !(h.name === name && h.phone === phoneNumber));
+
+            // Add new entry to top
+            history.unshift({ name, phone: phoneNumber });
+
+            // Limit to 5
+            if (history.length > 5) history = history.slice(0, 5);
+
+            localStorage.setItem('customer_history', JSON.stringify(history));
+            setHistoryOptions(history);
+        } catch (e) {
+            console.error("Failed to save history", e);
+        }
+    };
 
     // Payment State
     const [paymentMethod, setPaymentMethod] = useState('cash'); // cash, qris, bank, ewallet
@@ -188,6 +228,9 @@ function Keranjang() {
         const currentHistory = JSON.parse(localStorage.getItem('myOrderHistory') || '[]');
         currentHistory.unshift(savedOrder); // Add new order to top
         localStorage.setItem('myOrderHistory', JSON.stringify(currentHistory));
+
+        // SMART HISTORY: Save name/phone for autocomplete
+        saveToHistory(customerName, formatPhoneNumber(phone));
 
         clearCart();
     };
@@ -504,21 +547,35 @@ function Keranjang() {
                     <label className="block text-sm text-gray-400 mb-1">Nama Pemesan <span className="text-red-400">*</span></label>
                     <input
                         type="text"
+                        list="name-options"
                         value={customerName}
                         onChange={(e) => setCustomerName(e.target.value)}
-                        className="w-full px-4 py-2 rounded-lg bg-white/5 border border-purple-500/30 text-white"
+                        className="w-full px-4 py-2 rounded-lg bg-white/5 border border-purple-500/30 text-white placeholder-gray-500 focus:bg-black/40 focus:border-purple-500 transition-all outline-none"
                         placeholder="Masukkan nama Anda"
+                        autoComplete="off"
                     />
+                    <datalist id="name-options">
+                        {historyOptions.map((opt, idx) => (
+                            <option key={idx} value={opt.name} />
+                        ))}
+                    </datalist>
                 </div>
                 <div>
                     <label className="block text-sm text-gray-400 mb-1">Nomor WhatsApp/HP <span className="text-red-400">*</span></label>
                     <input
                         type="tel"
+                        list="phone-options"
                         value={phone}
                         onChange={(e) => setPhone(e.target.value)}
-                        className="w-full px-4 py-2 rounded-lg bg-white/5 border border-purple-500/30 text-white"
+                        className="w-full px-4 py-2 rounded-lg bg-white/5 border border-purple-500/30 text-white placeholder-gray-500 focus:bg-black/40 focus:border-purple-500 transition-all outline-none"
                         placeholder="Contoh: 08123456789"
+                        autoComplete="off"
                     />
+                    <datalist id="phone-options">
+                        {historyOptions.map((opt, idx) => (
+                            <option key={idx} value={opt.phone}>{opt.name}</option>
+                        ))}
+                    </datalist>
                     <p className="text-xs text-gray-500 mt-1">Nomor ini digunakan untuk konfirmasi pesanan & poin loyalty.</p>
                 </div>
             </div>
