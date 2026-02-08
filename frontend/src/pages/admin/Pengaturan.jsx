@@ -106,7 +106,11 @@ function Pengaturan() {
         const toastId = toast.loading('Mengupload suara...');
         try {
             const res = await settingsAPI.uploadSound(formData);
+
+            // Backend returns full URL or relative path depending on env.
+            // We store it as is.
             setSettings({ ...settings, notificationSoundUrl: res.data.soundUrl });
+
             toast.success('Suara berhasil diupload!', { id: toastId });
         } catch (err) {
             console.error('Error upload sound:', err);
@@ -116,7 +120,22 @@ function Pengaturan() {
 
     const handleTestSound = () => {
         if (settings.notificationSoundUrl) {
-            new Audio(settings.notificationSoundUrl).play().catch(e => toast.error('Gagal memutar suara: ' + e.message));
+            let soundUrl = settings.notificationSoundUrl;
+
+            // If URL is relative (starts with /), prepend API base URL (minus /api)
+            if (soundUrl.startsWith('/')) {
+                // Get API URL from env or default
+                const apiUrl = import.meta.env.VITE_API_URL || 'https://superkafe-production.up.railway.app/api';
+                // Remove '/api' from the end to get base URL
+                const baseUrl = apiUrl.replace(/\/api$/, '');
+                soundUrl = `${baseUrl}${soundUrl}`;
+            }
+
+            console.log('Testing sound URL:', soundUrl);
+            new Audio(soundUrl).play().catch(e => {
+                console.error('Play error:', e);
+                toast.error('Gagal memutar suara: ' + e.message);
+            });
         } else {
             toast.error('Belum ada suara notifikasi');
         }
