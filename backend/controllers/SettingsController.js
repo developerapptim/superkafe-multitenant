@@ -116,19 +116,17 @@ exports.uploadSound = async (req, res) => {
             return res.status(400).json({ error: 'No sound file uploaded' });
         }
 
-        // URL to access the file
-        // Assuming server.js serves /uploads static folder
-        // The file is saved in public/uploads/sounds (we will configure this in routes)
-        const soundUrl = `${process.env.API_URL || ''}/uploads/sounds/${req.file.filename}`;
+        // Convert buffer to Base64 Data URI
+        const base64Audio = `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`;
 
         // Update setting
         await Setting.findOneAndUpdate(
-            { key: 'notificationSoundUrl' },
-            { $set: { value: soundUrl, updatedAt: new Date() } },
+            { key: 'notificationSoundUrl' }, // We keep the key name for compatibility
+            { $set: { value: base64Audio, updatedAt: new Date() } },
             { upsert: true, new: true }
         );
 
-        res.json({ success: true, soundUrl });
+        res.json({ success: true, soundUrl: base64Audio });
     } catch (err) {
         console.error('Upload sound error:', err);
         res.status(500).json({ error: 'Server error during upload' });
