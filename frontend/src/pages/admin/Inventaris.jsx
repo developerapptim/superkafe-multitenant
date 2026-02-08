@@ -1,9 +1,208 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import useSWR from 'swr';
 import toast from 'react-hot-toast';
 import Swal from 'sweetalert2';
 import api, { inventoryAPI, settingsAPI } from '../../services/api';
+
+const TruncatedValue = ({ value, colorClass }) => {
+    const [isOpen, setIsOpen] = useState(false);
+    const [coords, setCoords] = useState({ top: 0, left: 0 });
+    const containerRef = useRef(null);
+
+    useEffect(() => {
+        if (isOpen && containerRef.current) {
+            const updatePosition = () => {
+                const rect = containerRef.current.getBoundingClientRect();
+                setCoords({
+                    top: rect.top - 8, // Just above the element
+                    left: rect.left + (rect.width / 2) // Center horizontally
+                });
+            };
+
+            updatePosition();
+            // Optional: update on scroll/resize for better UX if they don't close immediately
+            // But closing on scroll is safer and easier.
+        }
+    }, [isOpen]);
+
+    useEffect(() => {
+        if (!isOpen) return;
+
+        const timer = setTimeout(() => setIsOpen(false), 5000);
+
+        const handleInteraction = (e) => {
+            // Close if clicking anywhere, including the popup itself (user said "user mengetuk yang lain", but clicking popup to dismiss is also standard)
+            // But we ignore the initial click on the trigger (containerRef) which toggles it.
+            if (containerRef.current && !containerRef.current.contains(e.target)) {
+                setIsOpen(false);
+            }
+        };
+
+        const handleScroll = () => setIsOpen(false);
+
+        document.addEventListener('mousedown', handleInteraction);
+        document.addEventListener('touchstart', handleInteraction);
+        window.addEventListener('scroll', handleScroll, true);
+        window.addEventListener('resize', handleScroll);
+
+        return () => {
+            clearTimeout(timer);
+            document.removeEventListener('mousedown', handleInteraction);
+            document.removeEventListener('touchstart', handleInteraction);
+            window.removeEventListener('scroll', handleScroll, true);
+            window.removeEventListener('resize', handleScroll);
+        };
+    }, [isOpen]);
+
+    return (
+        <>
+            <p
+                ref={containerRef}
+                className={`text-lg md:text-xl font-bold truncate cursor-pointer select-none active:scale-95 transition-transform ${colorClass}`}
+                onClick={(e) => {
+                    e.stopPropagation(); // Prevent immediate closing
+                    setIsOpen(!isOpen);
+                }}
+            >
+                {value}
+            </p>
+
+            {/* Popup via Portal to escape parent clipping */}
+            {isOpen && createPortal(
+                <div
+                    className="fixed z-[9999] pointer-events-none"
+                    style={{
+                        top: coords.top,
+                        left: coords.left,
+                        transform: 'translate(-50%, -100%)'
+                    }}
+                >
+                    <div className="bg-[#151235] border border-purple-500/50 rounded-xl shadow-[0_10px_40px_-10px_rgba(168,85,247,0.4)] px-4 py-3 text-sm md:text-base font-bold text-white relative animate-in fade-in zoom-in-95 slide-in-from-bottom-2 duration-200 origin-bottom select-none">
+                        <span className="whitespace-nowrap">{value}</span>
+                        {/* Down Arrow */}
+                        <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-[#151235] rotate-45 border-r border-b border-purple-500/50"></div>
+                    </div>
+                </div>,
+                document.body
+            )}
+        </>
+    );
+};
+
+// Custom Dropdown for Status Filter
+// Custom Dropdown for Status Filter
+const StatusFilterDropdown = ({ currentFilter, onFilterChange }) => {
+    const [isOpen, setIsOpen] = useState(false);
+    const containerRef = useRef(null);
+    const [coords, setCoords] = useState({ top: 0, left: 0, width: 0 });
+
+    const options = [
+        { value: 'all', label: 'Semua Status', color: 'text-gray-300', icon: '📋' },
+        { value: 'Aman', label: 'Aman', color: 'text-green-400', icon: '✅' },
+        { value: 'Rendah', label: 'Rendah', color: 'text-yellow-400', icon: '⚠️' },
+        { value: 'Habis', label: 'Habis', color: 'text-red-400', icon: '❌' }
+    ];
+
+    const selectedOption = options.find(opt => opt.value === currentFilter) || options[0];
+
+    // Helper to update coords
+    const updatePosition = () => {
+        if (containerRef.current) {
+            const rect = containerRef.current.getBoundingClientRect();
+            setCoords({
+                top: rect.bottom + window.scrollY + 8, // 8px gap
+                left: rect.left + window.scrollX,
+                width: rect.width
+            });
+        }
+    };
+
+    useEffect(() => {
+        if (isOpen) {
+            updatePosition();
+            window.addEventListener('resize', updatePosition);
+            window.addEventListener('scroll', updatePosition, true); // Capture scroll
+        }
+        return () => {
+            window.removeEventListener('resize', updatePosition);
+            window.removeEventListener('scroll', updatePosition, true);
+        };
+    }, [isOpen]);
+
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (containerRef.current && !containerRef.current.contains(event.target)) {
+                // Check if clicking inside the portal (we can't easily check ref inside portal from here without another ref)
+                // But typically, the portal is outside. 
+                // Easier way: The backdrop usage in portal or checking event target against portal.
+                // Simple workaround: We will use a transparent fixed backdrop in the portal.
+                setIsOpen(false);
+            }
+        };
+        // Only if NOT open, because if open, the portal's backdrop handles it? 
+        // Actually, let's stick to the backdrop pattern for simplicity and robustness.
+        // So we don't need this complex listener if we use a backdrop.
+    }, []);
+
+    return (
+        <div className="relative min-w-[180px]" ref={containerRef}>
+            <button
+                onClick={() => setIsOpen(!isOpen)}
+                className="w-full px-4 py-2.5 rounded-lg bg-[#1e1e2d] border border-purple-500/30 text-white flex items-center justify-between focus:outline-none focus:border-purple-500 hover:bg-white/5 transition-all"
+            >
+                <div className="flex items-center gap-2">
+                    <span>{selectedOption.icon}</span>
+                    <span className={`${selectedOption.color} font-medium`}>{selectedOption.label}</span>
+                </div>
+                <svg
+                    className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                </svg>
+            </button>
+
+            {/* Dropdown Menu via Portal */}
+            {isOpen && createPortal(
+                <>
+                    {/* Transparent Backdrop for click-outside */}
+                    <div className="fixed inset-0 z-[9998]" onClick={() => setIsOpen(false)}></div>
+
+                    <div
+                        className="fixed z-[9999] bg-[#1e1e2d] border border-purple-500/30 rounded-xl shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-100"
+                        style={{
+                            top: coords.top,
+                            left: coords.left,
+                            width: coords.width
+                        }}
+                    >
+                        {options.map((option) => (
+                            <button
+                                key={option.value}
+                                onClick={() => {
+                                    onFilterChange(option.value);
+                                    setIsOpen(false);
+                                }}
+                                className={`w-full text-left px-4 py-3 flex items-center gap-2 hover:bg-white/5 transition-colors ${currentFilter === option.value ? 'bg-purple-500/20' : ''
+                                    }`}
+                            >
+                                <span>{option.icon}</span>
+                                <span className={`${option.color} font-medium`}>{option.label}</span>
+                                {currentFilter === option.value && (
+                                    <span className="ml-auto text-purple-400">✓</span>
+                                )}
+                            </button>
+                        ))}
+                    </div>
+                </>,
+                document.body
+            )}
+        </div>
+    );
+};
 
 const fetcher = url => api.get(url).then(res => res.data); // Added fetcher
 
@@ -23,6 +222,7 @@ function Inventaris() {
     const [error, setError] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
     const [activeTab, setActiveTab] = useState('bahan');
+    const [visibleIngredients, setVisibleIngredients] = useState(20); // Pagination state
 
     // Stats
     const [stats, setStats] = useState({
@@ -65,6 +265,17 @@ function Inventaris() {
     const [activeTooltipId, setActiveTooltipId] = useState(null);
     const [showUnitsModal, setShowUnitsModal] = useState(false);
     const [newUnitName, setNewUnitName] = useState('');
+
+    // Filter & Restock State (Moved to top)
+    const [filterStatus, setFilterStatus] = useState('all'); // 'all', 'Aman', 'Rendah', 'Habis'
+    const [showRestockModal, setShowRestockModal] = useState(false);
+    const [isUnitDropdownOpen, setIsUnitDropdownOpen] = useState(false);
+    const [restockData, setRestockData] = useState({
+        amount: '',
+        unitPrice: '',
+        totalPrice: '',
+        conversionRate: 1
+    });
 
     // Top Usage State
     const [topUsage, setTopUsage] = useState([]);
@@ -184,10 +395,27 @@ function Inventaris() {
         }
     };
 
+    // Get stock status
+    const getStockStatus = (item) => {
+        if (item.stok <= 0) return { color: 'red', text: 'Habis' };
+        if (item.stok <= item.stok_min) return { color: 'yellow', text: 'Rendah' };
+        return { color: 'green', text: 'Aman' };
+    };
+
     // Filter ingredients
-    const filteredItems = ingredients.filter(item =>
-        item.nama.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    const filteredItems = ingredients.filter(item => {
+        const matchesSearch = item.nama.toLowerCase().includes(searchTerm.toLowerCase());
+        const status = getStockStatus(item);
+        const matchesStatus = filterStatus === 'all' || status.text === filterStatus;
+        return matchesSearch && matchesStatus;
+    });
+
+    const displayedItems = filteredItems.slice(0, visibleIngredients);
+    const hasMoreItems = visibleIngredients < filteredItems.length;
+
+    const loadMoreIngredients = () => {
+        setVisibleIngredients(prev => prev + 20);
+    };
 
     // Format currency
     const formatCurrency = (value) => {
@@ -217,12 +445,7 @@ function Inventaris() {
         return item.harga_beli;
     };
 
-    // Get stock status
-    const getStockStatus = (item) => {
-        if (item.stok <= 0) return { color: 'red', text: 'Habis' };
-        if (item.stok <= item.stok_min) return { color: 'yellow', text: 'Rendah' };
-        return { color: 'green', text: 'Aman' };
-    };
+
 
     // Open add modal
     const openAddModal = () => {
@@ -286,15 +509,7 @@ function Inventaris() {
         }
     };
 
-    // Restock State
-    const [showRestockModal, setShowRestockModal] = useState(false);
-    const [isUnitDropdownOpen, setIsUnitDropdownOpen] = useState(false);
-    const [restockData, setRestockData] = useState({
-        amount: '',
-        unitPrice: '',
-        totalPrice: '',
-        conversionRate: 1
-    });
+
 
     const openRestockModal = (item) => {
         setEditingItem(item);
@@ -603,54 +818,62 @@ function Inventaris() {
                     <>
                         <div className="glass rounded-xl p-3 md:p-4">
                             <p className="text-[10px] md:text-xs text-gray-400">Nilai Aset Stok</p>
-                            <p className="text-lg md:text-xl font-bold text-green-400 truncate">{formatCurrency(stats.assetValue)}</p>
+                            <TruncatedValue value={formatCurrency(stats.assetValue)} colorClass="text-green-400" />
                         </div>
                         <div className="glass rounded-xl p-3 md:p-4">
                             <p className="text-[10px] md:text-xs text-gray-400">Nilai + PPN</p>
-                            <p className="text-lg md:text-xl font-bold text-purple-400 truncate">{formatCurrency(stats.assetWithPPN)}</p>
+                            <TruncatedValue value={formatCurrency(stats.assetWithPPN)} colorClass="text-purple-400" />
                         </div>
                     </>
                 )}
             </div>
 
             {/* Tab Navigation */}
-            <div className="flex gap-2">
-                <button
-                    onClick={() => setActiveTab('bahan')}
-                    className={`px-4 py-2 rounded-lg text-sm transition-all ${activeTab === 'bahan'
-                        ? 'bg-gradient-to-r from-purple-500 to-blue-500'
-                        : 'bg-white/10 hover:bg-white/20'
-                        }`}
-                >
-                    📋 Master Bahan
-                </button>
-                <button
-                    onClick={() => setActiveTab('opname')}
-                    className={`px-4 py-2 rounded-lg text-sm transition-all ${activeTab === 'opname'
-                        ? 'bg-gradient-to-r from-purple-500 to-blue-500'
-                        : 'bg-white/10 hover:bg-white/20'
-                        }`}
-                >
-                    📝 Stock Opname
-                </button>
-                <button
-                    onClick={() => setActiveTab('history')}
-                    className={`px-4 py-2 rounded-lg text-sm transition-all ${activeTab === 'history'
-                        ? 'bg-gradient-to-r from-purple-500 to-blue-500'
-                        : 'bg-white/10 hover:bg-white/20'
-                        }`}
-                >
-                    📜 Riwayat Stok
-                </button>
+            <div className="mb-6 transition-all duration-300">
+                <div className="flex gap-2">
+                    <button
+                        onClick={() => setActiveTab('bahan')}
+                        className={`flex-1 py-3 px-2 rounded-xl text-xs md:text-sm transition-all flex flex-col items-center justify-center gap-1 ${activeTab === 'bahan'
+                            ? 'bg-gradient-to-br from-purple-500 to-blue-600 shadow-lg shadow-purple-500/20 transform scale-105'
+                            : 'bg-white/5 hover:bg-white/10 border border-white/5 hover:border-white/10'
+                            }`}
+                    >
+                        <span className="text-xl md:text-2xl mb-1">📋</span>
+                        <span className="font-semibold leading-tight">Master</span>
+                        <span className="font-semibold leading-tight">Bahan</span>
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('opname')}
+                        className={`flex-1 py-3 px-2 rounded-xl text-xs md:text-sm transition-all flex flex-col items-center justify-center gap-1 ${activeTab === 'opname'
+                            ? 'bg-gradient-to-br from-purple-500 to-blue-600 shadow-lg shadow-purple-500/20 transform scale-105'
+                            : 'bg-white/5 hover:bg-white/10 border border-white/5 hover:border-white/10'
+                            }`}
+                    >
+                        <span className="text-xl md:text-2xl mb-1">📝</span>
+                        <span className="font-semibold leading-tight">Stock</span>
+                        <span className="font-semibold leading-tight">Opname</span>
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('history')}
+                        className={`flex-1 py-3 px-2 rounded-xl text-xs md:text-sm transition-all flex flex-col items-center justify-center gap-1 ${activeTab === 'history'
+                            ? 'bg-gradient-to-br from-purple-500 to-blue-600 shadow-lg shadow-purple-500/20 transform scale-105'
+                            : 'bg-white/5 hover:bg-white/10 border border-white/5 hover:border-white/10'
+                            }`}
+                    >
+                        <span className="text-xl md:text-2xl mb-1">📜</span>
+                        <span className="font-semibold leading-tight">Riwayat</span>
+                        <span className="font-semibold leading-tight">Stok</span>
+                    </button>
+                </div>
             </div>
 
-            {/* Top Usage Widget (Only on History or Dashboard, but putting here for visibility) */}
-            {topUsage.length > 0 && (
+            {/* Top Usage Widget (Only visible on Master Bahan tab) */}
+            {activeTab === 'bahan' && topUsage.length > 0 && (
                 <div className="glass rounded-xl p-4 border border-purple-500/20 bg-gradient-to-r from-purple-900/20 to-blue-900/20">
                     <h3 className="font-bold mb-3 flex items-center gap-2">
                         🔥 Bahan Terlaris Hari Ini
                     </h3>
-                    <div className="flex flex-wrap gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
                         {topUsage.map((item, idx) => {
                             // Robust Data Fallback
                             const name = item.ingName || item.name || item.nama_bahan || 'Unknown Item';
@@ -664,7 +887,7 @@ function Inventaris() {
                             const qty = Math.abs(Number(usage)).toLocaleString('id-ID', { maximumFractionDigits: 2 });
 
                             return (
-                                <div key={item._id || idx} className="flex items-center gap-3 bg-white/5 px-4 py-2 rounded-lg border border-white/5 min-w-[200px]">
+                                <div key={item._id || idx} className="flex items-center gap-3 bg-white/5 px-4 py-3 rounded-lg border border-white/5 w-full transition-colors hover:bg-white/10">
                                     {/* Ranking Circle */}
                                     <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold shrink-0 ${idx === 0 ? 'bg-yellow-500 text-black shadow-lg shadow-yellow-500/20' :
                                         idx === 1 ? 'bg-gray-400 text-black' :
@@ -674,11 +897,11 @@ function Inventaris() {
                                     </div>
 
                                     {/* Info Text */}
-                                    <div>
-                                        <p className="text-sm">
+                                    <div className="min-w-0 flex-1">
+                                        <p className="text-sm truncate">
                                             <span className="font-bold text-white">{name}</span>
                                         </p>
-                                        <p className="text-xs text-gray-400 mt-0.5">
+                                        <p className="text-xs text-gray-400 mt-0.5 truncate">
                                             Terpakai: <span className="text-gray-200">{qty} {unit}</span>
                                         </p>
                                     </div>
@@ -691,647 +914,826 @@ function Inventaris() {
 
             {/* Tab: Master Bahan */}
             {activeTab === 'bahan' && (
-                <div className="glass rounded-xl overflow-hidden">
-                    <div className="p-4 border-b border-purple-500/20">
-                        <input
-                            type="text"
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            className="w-full px-4 py-2 rounded-lg bg-white/5 border border-purple-500/30 text-white placeholder-gray-400 focus:outline-none focus:border-purple-500"
-                            placeholder="🔍 Cari bahan..."
+                <>
+                    {/* Search Bar & Filter - Shared */}
+
+                    <div className="glass rounded-xl p-4 mb-4 border border-purple-500/20 flex flex-col md:flex-row gap-4">
+                        <div className="relative flex-1">
+                            <input
+                                type="text"
+                                value={searchTerm}
+                                onChange={(e) => {
+                                    setSearchTerm(e.target.value);
+                                    setVisibleIngredients(20); // Reset pagination on search
+                                }}
+                                className="w-full px-4 py-2 pl-10 rounded-lg bg-white/5 border border-purple-500/30 text-white placeholder-gray-400 focus:outline-none focus:border-purple-500"
+                                placeholder="🔍 Cari bahan..."
+                            />
+                            <div className="absolute left-3 top-2.5 text-gray-400">
+                                {/* Icon placeholder if needed, input has padding-left */}
+                            </div>
+                        </div>
+
+                        {/* Status Filter Dropdown */}
+                        <StatusFilterDropdown
+                            currentFilter={filterStatus}
+                            onFilterChange={setFilterStatus}
                         />
                     </div>
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-sm">
-                            <thead className="bg-white/5">
-                                <tr>
-                                    <th className="px-4 py-3 text-left">Nama Bahan</th>
-                                    <th className="px-4 py-3 text-center">Stok</th>
-                                    {isAdmin && (
-                                        <>
-                                            <th className="px-4 py-3 text-right">Harga Beli</th>
-                                            <th className="px-4 py-3 text-right">Modal/Unit</th>
-                                            <th className="px-4 py-3 text-right">Nilai Stok</th>
-                                        </>
-                                    )}
-                                    <th className="px-4 py-3 text-center">Status</th>
-                                    <th className="px-4 py-3 text-center">Aksi</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-purple-500/10">
-                                {filteredItems.length === 0 ? (
-                                    <tr>
-                                        <td colSpan={isAdmin ? 7 : 4} className="px-4 py-8 text-center text-gray-400">
-                                            Tidak ada bahan ditemukan
-                                        </td>
-                                    </tr>
-                                ) : (
-                                    filteredItems.map(item => {
-                                        const status = getStockStatus(item);
-                                        const modalPerUnit = getModalPerUnit(item);
-                                        const stockValue = item.stok * modalPerUnit;
 
-                                        // Robust detection for display
-                                        const isKonversi = (item.isi_prod && Number(item.isi_prod) > 1) || item.use_konversi === true;
-
-                                        return (
-                                            <tr key={item.id} className="hover:bg-white/5">
-                                                <td className="px-4 py-3">
-                                                    <div>
-                                                        <p className="font-medium text-white">{item.nama}</p>
-                                                        {item.type === 'non_physical' && (
-                                                            <span className="mt-1 inline-flex items-center gap-1 bg-purple-500/10 text-purple-300 border border-purple-500/20 text-[10px] font-semibold px-2 py-0.5 rounded-full w-fit">
-                                                                ⚡ Jasa / Non-Stok
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                    {isKonversi && (
-                                                        <div className="text-xs text-gray-400 mt-1">
-                                                            1 {item.satuan_beli} = {item.isi_prod} {item.satuan_prod}
-                                                        </div>
-                                                    )}
-                                                </td>
-                                                <td className={`px-4 py-3 text-center ${item.stok < 0 ? 'text-red-500 font-bold' : ''}`}>
-                                                    {item.type === 'non_physical' ? (
-                                                        <span className="text-xl text-gray-500 font-bold">∞</span>
-                                                    ) : (
-                                                        // Dual-View Logic: Show Buy Unit if conversion exists (isi_prod > 1) and buy unit is defined
-                                                        (item.isi_prod > 1 && item.satuan_beli) ? (
-                                                            <div className="flex flex-col items-center justify-center">
-                                                                <span className="text-sm font-bold text-white">
-                                                                    {parseFloat((item.stok / item.isi_prod).toFixed(2))} <span className="text-sm font-bold text-white-400">{item.satuan_beli}</span>
-                                                                </span>
-                                                                <span className="text-[11px] text-gray-400 mt-0.5">
-                                                                    ({Math.floor(item.stok / item.isi_prod)} {item.satuan_beli} + {(item.stok % item.isi_prod).toFixed(0)} {item.satuan_prod})
-                                                                </span>
-                                                            </div>
-                                                        ) : (
-                                                            <span className="font-bold text-white text-base">
-                                                                {item.stok} <span className="font-normal text-gray-400 text-sm">{item.satuan_prod || item.satuan || 'unit'}</span>
-                                                            </span>
-                                                        )
-                                                    )}
-                                                </td>
-                                                {isAdmin && (
-                                                    <>
-                                                        <td className="px-4 py-3 text-right">
-                                                            <div className="flex items-center justify-end gap-2 relative">
-                                                                <div className="flex flex-col items-end">
-                                                                    <span className="font-medium text-white">
-                                                                        {formatCurrency(modalPerUnit * (isKonversi ? item.isi_prod : 1))}
-                                                                    </span>
-                                                                    <span className="text-[10px] text-gray-500">Avg</span>
-                                                                </div>
-
-                                                                {/* Info Icon - Show only if Last Price exists and differs from Average */}
-                                                                {item.lastBuyPrice && Math.abs(item.lastBuyPrice - (modalPerUnit * (isKonversi ? item.isi_prod : 1))) > 10 && (
-                                                                    <button
-                                                                        className="text-gray-400 hover:text-blue-400 transition-colors focus:outline-none"
-                                                                        onClick={() => {
-                                                                            if (activeTooltipId === item.id) {
-                                                                                setActiveTooltipId(null);
-                                                                            } else {
-                                                                                setActiveTooltipId(item.id);
-                                                                                // Auto-hide after 3 seconds
-                                                                                setTimeout(() => setActiveTooltipId(null), 3000);
-                                                                            }
-                                                                        }}
-                                                                    >
-                                                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                                                        </svg>
-                                                                    </button>
-                                                                )}
-
-                                                                {/* Tooltip Popover */}
-                                                                {activeTooltipId === item.id && (
-                                                                    <div className="absolute right-0 top-full mt-2 z-50 w-48 bg-gray-900/95 backdrop-blur-md border border-white/10 p-3 rounded-lg shadow-xl text-xs text-white transform transition-all animate-in fade-in slide-in-from-top-2">
-                                                                        <p className="font-bold text-gray-400 mb-1 border-b border-white/10 pb-1">Harga Beli Terakhir</p>
-                                                                        <div className="flex justify-between items-center mt-1">
-                                                                            <span className="text-emerald-400 font-mono text-sm">
-                                                                                {item.lastBuyPrice ? formatCurrency(item.lastBuyPrice) : '-'}
-                                                                            </span>
-                                                                        </div>
-                                                                        {item.lastBuyDate && (
-                                                                            <p className="text-[10px] text-gray-500 mt-1 text-right">
-                                                                                {new Date(item.lastBuyDate).toLocaleDateString('id-ID')}
-                                                                            </p>
-                                                                        )}
-                                                                        <div className="absolute -top-2 right-2 w-0 h-0 border-l-8 border-r-8 border-b-8 border-l-transparent border-r-transparent border-b-gray-900/95"></div>
-                                                                    </div>
-                                                                )}
-                                                            </div>
-                                                        </td>
-                                                        <td className="px-4 py-3 text-right">{formatCurrency(modalPerUnit)}</td>
-                                                        <td className="px-4 py-3 text-right">{formatCurrency(stockValue)}</td>
-                                                    </>
-                                                )}
-                                                <td className="px-4 py-3 text-center">
-                                                    {item.type === 'non_physical' ? (
-                                                        <span className="px-2 py-1 rounded-full text-xs bg-gray-500/20 text-gray-400">
-                                                            Info
-                                                        </span>
-                                                    ) : (
-                                                        <span className={`px-2 py-1 rounded-full text-xs bg-${status.color}-500/20 text-${status.color}-400`}>
-                                                            {status.text}
-                                                        </span>
-                                                    )}
-                                                </td>
-                                                <td className="px-4 py-3 text-center">
-                                                    {canEdit ? (
-                                                        <div className="flex items-center justify-center gap-2">
-                                                            <button
-                                                                onClick={() => openHistoryModal(item)}
-                                                                className="p-2 rounded bg-amber-500/20 text-amber-400 hover:bg-amber-500/30 transition-colors"
-                                                                title="Riwayat Stok & Harga"
-                                                            >
-                                                                🕒
-                                                            </button>
-                                                            <button
-                                                                onClick={() => openRestockModal(item)}
-                                                                className="p-2 rounded bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 transition-colors"
-                                                                title="Restock (Beli)"
-                                                            >
-                                                                📥
-                                                            </button>
-                                                            <button
-                                                                onClick={() => openEditModal(item)}
-                                                                className="p-2 rounded bg-orange-500/20 text-orange-400 hover:bg-orange-500/30 transition-colors"
-                                                                title="Edit"
-                                                            >
-                                                                ✏️
-                                                            </button>
-                                                            <button
-                                                                onClick={() => handleDelete(item.id)}
-                                                                className="p-2 rounded bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-colors"
-                                                                title="Hapus"
-                                                            >
-                                                                🗑️
-                                                            </button>
-                                                        </div>
-                                                    ) : (
-                                                        <span className="text-xs text-gray-500 italic">Read Only</span>
-                                                    )}
-                                                </td>
-                                            </tr>
-                                        );
-                                    })
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            )}
-
-            {/* Tab: Stock Opname */}
-            {activeTab === 'opname' && (
-                <div className="glass rounded-xl p-4">
-                    <h3 className="font-bold mb-4">📝 Rekonsiliasi Stok</h3>
-                    <p className="text-sm text-gray-400 mb-4">
-                        Bandingkan stok sistem dengan stok fisik. Selisih akan dicatat dan disesuaikan.
-                    </p>
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-sm">
-                            <thead className="bg-white/5">
-                                <tr>
-                                    <th className="px-4 py-3 text-left">Nama Bahan</th>
-                                    <th className="px-4 py-3 text-right">Stok Sistem</th>
-                                    <th className="px-4 py-3 text-right">Stok Fisik</th>
-                                    <th className="px-4 py-3 text-right">Selisih</th>
-                                    {isAdmin && <th className="px-4 py-3 text-right">Nilai Selisih (Rp)</th>}
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-purple-500/10">
-                                {opnameData.map(item => (
-                                    <tr key={item.id} className="hover:bg-white/5">
-                                        <td className="px-4 py-3">{item.nama}</td>
-                                        <td className="px-4 py-3 text-right">{item.stokSistem}</td>
-                                        <td className="px-4 py-3 text-right">
-                                            <input
-                                                type="number"
-                                                value={item.stokFisik}
-                                                onChange={(e) => handleOpnameChange(item.id, e.target.value)}
-                                                className="w-20 px-2 py-1 rounded bg-white/10 border border-purple-500/30 text-right text-white"
-                                            />
-                                        </td>
-                                        <td className={`px-4 py-3 text-right font-bold ${item.selisih > 0 ? 'text-green-400' :
-                                            item.selisih < 0 ? 'text-red-400' : ''
-                                            }`}>
-                                            {item.selisih > 0 ? '+' : ''}{item.selisih}
-                                        </td>
+                    {/* Desktop View: Table */}
+                    <div className="hidden md:block glass rounded-xl overflow-hidden border border-purple-500/20">
+                        <div className="max-h-[calc(100vh-240px)] overflow-y-auto overflow-x-auto [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-white/10 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-white/20">
+                            <table className="w-full text-sm relative border-collapse">
+                                <thead>
+                                    <tr className="border-b border-gray-700">
+                                        <th className="sticky top-0 z-20 px-4 py-3 text-left font-semibold text-gray-200 bg-[#1e1e2d]">Nama Bahan</th>
+                                        <th className="sticky top-0 z-20 px-4 py-3 text-center font-semibold text-gray-200 bg-[#1e1e2d]">Stok</th>
                                         {isAdmin && (
-                                            <td className={`px-4 py-3 text-right ${item.selisih > 0 ? 'text-green-400' :
-                                                item.selisih < 0 ? 'text-red-400' : ''
-                                                }`}>
-                                                {formatCurrency(item.selisih * item.harga)}
-                                            </td>
-                                        )}
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                    <button
-                        onClick={saveOpname}
-                        className="mt-4 px-6 py-2 rounded-lg bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 font-bold"
-                    >
-                        💾 Simpan Opname
-                    </button>
-                </div>
-            )}
-
-            {/* Tab: Riwayat Stok */}
-            {activeTab === 'history' && (
-                <div className="glass rounded-xl overflow-hidden">
-                    <div className="p-4 border-b border-purple-500/20 flex justify-between items-center">
-                        <h3 className="font-bold">📜 Riwayat Pergerakan Stok</h3>
-                    </div>
-                    <StockHistoryTable />
-                </div>
-            )}
-
-            {/* Restock Modal */}
-            {showRestockModal && editingItem && createPortal(
-                <div className="modal-overlay">
-                    <div className="glass rounded-2xl p-6 w-full max-w-lg">
-                        <div className="flex items-center justify-between mb-6">
-                            <h3 className="text-xl font-bold">🛒 Restock: {editingItem.nama}</h3>
-                            <button onClick={() => setShowRestockModal(false)} className="text-gray-400 hover:text-white">✕</button>
-                        </div>
-
-                        <form onSubmit={handleRestockSubmit} className="space-y-4">
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                <div>
-                                    <label className="block text-sm text-gray-400 mb-1">Jumlah Beli ({editingItem.satuan_beli})</label>
-                                    <input
-                                        type="number"
-                                        value={restockData.amount}
-                                        onChange={(e) => handleRestockChange('amount', e.target.value)}
-                                        className="w-full px-4 py-2 rounded-lg bg-white/5 border border-purple-500/30 text-white focus:outline-none focus:border-purple-500"
-                                        placeholder="0"
-                                        required
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm text-gray-400 mb-1">Harga Satuan (Rp)</label>
-                                    <input
-                                        type="number"
-                                        value={restockData.unitPrice}
-                                        onChange={(e) => handleRestockChange('unitPrice', e.target.value)}
-                                        className="w-full px-4 py-2 rounded-lg bg-white/5 border border-purple-500/30 text-white focus:outline-none focus:border-purple-500"
-                                        placeholder="0"
-                                        required
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm text-gray-400 mb-1">Total (Auto)</label>
-                                    <input
-                                        type="number"
-                                        value={restockData.totalPrice}
-                                        onChange={(e) => handleRestockChange('totalPrice', e.target.value)}
-                                        className="w-full px-4 py-2 rounded-lg bg-white/5 border border-purple-500/30 text-gray-400 cursor-not-allowed"
-                                        readOnly
-                                        placeholder="Rp 0"
-                                    />
-                                </div>
-                            </div>
-
-                            {/* Simulation Display */}
-                            {getRestockSimulation() && (
-                                <div className="bg-white/5 p-4 rounded-lg space-y-2 text-sm border border-white/10">
-                                    <h4 className="font-bold text-gray-300 border-b border-white/10 pb-1 mb-2">📊 Simulasi Perhitungan</h4>
-
-                                    <div className="flex justify-between items-center">
-                                        <span>Stok:</span>
-                                        <div className="flex items-center gap-2">
-                                            <span className="text-gray-400">{getRestockSimulation().stockNow}</span>
-                                            <span>→</span>
-                                            <span className="font-bold text-green-400">{getRestockSimulation().stockNew} {editingItem.satuan_prod}</span>
-                                        </div>
-                                    </div>
-
-                                    <div className="flex justify-between items-center">
-                                        <span>HPP (Modal/Unit):</span>
-                                        <div className="flex items-center gap-2">
-                                            <span className="text-gray-400">{formatCurrency(getRestockSimulation().hppNow)}</span>
-                                            <span>→</span>
-                                            <span className={`font-bold ${getRestockSimulation().diff > 0 ? 'text-red-400' : 'text-green-400'}`}>
-                                                {formatCurrency(getRestockSimulation().hppNew)}
-                                            </span>
-                                        </div>
-                                    </div>
-                                    <p className="text-xs text-gray-500 mt-1 italic">
-                                        *Harga modal dihitung ulang rata-rata (Moving Average)
-                                    </p>
-                                </div>
-                            )}
-
-                            <button type="submit" className="w-full py-3 rounded-lg bg-emerald-600 hover:bg-emerald-500 font-bold transition-all shadow-lg active:scale-95">
-                                ✅ Konfirmasi Restock
-                            </button>
-                        </form>
-                    </div>
-                </div>
-                , document.body)}
-
-            {/* Existing Modals */}
-            {/* Existing Modals */}
-            {showModal && createPortal(
-                <div className="modal-overlay">
-                    <div className="glass rounded-2xl p-6 w-full max-w-lg max-h-[90vh] overflow-auto">
-                        <div className="flex items-center justify-between mb-6">
-                            <h3 className="text-xl font-bold">
-                                {editingItem ? '✏️ Edit Bahan' : '➕ Tambah Bahan Baru'}
-                            </h3>
-                            <button
-                                onClick={() => setShowModal(false)}
-                                className="w-8 h-8 rounded-full bg-white/10 hover:bg-red-500/20 flex items-center justify-center text-gray-400 hover:text-red-400"
-                            >
-                                ✕
-                            </button>
-                        </div>
-
-                        <form onSubmit={handleSubmit} className="space-y-4">
-                            {/* Type Selection */}
-                            <div className="flex p-1 bg-white/5 rounded-lg mb-4">
-                                <button
-                                    type="button"
-                                    onClick={() => setFormData({ ...formData, type: 'physical' })}
-                                    className={`flex-1 py-2 text-sm font-medium rounded-md transition-all ${formData.type === 'physical'
-                                        ? 'bg-red-500 text-white shadow-lg'
-                                        : 'text-gray-400 hover:text-white'
-                                        }`}
-                                >
-                                    🔴 Stok Fisik
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => setFormData({ ...formData, type: 'non_physical' })}
-                                    className={`flex-1 py-2 text-sm font-medium rounded-md transition-all ${formData.type === 'non_physical'
-                                        ? 'bg-blue-500 text-white shadow-lg'
-                                        : 'text-gray-400 hover:text-white'
-                                        }`}
-                                >
-                                    🔵 Biaya/Jasa
-                                </button>
-                            </div>
-
-                            <div>
-                                <label className="block text-sm text-gray-400 mb-1">Nama Bahan *</label>
-                                <input
-                                    type="text"
-                                    value={formData.nama}
-                                    onChange={(e) => setFormData({ ...formData, nama: e.target.value })}
-                                    className="w-full px-4 py-2 rounded-lg bg-white/5 border border-purple-500/30 text-white focus:outline-none focus:border-purple-500"
-                                    placeholder="Contoh: Kopi Bubuk Robusta"
-                                    required
-                                />
-                            </div>
-
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                {formData.type === 'physical' ? (
-                                    <div>
-                                        <label className="block text-sm text-gray-400 mb-1">Stok Awal</label>
-                                        <input
-                                            type="number"
-                                            value={formData.stok}
-                                            onChange={(e) => handleNumberChange('stok', e.target.value)}
-                                            className={`w-full px-4 py-2 rounded-lg bg-white/5 border border-purple-500/30 text-white focus:outline-none focus:border-purple-500 ${editingItem ? 'opacity-50 cursor-not-allowed' : ''}`}
-                                            disabled={!!editingItem}
-                                        />
-                                        {editingItem && (
-                                            <p className="text-[10px] text-amber-500 mt-1 italic">
-                                                *Untuk mengubah jumlah stok, gunakan fitur Stock Opname.
-                                            </p>
-                                        )}
-                                    </div>
-                                ) : (
-                                    <div>
-                                        <label className="block text-sm text-gray-400 mb-1 opacity-50">Stok (Auto)</label>
-                                        <input
-                                            type="text"
-                                            value="∞"
-                                            disabled
-                                            className="w-full px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-gray-500 cursor-not-allowed"
-                                        />
-                                    </div>
-                                )}
-                                <div>
-                                    <label className="block text-sm text-gray-400 mb-1">Satuan Beli</label>
-                                    <div className="relative">
-                                        <button
-                                            type="button"
-                                            onClick={() => setIsUnitDropdownOpen(!isUnitDropdownOpen)}
-                                            className="w-full px-4 py-2 rounded-lg bg-white/5 border border-purple-500/30 text-white flex justify-between items-center focus:outline-none focus:border-purple-500 transition-colors hover:bg-white/10"
-                                        >
-                                            <span className={!formData.satuan_beli ? 'text-gray-500' : ''}>
-                                                {formData.satuan_beli || 'Pilih Satuan'}
-                                            </span>
-                                            <svg className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${isUnitDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-                                            </svg>
-                                        </button>
-
-                                        {isUnitDropdownOpen && (
                                             <>
-                                                {/* Backdrop to close on click outside */}
-                                                <div className="fixed inset-0 z-40" onClick={() => setIsUnitDropdownOpen(false)}></div>
-
-                                                {/* Dropdown Menu */}
-                                                <div className="absolute z-50 w-full mt-1 bg-[#1f2937] border border-purple-500/30 rounded-lg shadow-xl max-h-60 overflow-y-auto animate-in fade-in zoom-in-95 duration-100">
-                                                    {units.map(u => (
-                                                        <button
-                                                            key={u}
-                                                            type="button"
-                                                            onClick={() => {
-                                                                setFormData({ ...formData, satuan_beli: u });
-                                                                setIsUnitDropdownOpen(false);
-                                                            }}
-                                                            className={`w-full text-left px-4 py-2 hover:bg-purple-500/20 text-white transition-colors border-b border-white/5 last:border-0 ${formData.satuan_beli === u ? 'bg-purple-500/20 text-purple-400 font-bold' : ''}`}
-                                                        >
-                                                            {u}
-                                                        </button>
-                                                    ))}
-                                                </div>
+                                                <th className="sticky top-0 z-20 px-4 py-3 text-right font-semibold text-gray-200 bg-[#1e1e2d]">Harga Beli</th>
+                                                <th className="sticky top-0 z-20 px-4 py-3 text-right font-semibold text-gray-200 bg-[#1e1e2d]">Modal/Unit</th>
+                                                <th className="sticky top-0 z-20 px-4 py-3 text-right font-semibold text-gray-200 bg-[#1e1e2d]">Nilai Stok</th>
                                             </>
                                         )}
+                                        <th className="sticky top-0 z-20 px-4 py-3 text-center font-semibold text-gray-200 bg-[#1e1e2d]">Status</th>
+                                        <th className="sticky top-0 z-20 px-4 py-3 text-center font-semibold text-gray-200 bg-[#1e1e2d]">Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-purple-500/10">
+                                    {displayedItems.length === 0 ? (
+                                        <tr>
+                                            <td colSpan={isAdmin ? 7 : 4} className="px-4 py-8 text-center text-gray-400">
+                                                Tidak ada bahan ditemukan
+                                            </td>
+                                        </tr>
+                                    ) : (
+                                        displayedItems.map(item => {
+                                            const status = getStockStatus(item);
+                                            const modalPerUnit = getModalPerUnit(item);
+                                            const stockValue = item.stok * modalPerUnit;
+
+                                            // Robust detection for display
+                                            const isKonversi = (item.isi_prod && Number(item.isi_prod) > 1) || item.use_konversi === true;
+
+                                            return (
+                                                <tr key={item.id} className="hover:bg-white/5">
+                                                    <td className="px-4 py-3">
+                                                        <div>
+                                                            <p className="font-medium text-white">{item.nama}</p>
+                                                            {item.type === 'non_physical' && (
+                                                                <span className="mt-1 inline-flex items-center gap-1 bg-purple-500/10 text-purple-300 border border-purple-500/20 text-[10px] font-semibold px-2 py-0.5 rounded-full w-fit">
+                                                                    ⚡ Jasa / Non-Stok
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                        {isKonversi && (
+                                                            <div className="text-xs text-gray-400 mt-1">
+                                                                1 {item.satuan_beli} = {item.isi_prod} {item.satuan_prod}
+                                                            </div>
+                                                        )}
+                                                    </td>
+                                                    <td className={`px-4 py-3 text-center ${item.stok < 0 ? 'text-red-500 font-bold' : ''}`}>
+                                                        {item.type === 'non_physical' ? (
+                                                            <span className="text-xl text-gray-500 font-bold">∞</span>
+                                                        ) : (
+                                                            // Dual-View Logic: Show Buy Unit if conversion exists (isi_prod > 1) and buy unit is defined
+                                                            (item.isi_prod > 1 && item.satuan_beli) ? (
+                                                                <div className="flex flex-col items-center justify-center">
+                                                                    <span className="text-sm font-bold text-white">
+                                                                        {parseFloat((item.stok / item.isi_prod).toFixed(2))} <span className="text-sm font-bold text-white-400">{item.satuan_beli}</span>
+                                                                    </span>
+                                                                    <span className="text-[11px] text-gray-400 mt-0.5">
+                                                                        ({Math.floor(item.stok / item.isi_prod)} {item.satuan_beli} + {(item.stok % item.isi_prod).toFixed(0)} {item.satuan_prod})
+                                                                    </span>
+                                                                </div>
+                                                            ) : (
+                                                                <span className="font-bold text-white text-base">
+                                                                    {item.stok} <span className="font-normal text-gray-400 text-sm">{item.satuan_prod || item.satuan || 'unit'}</span>
+                                                                </span>
+                                                            )
+                                                        )}
+                                                    </td>
+                                                    {isAdmin && (
+                                                        <>
+                                                            <td className="px-4 py-3 text-right">
+                                                                <div className="flex items-center justify-end gap-2 relative">
+                                                                    <div className="flex flex-col items-end">
+                                                                        <span className="font-medium text-white">
+                                                                            {formatCurrency(modalPerUnit * (isKonversi ? item.isi_prod : 1))}
+                                                                        </span>
+                                                                        <span className="text-[10px] text-gray-500">Avg</span>
+                                                                    </div>
+
+                                                                    {/* Info Icon - Show only if Last Price exists and differs from Average */}
+                                                                    {item.lastBuyPrice && Math.abs(item.lastBuyPrice - (modalPerUnit * (isKonversi ? item.isi_prod : 1))) > 10 && (
+                                                                        <button
+                                                                            className="text-gray-400 hover:text-blue-400 transition-colors focus:outline-none"
+                                                                            onClick={() => {
+                                                                                if (activeTooltipId === item.id) {
+                                                                                    setActiveTooltipId(null);
+                                                                                } else {
+                                                                                    setActiveTooltipId(item.id);
+                                                                                    // Auto-hide after 3 seconds
+                                                                                    setTimeout(() => setActiveTooltipId(null), 3000);
+                                                                                }
+                                                                            }}
+                                                                        >
+                                                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                                            </svg>
+                                                                        </button>
+                                                                    )}
+
+                                                                    {/* Tooltip Popover */}
+                                                                    {activeTooltipId === item.id && (
+                                                                        <div className="absolute right-0 top-full mt-2 z-50 w-48 bg-gray-900/95 backdrop-blur-md border border-white/10 p-3 rounded-lg shadow-xl text-xs text-white transform transition-all animate-in fade-in slide-in-from-top-2">
+                                                                            <p className="font-bold text-gray-400 mb-1 border-b border-white/10 pb-1">Harga Beli Terakhir</p>
+                                                                            <div className="flex justify-between items-center mt-1">
+                                                                                <span className="text-emerald-400 font-mono text-sm">
+                                                                                    {item.lastBuyPrice ? formatCurrency(item.lastBuyPrice) : '-'}
+                                                                                </span>
+                                                                            </div>
+                                                                            {item.lastBuyDate && (
+                                                                                <p className="text-[10px] text-gray-500 mt-1 text-right">
+                                                                                    {new Date(item.lastBuyDate).toLocaleDateString('id-ID')}
+                                                                                </p>
+                                                                            )}
+                                                                            <div className="absolute -top-2 right-2 w-0 h-0 border-l-8 border-r-8 border-b-8 border-l-transparent border-r-transparent border-b-gray-900/95"></div>
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            </td>
+                                                            <td className="px-4 py-3 text-right">{formatCurrency(modalPerUnit)}</td>
+                                                            <td className="px-4 py-3 text-right">{formatCurrency(stockValue)}</td>
+                                                        </>
+                                                    )}
+                                                    <td className="px-4 py-3 text-center">
+                                                        {item.type === 'non_physical' ? (
+                                                            <span className="px-2 py-1 rounded-full text-xs bg-gray-500/20 text-gray-400">
+                                                                Info
+                                                            </span>
+                                                        ) : (
+                                                            <span className={`px-2 py-1 rounded-full text-xs bg-${status.color}-500/20 text-${status.color}-400`}>
+                                                                {status.text}
+                                                            </span>
+                                                        )}
+                                                    </td>
+                                                    <td className="px-4 py-3 text-center">
+                                                        {canEdit ? (
+                                                            <div className="flex items-center justify-center gap-2">
+                                                                <button
+                                                                    onClick={() => openHistoryModal(item)}
+                                                                    className="p-2 rounded bg-amber-500/20 text-amber-400 hover:bg-amber-500/30 transition-colors"
+                                                                    title="Riwayat Stok & Harga"
+                                                                >
+                                                                    🕒
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => openRestockModal(item)}
+                                                                    className="p-2 rounded bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 transition-colors"
+                                                                    title="Restock (Beli)"
+                                                                >
+                                                                    📥
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => openEditModal(item)}
+                                                                    className="p-2 rounded bg-orange-500/20 text-orange-400 hover:bg-orange-500/30 transition-colors"
+                                                                    title="Edit"
+                                                                >
+                                                                    ✏️
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => handleDelete(item.id)}
+                                                                    className="p-2 rounded bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-colors"
+                                                                    title="Hapus"
+                                                                >
+                                                                    🗑️
+                                                                </button>
+                                                            </div>
+                                                        ) : (
+                                                            <span className="text-xs text-gray-500 italic">Read Only</span>
+                                                        )}
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    {/* Mobile View: Card List */}
+                    <div className="md:hidden space-y-4">
+                        {displayedItems.length === 0 ? (
+                            <div className="text-center py-8 text-gray-400 glass rounded-xl">
+                                Tidak ada bahan ditemukan
+                            </div>
+                        ) : (
+                            displayedItems.map(item => {
+                                const status = getStockStatus(item);
+                                const modalPerUnit = getModalPerUnit(item);
+                                const stockValue = item.stok * modalPerUnit;
+                                const isKonversi = (item.isi_prod && Number(item.isi_prod) > 1) || item.use_konversi === true;
+
+                                return (
+                                    <div key={item.id} className="glass rounded-xl p-4 border border-purple-500/10 active:scale-[0.99] transition-transform">
+                                        {/* Row 1: Header */}
+                                        <div className="flex justify-between items-start mb-3">
+                                            <div>
+                                                <h4 className="font-bold text-white text-lg leading-tight">{item.nama}</h4>
+                                                {item.type === 'non_physical' && (
+                                                    <span className="inline-block mt-1 text-[10px] bg-purple-500/20 text-purple-300 px-2 py-0.5 rounded-full border border-purple-500/20">
+                                                        ⚡ Jasa / Non-Stok
+                                                    </span>
+                                                )}
+                                                {isKonversi && (
+                                                    <p className="text-xs text-gray-400 mt-1">
+                                                        📦 1 {item.satuan_beli} = {item.isi_prod} {item.satuan_prod}
+                                                    </p>
+                                                )}
+                                            </div>
+                                            {item.type !== 'non_physical' && (
+                                                <span className={`px-2 py-1 rounded-full text-xs font-bold bg-${status.color}-500/20 text-${status.color}-400 shrink-0`}>
+                                                    {status.text}
+                                                </span>
+                                            )}
+                                        </div>
+
+                                        {/* Row 2: Stock Display (Big) */}
+                                        <div className="mb-4 bg-white/5 rounded-lg p-3 text-center border border-white/5">
+                                            <p className="text-xs text-gray-400 mb-1 uppercase tracking-wider">Stok Saat Ini</p>
+                                            {item.type === 'non_physical' ? (
+                                                <span className="text-3xl text-gray-500 font-bold">∞</span>
+                                            ) : (
+                                                <div className="flex items-baseline justify-center gap-1">
+                                                    {(item.isi_prod > 1 && item.satuan_beli) ? (
+                                                        <>
+                                                            <span className="text-2xl font-bold text-white">
+                                                                {parseFloat((item.stok / item.isi_prod).toFixed(2))}
+                                                            </span>
+                                                            <span className="text-sm text-gray-400 font-medium">{item.satuan_beli}</span>
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <span className="text-2xl font-bold text-white">
+                                                                {item.stok}
+                                                            </span>
+                                                            <span className="text-sm text-gray-400 font-medium">{item.satuan_prod || item.satuan || 'unit'}</span>
+                                                        </>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {/* Row 3: Grid Info */}
+                                        {isAdmin && item.type !== 'non_physical' && (
+                                            <div className="grid grid-cols-3 gap-2 mb-4 text-center">
+                                                <div className="bg-white/5 rounded-lg p-2">
+                                                    <p className="text-[10px] text-gray-400 mb-0.5">Hrg Beli</p>
+                                                    <p className="text-xs font-medium text-emerald-400 truncate">
+                                                        {formatCurrency(modalPerUnit * (isKonversi ? item.isi_prod : 1))}
+                                                    </p>
+                                                </div>
+                                                <div className="bg-white/5 rounded-lg p-2">
+                                                    <p className="text-[10px] text-gray-400 mb-0.5">Modal/Unit</p>
+                                                    <p className="text-xs font-medium text-white truncate">
+                                                        {formatCurrency(modalPerUnit)}
+                                                    </p>
+                                                </div>
+                                                <div className="bg-white/5 rounded-lg p-2">
+                                                    <p className="text-[10px] text-gray-400 mb-0.5">Ni. Stok</p>
+                                                    <p className="text-xs font-bold text-purple-400 truncate">
+                                                        {formatCurrency(stockValue)}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* Row 4: Actions (Large Buttons) */}
+                                        {canEdit && (
+                                            <div className="grid grid-cols-4 gap-2">
+                                                <button
+                                                    onClick={() => openRestockModal(item)}
+                                                    className="col-span-2 py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-medium flex items-center justify-center gap-2 shadow-lg shadow-emerald-900/20 active:scale-95 transition-all"
+                                                >
+                                                    📥 Restock
+                                                </button>
+                                                <button
+                                                    onClick={() => openHistoryModal(item)}
+                                                    className="py-2.5 rounded-lg bg-amber-500/20 text-amber-400 font-medium hover:bg-amber-500/30 flex items-center justify-center active:scale-95 transition-all"
+                                                >
+                                                    🕒
+                                                </button>
+                                                <button
+                                                    onClick={() => openEditModal(item)}
+                                                    className="py-2.5 rounded-lg bg-orange-500/20 text-orange-400 font-medium hover:bg-orange-500/30 flex items-center justify-center active:scale-95 transition-all"
+                                                >
+                                                    ✏️
+                                                </button>
+                                                {/* Hidden delete on mobile default to prevent accidents, or keep it if requested. User said "Tombol Aksi (Edit, Hapus, History) yang besar". I will put delete in valid place. 4 cols allow it. */}
+                                            </div>
+                                        )}
+                                        {/* Row 4 extended for delete if needed, or put delete next to edit. 
+                                            Let's refine grid to 4 cols: [Restock (2)] [History] [Edit] 
+                                            Delete is dangerous, maybe better in a 'more' menu or just add a 5th row?
+                                            User requested: "Edit, Hapus, History".
+                                            My layout: Restock (most important), History, Edit. 
+                                            I should add Delete. 
+                                            Let's try grid-cols-4.
+                                        */}
+                                        {canEdit && (
+                                            <div className="grid grid-cols-4 gap-2 mt-2">
+                                                <button
+                                                    onClick={() => handleDelete(item.id)}
+                                                    className="col-span-4 py-2 rounded-lg bg-red-500/10 text-red-400 text-xs font-medium hover:bg-red-500/20 flex items-center justify-center gap-2 active:scale-95 transition-all"
+                                                >
+                                                    🗑️ Hapus Bahan
+                                                </button>
+                                            </div>
+                                        )}
                                     </div>
-                                </div>
+                                );
+                            })
+                        )}
+                    </div>
+
+                    {/* Load More Button - Shared */}
+                    {hasMoreItems && (
+                        <div className="flex justify-center mt-6">
+                            <button
+                                onClick={loadMoreIngredients}
+                                className="px-6 py-2 bg-white/5 hover:bg-white/10 text-white rounded-full border border-purple-500/30 transition-all flex items-center gap-2 group"
+                            >
+                                <span>Muat Lebih Banyak</span>
+                                <svg className="w-4 h-4 group-hover:translate-y-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+                            </button>
+                        </div>
+                    )}
+                </>
+            )
+            }
+
+            {/* Tab: Stock Opname */}
+            {
+                activeTab === 'opname' && (
+                    <div className="glass rounded-xl p-4">
+                        <h3 className="font-bold mb-4">📝 Rekonsiliasi Stok</h3>
+                        <p className="text-sm text-gray-400 mb-4">
+                            Bandingkan stok sistem dengan stok fisik. Selisih akan dicatat dan disesuaikan.
+                        </p>
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-sm">
+                                <thead className="bg-white/5">
+                                    <tr>
+                                        <th className="px-4 py-3 text-left">Nama Bahan</th>
+                                        <th className="px-4 py-3 text-right">Stok Sistem</th>
+                                        <th className="px-4 py-3 text-right">Stok Fisik</th>
+                                        <th className="px-4 py-3 text-right">Selisih</th>
+                                        {isAdmin && <th className="px-4 py-3 text-right">Nilai Selisih (Rp)</th>}
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-purple-500/10">
+                                    {opnameData.map(item => (
+                                        <tr key={item.id} className="hover:bg-white/5">
+                                            <td className="px-4 py-3">{item.nama}</td>
+                                            <td className="px-4 py-3 text-right">{item.stokSistem}</td>
+                                            <td className="px-4 py-3 text-right">
+                                                <input
+                                                    type="number"
+                                                    value={item.stokFisik}
+                                                    onChange={(e) => handleOpnameChange(item.id, e.target.value)}
+                                                    className="w-20 px-2 py-1 rounded bg-white/10 border border-purple-500/30 text-right text-white"
+                                                />
+                                            </td>
+                                            <td className={`px-4 py-3 text-right font-bold ${item.selisih > 0 ? 'text-green-400' :
+                                                item.selisih < 0 ? 'text-red-400' : ''
+                                                }`}>
+                                                {item.selisih > 0 ? '+' : ''}{item.selisih}
+                                            </td>
+                                            {isAdmin && (
+                                                <td className={`px-4 py-3 text-right ${item.selisih > 0 ? 'text-green-400' :
+                                                    item.selisih < 0 ? 'text-red-400' : ''
+                                                    }`}>
+                                                    {formatCurrency(item.selisih * item.harga)}
+                                                </td>
+                                            )}
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                        <button
+                            onClick={saveOpname}
+                            className="mt-4 px-6 py-2 rounded-lg bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 font-bold"
+                        >
+                            💾 Simpan Opname
+                        </button>
+                    </div>
+                )
+            }
+
+            {/* Tab: Riwayat Stok */}
+            {
+                activeTab === 'history' && (
+                    <div className="glass rounded-xl overflow-hidden">
+                        <div className="p-4 border-b border-purple-500/20 flex justify-between items-center">
+                            <h3 className="font-bold">📜 Riwayat Pergerakan Stok</h3>
+                        </div>
+                        <StockHistoryTable />
+                    </div>
+                )
+            }
+
+            {/* Restock Modal */}
+            {
+                showRestockModal && editingItem && createPortal(
+                    <div className="modal-overlay">
+                        <div className="glass rounded-2xl p-6 w-full max-w-lg">
+                            <div className="flex items-center justify-between mb-6">
+                                <h3 className="text-xl font-bold">🛒 Restock: {editingItem.nama}</h3>
+                                <button onClick={() => setShowRestockModal(false)} className="text-gray-400 hover:text-white">✕</button>
                             </div>
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-sm text-gray-400 mb-1">Harga Beli (Rp)</label>
-                                    <input
-                                        type="number"
-                                        value={formData.harga_beli}
-                                        onChange={(e) => handleNumberChange('harga_beli', e.target.value)}
-                                        className="w-full px-4 py-2 rounded-lg bg-white/5 border border-purple-500/30 text-white focus:outline-none focus:border-purple-500"
-                                    />
-                                </div>
-                                {formData.type === 'physical' ? (
+                            <form onSubmit={handleRestockSubmit} className="space-y-4">
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                     <div>
-                                        <label className="block text-sm text-gray-400 mb-1">Stok Minimum</label>
+                                        <label className="block text-sm text-gray-400 mb-1">Jumlah Beli ({editingItem.satuan_beli})</label>
                                         <input
                                             type="number"
-                                            value={formData.stok_min}
-                                            onChange={(e) => handleNumberChange('stok_min', e.target.value)}
+                                            value={restockData.amount}
+                                            onChange={(e) => handleRestockChange('amount', e.target.value)}
+                                            className="w-full px-4 py-2 rounded-lg bg-white/5 border border-purple-500/30 text-white focus:outline-none focus:border-purple-500"
+                                            placeholder="0"
+                                            required
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm text-gray-400 mb-1">Harga Satuan (Rp)</label>
+                                        <input
+                                            type="number"
+                                            value={restockData.unitPrice}
+                                            onChange={(e) => handleRestockChange('unitPrice', e.target.value)}
+                                            className="w-full px-4 py-2 rounded-lg bg-white/5 border border-purple-500/30 text-white focus:outline-none focus:border-purple-500"
+                                            placeholder="0"
+                                            required
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm text-gray-400 mb-1">Total (Auto)</label>
+                                        <input
+                                            type="number"
+                                            value={restockData.totalPrice}
+                                            onChange={(e) => handleRestockChange('totalPrice', e.target.value)}
+                                            className="w-full px-4 py-2 rounded-lg bg-white/5 border border-purple-500/30 text-gray-400 cursor-not-allowed"
+                                            readOnly
+                                            placeholder="Rp 0"
+                                        />
+                                    </div>
+                                </div>
+
+                                {/* Simulation Display */}
+                                {getRestockSimulation() && (
+                                    <div className="bg-white/5 p-4 rounded-lg space-y-2 text-sm border border-white/10">
+                                        <h4 className="font-bold text-gray-300 border-b border-white/10 pb-1 mb-2">📊 Simulasi Perhitungan</h4>
+
+                                        <div className="flex justify-between items-center">
+                                            <span>Stok:</span>
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-gray-400">{getRestockSimulation().stockNow}</span>
+                                                <span>→</span>
+                                                <span className="font-bold text-green-400">{getRestockSimulation().stockNew} {editingItem.satuan_prod}</span>
+                                            </div>
+                                        </div>
+
+                                        <div className="flex justify-between items-center">
+                                            <span>HPP (Modal/Unit):</span>
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-gray-400">{formatCurrency(getRestockSimulation().hppNow)}</span>
+                                                <span>→</span>
+                                                <span className={`font-bold ${getRestockSimulation().diff > 0 ? 'text-red-400' : 'text-green-400'}`}>
+                                                    {formatCurrency(getRestockSimulation().hppNew)}
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <p className="text-xs text-gray-500 mt-1 italic">
+                                            *Harga modal dihitung ulang rata-rata (Moving Average)
+                                        </p>
+                                    </div>
+                                )}
+
+                                <button type="submit" className="w-full py-3 rounded-lg bg-emerald-600 hover:bg-emerald-500 font-bold transition-all shadow-lg active:scale-95">
+                                    ✅ Konfirmasi Restock
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                    , document.body)
+            }
+
+            {/* Existing Modals */}
+            {/* Existing Modals */}
+            {
+                showModal && createPortal(
+                    <div className="modal-overlay">
+                        <div className="glass rounded-2xl p-6 w-full max-w-lg max-h-[90vh] overflow-auto">
+                            <div className="flex items-center justify-between mb-6">
+                                <h3 className="text-xl font-bold">
+                                    {editingItem ? '✏️ Edit Bahan' : '➕ Tambah Bahan Baru'}
+                                </h3>
+                                <button
+                                    onClick={() => setShowModal(false)}
+                                    className="w-8 h-8 rounded-full bg-white/10 hover:bg-red-500/20 flex items-center justify-center text-gray-400 hover:text-red-400"
+                                >
+                                    ✕
+                                </button>
+                            </div>
+
+                            <form onSubmit={handleSubmit} className="space-y-4">
+                                {/* Type Selection */}
+                                <div className="flex p-1 bg-white/5 rounded-lg mb-4">
+                                    <button
+                                        type="button"
+                                        onClick={() => setFormData({ ...formData, type: 'physical' })}
+                                        className={`flex-1 py-2 text-sm font-medium rounded-md transition-all ${formData.type === 'physical'
+                                            ? 'bg-red-500 text-white shadow-lg'
+                                            : 'text-gray-400 hover:text-white'
+                                            }`}
+                                    >
+                                        🔴 Stok Fisik
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setFormData({ ...formData, type: 'non_physical' })}
+                                        className={`flex-1 py-2 text-sm font-medium rounded-md transition-all ${formData.type === 'non_physical'
+                                            ? 'bg-blue-500 text-white shadow-lg'
+                                            : 'text-gray-400 hover:text-white'
+                                            }`}
+                                    >
+                                        🔵 Biaya/Jasa
+                                    </button>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm text-gray-400 mb-1">Nama Bahan *</label>
+                                    <input
+                                        type="text"
+                                        value={formData.nama}
+                                        onChange={(e) => setFormData({ ...formData, nama: e.target.value })}
+                                        className="w-full px-4 py-2 rounded-lg bg-white/5 border border-purple-500/30 text-white focus:outline-none focus:border-purple-500"
+                                        placeholder="Contoh: Kopi Bubuk Robusta"
+                                        required
+                                    />
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    {formData.type === 'physical' ? (
+                                        <div>
+                                            <label className="block text-sm text-gray-400 mb-1">Stok Awal</label>
+                                            <input
+                                                type="number"
+                                                value={formData.stok}
+                                                onChange={(e) => handleNumberChange('stok', e.target.value)}
+                                                className={`w-full px-4 py-2 rounded-lg bg-white/5 border border-purple-500/30 text-white focus:outline-none focus:border-purple-500 ${editingItem ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                                disabled={!!editingItem}
+                                            />
+                                            {editingItem && (
+                                                <p className="text-[10px] text-amber-500 mt-1 italic">
+                                                    *Untuk mengubah jumlah stok, gunakan fitur Stock Opname.
+                                                </p>
+                                            )}
+                                        </div>
+                                    ) : (
+                                        <div>
+                                            <label className="block text-sm text-gray-400 mb-1 opacity-50">Stok (Auto)</label>
+                                            <input
+                                                type="text"
+                                                value="∞"
+                                                disabled
+                                                className="w-full px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-gray-500 cursor-not-allowed"
+                                            />
+                                        </div>
+                                    )}
+                                    <div>
+                                        <label className="block text-sm text-gray-400 mb-1">Satuan Beli</label>
+                                        <div className="relative">
+                                            <button
+                                                type="button"
+                                                onClick={() => setIsUnitDropdownOpen(!isUnitDropdownOpen)}
+                                                className="w-full px-4 py-2 rounded-lg bg-white/5 border border-purple-500/30 text-white flex justify-between items-center focus:outline-none focus:border-purple-500 transition-colors hover:bg-white/10"
+                                            >
+                                                <span className={!formData.satuan_beli ? 'text-gray-500' : ''}>
+                                                    {formData.satuan_beli || 'Pilih Satuan'}
+                                                </span>
+                                                <svg className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${isUnitDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                                                </svg>
+                                            </button>
+
+                                            {isUnitDropdownOpen && (
+                                                <>
+                                                    {/* Backdrop to close on click outside */}
+                                                    <div className="fixed inset-0 z-40" onClick={() => setIsUnitDropdownOpen(false)}></div>
+
+                                                    {/* Dropdown Menu */}
+                                                    <div className="absolute z-50 w-full mt-1 bg-[#1f2937] border border-purple-500/30 rounded-lg shadow-xl max-h-60 overflow-y-auto animate-in fade-in zoom-in-95 duration-100">
+                                                        {units.map(u => (
+                                                            <button
+                                                                key={u}
+                                                                type="button"
+                                                                onClick={() => {
+                                                                    setFormData({ ...formData, satuan_beli: u });
+                                                                    setIsUnitDropdownOpen(false);
+                                                                }}
+                                                                className={`w-full text-left px-4 py-2 hover:bg-purple-500/20 text-white transition-colors border-b border-white/5 last:border-0 ${formData.satuan_beli === u ? 'bg-purple-500/20 text-purple-400 font-bold' : ''}`}
+                                                            >
+                                                                {u}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                </>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm text-gray-400 mb-1">Harga Beli (Rp)</label>
+                                        <input
+                                            type="number"
+                                            value={formData.harga_beli}
+                                            onChange={(e) => handleNumberChange('harga_beli', e.target.value)}
                                             className="w-full px-4 py-2 rounded-lg bg-white/5 border border-purple-500/30 text-white focus:outline-none focus:border-purple-500"
                                         />
                                     </div>
-                                ) : (
-                                    <div>
-                                        <label className="block text-sm text-gray-400 mb-1 opacity-50">Stok Minimum</label>
-                                        <input
-                                            type="text"
-                                            value="N/A"
-                                            disabled
-                                            className="w-full px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-gray-500 cursor-not-allowed"
-                                        />
-                                    </div>
-                                )}
-                            </div>
-
-                            <label className="flex items-center gap-2 cursor-pointer mb-4">
-                                <input
-                                    type="checkbox"
-                                    checked={formData.use_konversi}
-                                    onChange={(e) => setFormData({ ...formData, use_konversi: e.target.checked })}
-                                    className="w-5 h-5 rounded accent-purple-500"
-                                />
-                                <span className="font-medium">Centang Jika Satuan Beli & Produksi Berbeda</span>
-                            </label>
-
-                            {formData.use_konversi && (
-                                <div className="space-y-4 p-4 bg-white/5 rounded-xl border border-purple-500/20">
-                                    <div className="grid grid-cols-2 gap-4">
+                                    {formData.type === 'physical' ? (
                                         <div>
-                                            <label className="block text-sm font-medium text-gray-300 mb-1">
-                                                Isi per {formData.satuan_beli || 'Unit'} *
-                                            </label>
+                                            <label className="block text-sm text-gray-400 mb-1">Stok Minimum</label>
                                             <input
                                                 type="number"
-                                                value={formData.isi_prod}
-                                                onChange={(e) => setFormData({ ...formData, isi_prod: e.target.value })}
-                                                className="w-full px-4 py-2 rounded-lg bg-gray-900/50 border border-purple-500/30 text-white focus:outline-none focus:border-purple-500"
-                                                placeholder="0"
+                                                value={formData.stok_min}
+                                                onChange={(e) => handleNumberChange('stok_min', e.target.value)}
+                                                className="w-full px-4 py-2 rounded-lg bg-white/5 border border-purple-500/30 text-white focus:outline-none focus:border-purple-500"
                                             />
                                         </div>
+                                    ) : (
                                         <div>
-                                            <label className="block text-sm font-medium text-gray-300 mb-1">Satuan Produksi</label>
-                                            <select
-                                                value={formData.satuan_prod}
-                                                onChange={(e) => setFormData({ ...formData, satuan_prod: e.target.value })}
-                                                className="w-full px-4 py-2 rounded-lg bg-gray-900/50 border border-purple-500/30 text-white focus:outline-none focus:border-purple-500"
-                                            >
-                                                {units.map(u => <option key={u} value={u} className="bg-gray-900">{u}</option>)}
-                                            </select>
+                                            <label className="block text-sm text-gray-400 mb-1 opacity-50">Stok Minimum</label>
+                                            <input
+                                                type="text"
+                                                value="N/A"
+                                                disabled
+                                                className="w-full px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-gray-500 cursor-not-allowed"
+                                            />
+                                        </div>
+                                    )}
+                                </div>
+
+                                <label className="flex items-center gap-2 cursor-pointer mb-4">
+                                    <input
+                                        type="checkbox"
+                                        checked={formData.use_konversi}
+                                        onChange={(e) => setFormData({ ...formData, use_konversi: e.target.checked })}
+                                        className="w-5 h-5 rounded accent-purple-500"
+                                    />
+                                    <span className="font-medium">Centang Jika Satuan Beli & Produksi Berbeda</span>
+                                </label>
+
+                                {formData.use_konversi && (
+                                    <div className="space-y-4 p-4 bg-white/5 rounded-xl border border-purple-500/20">
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-300 mb-1">
+                                                    Isi per {formData.satuan_beli || 'Unit'} *
+                                                </label>
+                                                <input
+                                                    type="number"
+                                                    value={formData.isi_prod}
+                                                    onChange={(e) => setFormData({ ...formData, isi_prod: e.target.value })}
+                                                    className="w-full px-4 py-2 rounded-lg bg-gray-900/50 border border-purple-500/30 text-white focus:outline-none focus:border-purple-500"
+                                                    placeholder="0"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-300 mb-1">Satuan Produksi</label>
+                                                <select
+                                                    value={formData.satuan_prod}
+                                                    onChange={(e) => setFormData({ ...formData, satuan_prod: e.target.value })}
+                                                    className="w-full px-4 py-2 rounded-lg bg-gray-900/50 border border-purple-500/30 text-white focus:outline-none focus:border-purple-500"
+                                                >
+                                                    {units.map(u => <option key={u} value={u} className="bg-gray-900">{u}</option>)}
+                                                </select>
+                                            </div>
+                                        </div>
+
+                                        {/* Harga Modal Dasar Calculator */}
+                                        <div className="pt-2 border-t border-white/10">
+                                            <p className="text-sm text-gray-400 mb-1">Harga Modal Dasar (untuk Gramasi/HPP)</p>
+                                            <p className="text-lg font-bold text-green-400">
+                                                {formatCurrency(formData.harga_beli > 0 && formData.isi_prod > 0 ? (formData.harga_beli / formData.isi_prod) : formData.harga_beli)}
+                                                <span className="text-sm font-normal text-gray-400 ml-1">/ {formData.satuan_prod || 'unit'}</span>
+                                            </p>
                                         </div>
                                     </div>
+                                )}
 
-                                    {/* Harga Modal Dasar Calculator */}
-                                    <div className="pt-2 border-t border-white/10">
-                                        <p className="text-sm text-gray-400 mb-1">Harga Modal Dasar (untuk Gramasi/HPP)</p>
+                                {!formData.use_konversi && (
+                                    <div className="p-3 bg-white/5 rounded-lg border border-white/5">
+                                        <p className="text-sm text-gray-400 mb-1">Harga Modal Dasar</p>
                                         <p className="text-lg font-bold text-green-400">
-                                            {formatCurrency(formData.harga_beli > 0 && formData.isi_prod > 0 ? (formData.harga_beli / formData.isi_prod) : formData.harga_beli)}
-                                            <span className="text-sm font-normal text-gray-400 ml-1">/ {formData.satuan_prod || 'unit'}</span>
+                                            {formatCurrency(formData.harga_beli)}
+                                            <span className="text-sm font-normal text-gray-400 ml-1">/ {formData.satuan_beli || 'unit'}</span>
                                         </p>
                                     </div>
-                                </div>
-                            )}
+                                )}
 
-                            {!formData.use_konversi && (
-                                <div className="p-3 bg-white/5 rounded-lg border border-white/5">
-                                    <p className="text-sm text-gray-400 mb-1">Harga Modal Dasar</p>
-                                    <p className="text-lg font-bold text-green-400">
-                                        {formatCurrency(formData.harga_beli)}
-                                        <span className="text-sm font-normal text-gray-400 ml-1">/ {formData.satuan_beli || 'unit'}</span>
-                                    </p>
+                                <div className="flex gap-3 pt-4 border-t border-white/10 mt-6">
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowModal(false)}
+                                        className="flex-1 px-4 py-3 rounded-lg bg-white/10 hover:bg-white/20 transition-all"
+                                    >
+                                        Batal
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        className="flex-1 px-4 py-3 rounded-lg bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 font-bold shadow-lg shadow-purple-500/20 transition-all"
+                                    >
+                                        💾 Simpan
+                                    </button>
                                 </div>
-                            )}
+                            </form>
+                        </div>
+                    </div>
+                    , document.body)
+            }
 
-                            <div className="flex gap-3 pt-4 border-t border-white/10 mt-6">
+            {/* Manage Units Modal */}
+            {/* Manage Units Modal */}
+            {
+                showUnitsModal && createPortal(
+                    <div className="modal-overlay">
+                        <div className="glass rounded-2xl p-6 w-full max-w-md">
+                            <div className="flex items-center justify-between mb-6">
+                                <h3 className="text-xl font-bold">📏 Kelola Satuan</h3>
                                 <button
-                                    type="button"
-                                    onClick={() => setShowModal(false)}
-                                    className="flex-1 px-4 py-3 rounded-lg bg-white/10 hover:bg-white/20 transition-all"
+                                    onClick={() => setShowUnitsModal(false)}
+                                    className="w-8 h-8 rounded-full bg-white/10 hover:bg-red-500/20 flex items-center justify-center text-gray-400 hover:text-red-400"
                                 >
-                                    Batal
+                                    ✕
                                 </button>
+                            </div>
+
+                            <form onSubmit={handleAddUnit} className="flex gap-2 mb-6">
+                                <input
+                                    type="text"
+                                    value={newUnitName}
+                                    onChange={(e) => setNewUnitName(e.target.value)}
+                                    className="flex-1 px-4 py-2 rounded-lg bg-white/5 border border-purple-500/30 text-white focus:outline-none focus:border-purple-500"
+                                    placeholder="Nama satuan baru..."
+                                />
                                 <button
                                     type="submit"
-                                    className="flex-1 px-4 py-3 rounded-lg bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 font-bold shadow-lg shadow-purple-500/20 transition-all"
+                                    disabled={!newUnitName.trim()}
+                                    className="px-4 py-2 rounded-lg bg-green-500 disabled:opacity-50 hover:bg-green-600 font-medium"
                                 >
-                                    💾 Simpan
+                                    Tambah
                                 </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-                , document.body)}
+                            </form>
 
-            {/* Manage Units Modal */}
-            {/* Manage Units Modal */}
-            {showUnitsModal && createPortal(
-                <div className="modal-overlay">
-                    <div className="glass rounded-2xl p-6 w-full max-w-md">
-                        <div className="flex items-center justify-between mb-6">
-                            <h3 className="text-xl font-bold">📏 Kelola Satuan</h3>
-                            <button
-                                onClick={() => setShowUnitsModal(false)}
-                                className="w-8 h-8 rounded-full bg-white/10 hover:bg-red-500/20 flex items-center justify-center text-gray-400 hover:text-red-400"
-                            >
-                                ✕
-                            </button>
-                        </div>
+                            <div className="space-y-2 max-h-60 overflow-y-auto">
+                                <h4 className="text-sm text-gray-400 mb-2">Satuan Kustom (Bisa Dihapus)</h4>
+                                {customUnits.length === 0 ? (
+                                    <p className="text-sm text-gray-500 italic">Belum ada satuan kustom.</p>
+                                ) : (
+                                    customUnits.map(unit => (
+                                        <div key={unit} className="flex items-center justify-between p-3 bg-white/5 rounded-lg border border-purple-500/10">
+                                            <span>{unit}</span>
+                                            <button
+                                                onClick={() => handleDeleteUnit(unit)}
+                                                className="text-red-400 hover:text-red-300 text-sm"
+                                            >
+                                                Hapus
+                                            </button>
+                                        </div>
+                                    ))
+                                )}
 
-                        <form onSubmit={handleAddUnit} className="flex gap-2 mb-6">
-                            <input
-                                type="text"
-                                value={newUnitName}
-                                onChange={(e) => setNewUnitName(e.target.value)}
-                                className="flex-1 px-4 py-2 rounded-lg bg-white/5 border border-purple-500/30 text-white focus:outline-none focus:border-purple-500"
-                                placeholder="Nama satuan baru..."
-                            />
-                            <button
-                                type="submit"
-                                disabled={!newUnitName.trim()}
-                                className="px-4 py-2 rounded-lg bg-green-500 disabled:opacity-50 hover:bg-green-600 font-medium"
-                            >
-                                Tambah
-                            </button>
-                        </form>
-
-                        <div className="space-y-2 max-h-60 overflow-y-auto">
-                            <h4 className="text-sm text-gray-400 mb-2">Satuan Kustom (Bisa Dihapus)</h4>
-                            {customUnits.length === 0 ? (
-                                <p className="text-sm text-gray-500 italic">Belum ada satuan kustom.</p>
-                            ) : (
-                                customUnits.map(unit => (
-                                    <div key={unit} className="flex items-center justify-between p-3 bg-white/5 rounded-lg border border-purple-500/10">
-                                        <span>{unit}</span>
-                                        <button
-                                            onClick={() => handleDeleteUnit(unit)}
-                                            className="text-red-400 hover:text-red-300 text-sm"
-                                        >
-                                            Hapus
-                                        </button>
-                                    </div>
-                                ))
-                            )}
-
-                            <h4 className="text-sm text-gray-400 mt-4 mb-2">Satuan Bawaan (Tidak Bisa Dihapus)</h4>
-                            <div className="flex flex-wrap gap-2">
-                                {defaultUnits.map(unit => (
-                                    <span key={unit} className="px-2 py-1 rounded bg-white/5 text-xs text-gray-400 border border-white/5">
-                                        {unit}
-                                    </span>
-                                ))}
+                                <h4 className="text-sm text-gray-400 mt-4 mb-2">Satuan Bawaan (Tidak Bisa Dihapus)</h4>
+                                <div className="flex flex-wrap gap-2">
+                                    {defaultUnits.map(unit => (
+                                        <span key={unit} className="px-2 py-1 rounded bg-white/5 text-xs text-gray-400 border border-white/5">
+                                            {unit}
+                                        </span>
+                                    ))}
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
-                , document.body)}
+                    , document.body)
+            }
 
 
 
@@ -1431,7 +1833,8 @@ function Inventaris() {
                             </div>
                         </div>
                     </div>
-                    , document.body)}
+                    , document.body)
+            }
         </section >
     );
 }
@@ -1440,121 +1843,266 @@ function Inventaris() {
 function StockHistoryTable() {
     const [history, setHistory] = useState([]);
     const [filter, setFilter] = useState('semua');
+    const [filterDate, setFilterDate] = useState('');
     const [loading, setLoading] = useState(false);
-    const [pagination, setPagination] = useState({
-        currentPage: 1,
-        totalPages: 1,
-        totalItems: 0
-    });
+    const [visibleCount, setVisibleCount] = useState(10);
 
+    // Custom Dropdown State
+    const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+    const dropdownRef = useRef(null);
+
+    // Custom Date Picker State
+    const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
+    const datePickerRef = useRef(null);
+    const [viewDate, setViewDate] = useState(new Date()); // For calendar navigation
+
+    // Close dropdowns when clicking outside
     useEffect(() => {
-        loadHistory(1);
-    }, [filter]);
+        const handleClickOutside = (event) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+                setIsDropdownOpen(false);
+            }
+            if (datePickerRef.current && !datePickerRef.current.contains(event.target)) {
+                setIsDatePickerOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
 
-    const loadHistory = async (page = 1) => {
+    // Helper for Custom Date Picker
+    const getDaysInMonth = (year, month) => new Date(year, month + 1, 0).getDate();
+    const getFirstDayOfMonth = (year, month) => new Date(year, month, 1).getDay();
+
+    const handleDateClick = (day) => {
+        const date = new Date(viewDate.getFullYear(), viewDate.getMonth(), day);
+        // Format YYYY-MM-DD
+        const dateString = date.toLocaleDateString('en-CA');
+        setFilterDate(dateString);
+        setIsDatePickerOpen(false);
+    };
+
+    const clearDate = () => {
+        setFilterDate('');
+        setIsDatePickerOpen(false);
+    };
+
+    const changeMonth = (offset) => {
+        const newDate = new Date(viewDate.setMonth(viewDate.getMonth() + offset));
+        setViewDate(new Date(newDate));
+    };
+
+    // Initial load
+    useEffect(() => {
+        loadHistory();
+    }, []);
+
+    // Reset visible count when filters change
+    useEffect(() => {
+        setVisibleCount(10);
+    }, [filter, filterDate]);
+
+    const loadHistory = async () => {
         setLoading(true);
         try {
+            // Backend returns all history (ignoring params for now based on controller analysis)
+            // But we pass params just in case backend is updated later
             const res = await inventoryAPI.getHistory({
-                type: filter === 'semua' ? '' : filter,
-                page,
-                limit: 10
+                limit: 1000 // Request a large batch
             });
 
-            // Handle new pagination structure
             if (res.data.pagination) {
                 setHistory(res.data.data);
-                setPagination(res.data.pagination);
             } else {
-                // Fallback for flat array responses
-                setHistory(res.data);
+                setHistory(Array.isArray(res.data) ? res.data : []);
             }
         } catch (err) {
             console.error('Failed to load history', err);
+            toast.error('Gagal memuat riwayat');
         } finally {
             setLoading(false);
         }
     };
 
+    // Client-side Filtering
+    const filteredHistory = history.filter(item => {
+        const matchType = filter === 'semua' || item.type === filter || (filter === 'in' && item.type === 'restock');
+        const matchDate = !filterDate || item.date === filterDate;
+        return matchType && matchDate;
+    });
+
+    // Client-side Pagination (Slice)
+    const displayedHistory = filteredHistory.slice(0, visibleCount);
+    const hasMore = visibleCount < filteredHistory.length;
+
+    const handleLoadMore = () => {
+        setVisibleCount(prev => prev + 10);
+    };
+
     return (
         <div className="p-4">
-            <div className="flex justify-end mb-4">
-                <select
-                    value={filter}
-                    onChange={(e) => setFilter(e.target.value)}
-                    className="bg-white/10 border border-purple-500/30 rounded-lg px-4 py-2 text-sm outline-none focus:border-purple-500"
-                >
-                    <option value="semua" className="bg-gray-900">Semua Transaksi</option>
-                    <option value="in" className="bg-gray-900">Masuk (Restock)</option>
-                    <option value="out" className="bg-gray-900">Keluar (Terpakai)</option>
-                    <option value="opname" className="bg-gray-900">Stock Opname</option>
-                </select>
-            </div>
-
-            <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                    <thead className="bg-white/5">
-                        <tr>
-                            <th className="px-4 py-3 text-left">Waktu</th>
-                            <th className="px-4 py-3 text-left">Bahan</th>
-                            <th className="px-4 py-3 text-center">Tipe</th>
-                            <th className="px-4 py-3 text-right">Jumlah</th>
-                            <th className="px-4 py-3 text-left">Keterangan</th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-purple-500/10">
-                        {loading ? (
-                            <tr><td colSpan={5} className="text-center py-6">Loading...</td></tr>
-                        ) : history.length === 0 ? (
-                            <tr><td colSpan={5} className="text-center py-6 text-gray-500">Belum ada riwayat</td></tr>
+            {/* Filters */}
+            <div className="grid grid-cols-2 sm:flex sm:justify-end gap-2 mb-4">
+                {/* Custom Date Picker */}
+                <div className="relative w-full sm:w-auto" ref={datePickerRef}>
+                    <button
+                        onClick={() => setIsDatePickerOpen(!isDatePickerOpen)}
+                        className={`w-full sm:w-auto min-w-[140px] flex items-center justify-between bg-white/10 border ${filterDate ? 'border-purple-500 bg-purple-500/10' : 'border-purple-500/30'} rounded-lg px-3 py-1.5 text-sm text-white outline-none focus:border-purple-500 hover:bg-white/20 transition-colors cursor-pointer`}
+                    >
+                        <span className={filterDate ? 'text-white font-medium' : 'text-gray-400'}>
+                            {filterDate ? new Date(filterDate).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Pilih Tanggal'}
+                        </span>
+                        {filterDate ? (
+                            <span onClick={(e) => { e.stopPropagation(); clearDate(); }} className="ml-2 hover:text-red-400">✕</span>
                         ) : (
-                            history.map(item => (
-                                <tr key={item.id} className="hover:bg-white/5">
-                                    <td className="px-4 py-3 text-gray-300">
-                                        <div className="font-medium">{item.date}</div>
-                                        <div className="text-xs text-gray-500">{item.time}</div>
-                                    </td>
-                                    <td className="px-4 py-3 font-medium">{item.ingName}</td>
-                                    <td className="px-4 py-3 text-center">
-                                        <span className={`px-2 py-1 rounded text-xs font-bold ${item.type === 'in' ? 'bg-green-500/20 text-green-400' :
-                                            item.type === 'out' ? 'bg-red-500/20 text-red-400' :
-                                                'bg-blue-500/20 text-blue-400'
-                                            }`}>
-                                            {item.type === 'in' ? 'MASUK' : item.type === 'out' ? 'KELUAR' : item.type.toUpperCase()}
-                                        </span>
-                                    </td>
-                                    <td className="px-4 py-3 text-right font-mono">
-                                        {item.qty}
-                                    </td>
-                                    <td className="px-4 py-3 text-gray-400 text-xs">
-                                        {item.note}
-                                    </td>
-                                </tr>
-                            ))
+                            <svg className="w-4 h-4 ml-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
                         )}
-                    </tbody>
-                </table>
+                    </button>
+
+                    {isDatePickerOpen && (
+                        <div className="absolute right-0 sm:right-auto sm:left-0 mt-1 w-64 bg-[#1f2937] border border-purple-500/30 rounded-lg shadow-xl z-50 p-4 animate-fade">
+                            {/* Calendar Header */}
+                            <div className="flex justify-between items-center mb-4">
+                                <button onClick={() => changeMonth(-1)} className="p-1 hover:bg-white/10 rounded">&lt;</button>
+                                <span className="font-semibold text-white">
+                                    {viewDate.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })}
+                                </span>
+                                <button onClick={() => changeMonth(1)} className="p-1 hover:bg-white/10 rounded">&gt;</button>
+                            </div>
+
+                            {/* Days Grid */}
+                            <div className="grid grid-cols-7 gap-1 text-center text-xs mb-2">
+                                {['M', 'S', 'S', 'R', 'K', 'J', 'S'].map(d => (
+                                    <div key={d} className="text-gray-500 font-medium">{d}</div>
+                                ))}
+                            </div>
+                            <div className="grid grid-cols-7 gap-1 text-center">
+                                {/* Empty slots for start of month */}
+                                {Array.from({ length: getFirstDayOfMonth(viewDate.getFullYear(), viewDate.getMonth()) }).map((_, i) => (
+                                    <div key={`empty-${i}`} />
+                                ))}
+                                {/* Days */}
+                                {Array.from({ length: getDaysInMonth(viewDate.getFullYear(), viewDate.getMonth()) }).map((_, i) => {
+                                    const day = i + 1;
+                                    const dateStr = new Date(viewDate.getFullYear(), viewDate.getMonth(), day).toLocaleDateString('en-CA');
+                                    const isSelected = filterDate === dateStr;
+                                    const isToday = new Date().toLocaleDateString('en-CA') === dateStr;
+
+                                    return (
+                                        <button
+                                            key={day}
+                                            onClick={() => handleDateClick(day)}
+                                            className={`p-2 rounded-full hover:bg-white/20 text-xs transition-colors
+                                                ${isSelected ? 'bg-purple-600 text-white font-bold' : 'text-gray-300'}
+                                                ${isToday && !isSelected ? 'border border-purple-500 text-purple-400' : ''}
+                                            `}
+                                        >
+                                            {day}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                            <div className="mt-4 pt-3 border-t border-white/10 flex justify-center">
+                                <button onClick={() => { setViewDate(new Date()); }} className="text-xs text-purple-400 hover:text-purple-300">
+                                    Hari Ini
+                                </button>
+                            </div>
+                        </div>
+                    )}
+                </div>
+                <div className="relative w-full sm:w-auto" ref={dropdownRef}>
+                    <button
+                        onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                        className="w-full sm:w-32 flex items-center justify-between bg-white/10 border border-purple-500/30 rounded-lg px-3 py-1.5 text-sm text-white outline-none focus:border-purple-500 hover:bg-white/20 transition-colors"
+                    >
+                        <span>
+                            {filter === 'semua' ? 'Semua' :
+                                filter === 'in' ? 'Masuk' :
+                                    filter === 'out' ? 'Keluar' : 'Opname'}
+                        </span>
+                        <svg className={`w-3 h-3 ml-2 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+                    </button>
+
+                    {isDropdownOpen && (
+                        <div className="absolute right-0 mt-1 w-full bg-[#1f2937] border border-purple-500/30 rounded-lg shadow-xl z-50 overflow-hidden animate-fade">
+                            {['semua', 'in', 'out', 'opname'].map(opt => (
+                                <button
+                                    key={opt}
+                                    onClick={() => { setFilter(opt); setIsDropdownOpen(false); }}
+                                    className={`w-full text-left px-3 py-2 text-sm hover:bg-purple-500/20 transition-colors ${filter === opt ? 'text-purple-400 font-medium bg-purple-500/10' : 'text-gray-300'}`}
+                                >
+                                    {opt === 'semua' ? 'Semua' : opt === 'in' ? 'Masuk' : opt === 'out' ? 'Keluar' : 'Opname'}
+                                </button>
+                            ))}
+                        </div>
+                    )}
+                </div>
             </div>
 
-            {/* Pagination Controls */}
-            <div className="flex justify-between items-center mt-4 text-sm text-gray-400 border-t border-purple-500/20 pt-4">
-                <div>
-                    Total Data: {pagination.totalItems} | Halaman {pagination.currentPage} dari {pagination.totalPages}
+            {/* Scrollable Table Container */}
+            <div className="border border-white/5 rounded-xl overflow-hidden bg-[#1f2937]/50">
+                <div className="overflow-y-auto max-h-[60vh] custom-scrollbar">
+                    <table className="w-full text-sm">
+                        <thead className="sticky top-0 z-10 bg-[#1f2937] shadow-md">
+                            <tr>
+                                <th className="px-4 py-3 text-left font-semibold text-gray-300">Waktu</th>
+                                <th className="px-4 py-3 text-left font-semibold text-gray-300">Bahan</th>
+                                <th className="px-4 py-3 text-center font-semibold text-gray-300">Tipe</th>
+                                <th className="px-4 py-3 text-right font-semibold text-gray-300">Jumlah</th>
+                                <th className="px-4 py-3 text-left font-semibold text-gray-300">Keterangan</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-white/5">
+                            {loading && history.length === 0 ? (
+                                <tr><td colSpan={5} className="text-center py-8"><div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-purple-500 mx-auto"></div></td></tr>
+                            ) : displayedHistory.length === 0 ? (
+                                <tr><td colSpan={5} className="text-center py-8 text-gray-500">Belum ada riwayat yang cocok</td></tr>
+                            ) : (
+                                displayedHistory.map((item) => (
+                                    <tr key={item._id || item.id} className="hover:bg-white/5 transition-colors">
+                                        <td className="px-4 py-3 text-gray-300">
+                                            <div className="font-medium">{item.date}</div>
+                                            <div className="text-xs text-gray-500">{item.time}</div>
+                                        </td>
+                                        <td className="px-4 py-3 font-medium text-white">{item.ingName}</td>
+                                        <td className="px-4 py-3 text-center">
+                                            <span className={`px-2 py-1 rounded text-xs font-bold border ${item.type === 'in' || item.type === 'restock' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
+                                                item.type === 'out' ? 'bg-red-500/10 text-red-400 border-red-500/20' :
+                                                    'bg-blue-500/10 text-blue-400 border-blue-500/20'
+                                                }`}>
+                                                {item.type === 'in' || item.type === 'restock' ? 'MASUK' :
+                                                    item.type === 'out' ? 'KELUAR' :
+                                                        item.type.toUpperCase()}
+                                            </span>
+                                        </td>
+                                        <td className={`px-4 py-3 text-right font-mono font-bold ${item.type === 'out' ? 'text-red-400' : 'text-emerald-400'
+                                            }`}>
+                                            {item.type === 'out' ? '-' : '+'}{item.qty}
+                                        </td>
+                                        <td className="px-4 py-3 text-gray-400 text-xs max-w-xs truncate" title={item.note}>
+                                            {item.note || '-'}
+                                        </td>
+                                    </tr>
+                                ))
+                            )}
+                        </tbody>
+                    </table>
                 </div>
-                <div className="flex gap-2">
-                    <button
-                        onClick={() => loadHistory(pagination.currentPage - 1)}
-                        disabled={pagination.currentPage <= 1 || loading}
-                        className="px-3 py-1 rounded bg-white/5 hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                    >
-                        &lt; Sebelumnya
-                    </button>
-                    <button
-                        onClick={() => loadHistory(pagination.currentPage + 1)}
-                        disabled={pagination.currentPage >= pagination.totalPages || loading}
-                        className="px-3 py-1 rounded bg-white/5 hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                    >
-                        Selanjutnya &gt;
-                    </button>
+
+                {/* Footer / Load More */}
+                <div className="p-4 border-t border-white/5 bg-white/5 flex flex-col sm:flex-row justify-between items-center gap-4">
+                    <span className="text-xs text-gray-400">
+                        Menampilkan {displayedHistory.length} dari {filteredHistory.length} data
+                    </span>
+
+                    {hasMore && (
+                        <button
+                            onClick={handleLoadMore}
+                            className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm font-medium transition-colors shadow-lg shadow-purple-900/20 w-full sm:w-auto"
+                        >
+                            Muat Lebih Banyak ({filteredHistory.length - displayedHistory.length} lagi)
+                        </button>
+                    )}
                 </div>
             </div>
         </div>

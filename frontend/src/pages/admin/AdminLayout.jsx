@@ -111,14 +111,14 @@ function AdminLayout() {
             <div className="flex-1 flex flex-col overflow-hidden">
                 {/* Mini Header Bar (Mobile Only, When Sidebar Collapsed) */}
                 <div
-                    className="flex lg:hidden h-14 items-center px-4 gap-3 border-b border-purple-500/30 bg-[#151235] transition-all duration-300"
+                    onClick={toggleSidebar}
+                    className="flex lg:hidden h-14 items-center px-4 gap-3 border-b border-purple-500/30 bg-[#151235] transition-all duration-300 cursor-pointer hover:bg-white/5"
                 >
                     {/* Toggle Logo */}
                     <img
                         src={settings.logo}
                         alt="Logo"
-                        onClick={toggleSidebar}
-                        className="w-8 h-8 rounded bg-transparent object-cover cursor-pointer hover:scale-105 transition-transform shrink-0"
+                        className="w-8 h-8 rounded bg-transparent object-cover transition-transform shrink-0"
                     />
                     {/* Page Title */}
                     <h1 className="text-white font-semibold text-lg truncate flex-1">
@@ -155,7 +155,7 @@ function AdminLayout() {
                 {/* Main Content */}
                 <main className="flex-1 overflow-y-auto p-4 content-container relative">
                     <div className="max-w-[1600px] mx-auto pb-24">
-                        <Outlet />
+                        <Outlet context={{ isSidebarCollapsed }} />
                     </div>
                 </main>
             </div>

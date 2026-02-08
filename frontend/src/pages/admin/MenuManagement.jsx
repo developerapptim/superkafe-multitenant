@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { createPortal } from 'react-dom';
+import { useOutletContext } from 'react-router-dom';
 import { Reorder, motion, AnimatePresence, useDragControls } from "framer-motion";
 import CustomSelect from '../../components/CustomSelect';
 import useSWR, { mutate } from 'swr';
@@ -24,7 +25,7 @@ const itemVars = {
     show: { opacity: 1, y: 0 }
 };
 
-const MenuItem = ({ item, saveOrder, getCategoryEmoji, getCategoryName, formatCurrency, handleToggleStatus, openEditModal, handleDelete }) => {
+const MenuItem = ({ item, saveOrder, getCategoryEmoji, getCategoryName, formatCurrency, handleToggleStatus, openEditModal, handleDelete, isSidebarCollapsed }) => {
     const dragControls = useDragControls();
 
     return (
@@ -110,9 +111,9 @@ const MenuItem = ({ item, saveOrder, getCategoryEmoji, getCategoryName, formatCu
                         title={item.is_active ? "Nonaktifkan" : "Aktifkan"}
                     >
                         {item.is_active ? (
-                            <><span>⚡</span> <span className="md:hidden">Aktif</span></>
+                            <><span>⚡</span> {isSidebarCollapsed && <span className="md:hidden">Aktif</span>}</>
                         ) : (
-                            <><span>⛔</span> <span className="md:hidden">Off</span></>
+                            <><span>⛔</span> {isSidebarCollapsed && <span className="md:hidden">Off</span>}</>
                         )}
                     </button>
 
@@ -121,14 +122,14 @@ const MenuItem = ({ item, saveOrder, getCategoryEmoji, getCategoryName, formatCu
                         className="flex-1 md:flex-none py-1.5 md:py-2 px-2 md:px-3 rounded-lg bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 transition-colors text-xs md:text-sm flex items-center justify-center gap-1 md:gap-2"
                         title="Edit"
                     >
-                        <span>✏️</span> <span className="md:hidden">Edit</span>
+                        <span>✏️</span> {isSidebarCollapsed && <span className="md:hidden">Edit</span>}
                     </button>
                     <button
                         onClick={() => handleDelete(item)}
                         className="flex-1 md:flex-none py-1.5 md:py-2 px-2 md:px-3 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors text-xs md:text-sm flex items-center justify-center gap-1 md:gap-2"
                         title="Hapus"
                     >
-                        <span>🗑️</span> <span className="md:hidden">Hapus</span>
+                        <span>🗑️</span> {isSidebarCollapsed && <span className="md:hidden">Hapus</span>}
                     </button>
                 </div>
             </div>
@@ -137,6 +138,7 @@ const MenuItem = ({ item, saveOrder, getCategoryEmoji, getCategoryName, formatCu
 };
 
 function MenuManagement() {
+    const { isSidebarCollapsed } = useOutletContext();
     // SWR Data Fetching
     const { data: menuData, error: menuError } = useSWR('/menu', fetcher);
     const { data: categoriesData, error: categoriesError } = useSWR('/categories', fetcher);
@@ -635,6 +637,7 @@ function MenuManagement() {
                                     handleToggleStatus={handleToggleStatus}
                                     openEditModal={openEditModal}
                                     handleDelete={handleDelete}
+                                    isSidebarCollapsed={isSidebarCollapsed}
                                 />
                             ))
                         )}
