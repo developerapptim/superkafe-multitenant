@@ -1609,18 +1609,27 @@ function Kasir() {
             {
                 selectedProof && (
                     <div className="modal-overlay" onClick={() => setSelectedProof(null)}>
-                        <div className="relative max-w-lg w-full max-h-[90vh] bg-surface rounded-2xl overflow-hidden p-2" onClick={e => e.stopPropagation()}>
+                        <div className="bg-transparent p-4 rounded-xl max-w-2xl max-h-[90vh] relative flex flex-col items-center" onClick={e => e.stopPropagation()}>
                             <button
                                 onClick={() => setSelectedProof(null)}
-                                className="absolute top-4 right-4 z-10 w-8 h-8 rounded-full bg-black/50 text-white flex items-center justify-center hover:bg-red-500"
+                                className="absolute -top-10 right-0 text-white hover:text-red-400 transition-colors bg-black/50 rounded-full w-8 h-8 flex items-center justify-center border border-white/20"
                             >
                                 ✕
                             </button>
-                            <img src={selectedProof} alt="Bukti Pembayaran" className="w-full h-full object-contain rounded-xl" />
-                            <div className="absolute bottom-4 left-0 right-0 text-center pointer-events-none">
-                                <span className="bg-black/70 text-white px-3 py-1 rounded-full text-xs">
-                                    🖱️ Klik di luar untuk tutup
-                                </span>
+                            <img
+                                src={selectedProof.startsWith('http') ? selectedProof : `${(import.meta.env.VITE_API_URL || 'https://superkafe-production.up.railway.app/api').replace('/api', '')}${selectedProof}`}
+                                alt="Bukti Pembayaran"
+                                className="w-full h-full object-contain rounded-xl shadow-2xl border border-white/10 bg-black/50"
+                            />
+                            <div className="mt-4 flex gap-3">
+                                <a
+                                    href={selectedProof.startsWith('http') ? selectedProof : `${(import.meta.env.VITE_API_URL || 'https://superkafe-production.up.railway.app/api').replace('/api', '')}${selectedProof}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors"
+                                >
+                                    🔍 Buka Full Size
+                                </a>
                             </div>
                         </div>
                     </div>
