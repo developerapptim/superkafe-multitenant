@@ -7,6 +7,128 @@ const Shift = require('../models/Shift');
 const Customer = require('../models/Customer');
 const Settings = require('../models/Settings');
 
+// =========================================================
+// HELPER: Deduct Stock when order status changes to 'process'
+// =========================================================
+async function deductStockForOrder(order) {
+    console.log(`📉 [DEDUCT] Starting stock deduction for Order: ${order.id}`);
+
+    const recipes = await Recipe.find();
+    const ingredients = await Ingredient.find();
+
+    const ingredientMap = new Map();
+    ingredients.forEach(i => ingredientMap.set(String(i.id), i));
+
+    const recipeMap = new Map();
+    recipes.forEach(r => recipeMap.set(String(r.menuId), r.ingredients));
+
+    if (order.items && Array.isArray(order.items)) {
+        for (const item of order.items) {
+            const menuId = String(item.id);
+            const recipeIngredients = recipeMap.get(menuId);
+
+            if (recipeIngredients) {
+                for (const ri of recipeIngredients) {
+                    const ingKey = String(ri.ing_id);
+                    const ingData = ingredientMap.get(ingKey);
+
+                    let required = Number(ri.jumlah) || 0;
+                    let qtyOrdered = Number(item.qty || item.count) || 0;
+
+                    if (ingData && (ingData.type === 'physical' || !ingData.type)) {
+                        const qtyToDeduct = required * qtyOrdered;
+
+                        if (!isNaN(qtyToDeduct) && qtyToDeduct > 0) {
+                            const oldStock = Number(ingData.stok) || 0;
+                            ingData.stok = oldStock - qtyToDeduct;
+                            await ingData.save();
+
+                            console.log(`   📦 ${ingData.nama}: ${oldStock} → ${ingData.stok} (-${qtyToDeduct})`);
+
+                            // Log Stock History
+                            const history = new StockHistory({
+                                id: `hist_out_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+                                ing_id: ingData.id,
+                                ingName: ingData.nama,
+                                type: 'out',
+                                qty: qtyToDeduct,
+                                stokSebelum: oldStock,
+                                stokSesudah: ingData.stok,
+                                note: `Order ${order.id} (Process) - ${item.name}`,
+                                date: new Date().toISOString().split('T')[0],
+                                time: new Date().toLocaleTimeString('id-ID', { hour12: false })
+                            });
+                            await history.save();
+                        }
+                    }
+                }
+            }
+        }
+    }
+    console.log(`✅ [DEDUCT] Stock deduction complete for Order: ${order.id}`);
+}
+
+// =========================================================
+// HELPER: Revert Stock when order is cancelled after processing
+// =========================================================
+async function revertStockForOrder(order) {
+    console.log(`📈 [REVERT] Starting stock reversion for Order: ${order.id}`);
+
+    const recipes = await Recipe.find();
+    const ingredients = await Ingredient.find();
+
+    const ingredientMap = new Map();
+    ingredients.forEach(i => ingredientMap.set(String(i.id), i));
+
+    const recipeMap = new Map();
+    recipes.forEach(r => recipeMap.set(String(r.menuId), r.ingredients));
+
+    if (order.items && Array.isArray(order.items)) {
+        for (const item of order.items) {
+            const menuId = String(item.id);
+            const recipeIngredients = recipeMap.get(menuId);
+
+            if (recipeIngredients) {
+                for (const ri of recipeIngredients) {
+                    const ingKey = String(ri.ing_id);
+                    const ingData = ingredientMap.get(ingKey);
+
+                    let required = Number(ri.jumlah) || 0;
+                    let qtyOrdered = Number(item.qty || item.count) || 0;
+
+                    if (ingData && (ingData.type === 'physical' || !ingData.type)) {
+                        const qtyToRevert = required * qtyOrdered;
+
+                        if (!isNaN(qtyToRevert) && qtyToRevert > 0) {
+                            const oldStock = Number(ingData.stok) || 0;
+                            ingData.stok = oldStock + qtyToRevert;
+                            await ingData.save();
+
+                            console.log(`   📦 ${ingData.nama}: ${oldStock} → ${ingData.stok} (+${qtyToRevert})`);
+
+                            // Log Stock History
+                            const history = new StockHistory({
+                                id: `hist_in_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+                                ing_id: ingData.id,
+                                ingName: ingData.nama,
+                                type: 'in',
+                                qty: qtyToRevert,
+                                stokSebelum: oldStock,
+                                stokSesudah: ingData.stok,
+                                note: `Order ${order.id} (Cancelled) - ${item.name} REVERTED`,
+                                date: new Date().toISOString().split('T')[0],
+                                time: new Date().toLocaleTimeString('id-ID', { hour12: false })
+                            });
+                            await history.save();
+                        }
+                    }
+                }
+            }
+        }
+    }
+    console.log(`✅ [REVERT] Stock reversion complete for Order: ${order.id}`);
+}
+
 exports.checkPhone = async (req, res) => {
     try {
         const { phone } = req.body;
@@ -61,8 +183,8 @@ exports.createOrder = async (req, res) => {
         }
         console.log("🆔 Order ID:", orderData.id);
 
-        // 1. Calculate HPP & Deduct Stock
-        console.log("1️⃣ Starting Stock Deduction Logic");
+        // 1. Calculate HPP ONLY (Stock deduction moved to 'process' status)
+        console.log("1️⃣ Starting HPP Calculation (No Stock Deduction at Creation)");
         const recipes = await Recipe.find();
         const ingredients = await Ingredient.find();
 
@@ -86,71 +208,21 @@ exports.createOrder = async (req, res) => {
                         const ingKey = String(ri.ing_id);
                         const ingData = ingredientMap.get(ingKey);
 
-                        // SANITIZE & VALIDATE NUMBERS
-                        let required = Number(ri.jumlah);
-                        if (isNaN(required)) {
-                            console.warn(`⚠️ Invalid Recipe Amount for ingredient ${ri.ing_id}: ${ri.jumlah}, defaulting to 0`);
-                            required = 0;
-                        }
-
-                        let qtyOrdered = Number(item.qty || item.count);
-                        if (isNaN(qtyOrdered)) {
-                            console.warn(`⚠️ Invalid Order Qty for item ${item.name}: ${item.qty || item.count}, defaulting to 0`);
-                            qtyOrdered = 0;
-                        }
+                        let required = Number(ri.jumlah) || 0;
 
                         if (ingData) {
                             // Calculate HPP
                             const costPerUnit = (ingData.isi_prod && ingData.isi_prod > 0)
                                 ? (ingData.harga_beli / ingData.isi_prod)
                                 : ingData.harga_beli;
-
-                            // Safe check for costPerUnit
                             const validCost = isNaN(costPerUnit) ? 0 : costPerUnit;
-
                             itemHPP += (validCost * required);
-
-                            // DEDUCT STOCK
-                            if (ingData.type === 'physical' || !ingData.type) {
-                                const qtyToDeduct = required * qtyOrdered;
-
-                                console.log(`📉 Deducting Stock: ${ingData.nama} (ID: ${ingData.id}) | Current: ${ingData.stok} | Deduct: ${qtyToDeduct}`);
-
-                                if (isNaN(ingData.stok)) {
-                                    console.error(`⚠️ Stock corrupted (NaN) for ${ingData.nama}, resetting to 0`);
-                                    ingData.stok = 0;
-                                }
-
-                                if (!isNaN(qtyToDeduct)) {
-                                    ingData.stok -= qtyToDeduct;
-                                    await ingData.save();
-
-                                    // Log Stock History
-                                    const history = new StockHistory({
-                                        id: `hist_out_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
-                                        ing_id: ingData.id,
-                                        ingName: ingData.nama,
-                                        type: 'out',
-                                        qty: qtyToDeduct,
-                                        stokSebelum: ingData.stok + qtyToDeduct,
-                                        stokSesudah: ingData.stok,
-                                        note: `Order ${orderData.id} - ${item.name}`,
-                                        date: new Date().toISOString().split('T')[0],
-                                        time: new Date().toLocaleTimeString('id-ID', { hour12: false })
-                                    });
-                                    await history.save();
-                                } else {
-                                    console.error(`❌ Validation Failed: qtyToDeduct is NaN for ${ingData.nama}`);
-                                }
-                            }
                         }
                     }
                 }
 
-                const qtyOrderedFinal = Number(item.qty || item.count);
-                const safeQty = isNaN(qtyOrderedFinal) ? 0 : qtyOrderedFinal;
-
-                orderTotalHPP += (itemHPP * safeQty);
+                const qtyOrderedFinal = Number(item.qty || item.count) || 0;
+                orderTotalHPP += (itemHPP * qtyOrderedFinal);
 
                 enrichedItems.push({
                     ...item,
@@ -158,14 +230,15 @@ exports.createOrder = async (req, res) => {
                 });
             }
         }
-        console.log("✅ Stock Deduction Complete. Total HPP:", orderTotalHPP);
+        console.log("✅ HPP Calculation Complete. Total HPP:", orderTotalHPP);
 
-        // 2. Create Order Object
-        console.log("2️⃣ Saving Order to DB");
+        // 2. Create Order Object (stockDeducted = false by default)
+        console.log("2️⃣ Saving Order to DB (Stock NOT deducted yet)");
         const newOrder = new Order({
             ...orderData,
             items: enrichedItems,
-            timestamp: Date.now()
+            timestamp: Date.now(),
+            stockDeducted: false // Stock will be deducted when status changes to 'process'
         });
 
         await newOrder.save();
@@ -315,12 +388,48 @@ exports.getOrderById = async (req, res) => {
 exports.updateOrderStatus = async (req, res) => {
     try {
         const { status, paymentStatus } = req.body;
-        const updateData = {};
-        if (status) updateData.status = status;
-        if (paymentStatus) updateData.paymentStatus = paymentStatus;
+        const order = await Order.findOne({ id: req.params.id });
 
-        const order = await Order.findOneAndUpdate({ id: req.params.id }, updateData, { new: true });
         if (!order) return res.status(404).json({ error: 'Order not found' });
+
+        const previousStatus = order.status;
+
+        // Apply updates
+        if (status) order.status = status;
+        if (paymentStatus) order.paymentStatus = paymentStatus;
+
+        // ========= STOCK LOGIC =========
+        // Deduct stock when status changes to 'process' and stock hasn't been deducted yet
+        if (status === 'process' && !order.stockDeducted) {
+            console.log(`🔄 Status -> 'process': Triggering stock deduction for Order ${order.id}`);
+            await deductStockForOrder(order);
+            order.stockDeducted = true;
+        }
+
+        // Revert stock when status changes to 'cancel'
+        if (status === 'cancel') {
+            // Save cancellation reason
+            if (req.body.cancellationReason) {
+                order.cancellationReason = req.body.cancellationReason;
+            }
+
+            // Revert stock if previously deducted
+            if (order.stockDeducted) {
+                console.log(`🔄 Status -> 'cancel': Triggering stock reversion for Order ${order.id}`);
+                await revertStockForOrder(order);
+                order.stockDeducted = false;
+            }
+
+            // Auto-Refund logic: If Paid -> Refunded
+            if (order.paymentStatus === 'paid') {
+                console.log(`💸 Order ${order.id} was PAID. Marking as REFUNDED due to cancellation.`);
+                order.paymentStatus = 'refunded'; // Or 'void' based on business rule. "Refunded" is clearer.
+            }
+        }
+        // ================================
+
+        await order.save();
+        console.log(`✅ Order ${order.id} status updated: ${previousStatus} → ${status || previousStatus}`);
 
         res.json(order);
     } catch (err) {
@@ -339,7 +448,7 @@ exports.payOrder = async (req, res) => {
         // 1. Update Order
         order.paymentStatus = 'paid';
         order.paymentMethod = paymentMethod || 'cash';
-        order.status = 'done'; // Complete the order
+        // order.status = 'done'; // REMOVED: Do not auto-complete. Let frontend handle flow (Pay -> Process -> Done)
         if (note) order.note = note;
 
         // 2. Update Shift (Record Sales)

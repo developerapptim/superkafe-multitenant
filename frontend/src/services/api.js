@@ -62,6 +62,7 @@ export const ordersAPI = {
     checkPhone: (phone) => api.post('/orders/check-phone', { phone }),
     merge: (orderIds) => api.post('/orders/merge', { orderIds }),
     appendItems: (id, items) => api.patch(`/orders/${id}/append`, { items }),
+    cancel: (id) => api.patch(`/orders/${id}/status`, { status: 'cancelled' }), // Reuse updateStatus for ease
 };
 
 

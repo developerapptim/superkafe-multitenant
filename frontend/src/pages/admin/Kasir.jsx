@@ -138,6 +138,43 @@ function Kasir() {
     const [note, setNote] = useState('');
     const [cart, setCart] = useState([]);
 
+    // CANCEL ORDER STATES
+    const [selectedOrderForDetail, setSelectedOrderForDetail] = useState(null);
+    const [showCancelModal, setShowCancelModal] = useState(false);
+    const [cancellationReason, setCancellationReason] = useState('');
+    const [customReason, setCustomReason] = useState('');
+
+    // Cancel Logic
+    const handleCancelOrder = async () => {
+        if (!selectedOrderForDetail) return;
+
+        const reason = cancellationReason === 'Lainnya' ? customReason : cancellationReason;
+        if (!reason) {
+            toast.error('Wajib pilih alasan pembatalan');
+            return;
+        }
+
+        const toastId = toast.loading('Membatalkan pesanan...');
+        try {
+            await ordersAPI.updateStatus(selectedOrderForDetail.id, 'cancel', { cancellationReason: reason });
+
+            // Refresh data
+            mutate('/orders');
+            mutate('/shift/current-balance'); // If money refunded, balance changes? Maybe not cash but system record.
+
+            toast.success('Pesanan berhasil dibatalkan', { id: toastId });
+
+            // Close modals
+            setShowCancelModal(false);
+            setSelectedOrderForDetail(null);
+            setCancellationReason('');
+            setCustomReason('');
+        } catch (err) {
+            console.error('Cancel error:', err);
+            toast.error('Gagal membatalkan: ' + (err.response?.data?.error || err.message), { id: toastId });
+        }
+    };
+
     // Customer Autocomplete States
     const [customerSuggestions, setCustomerSuggestions] = useState([]);
     const [showSuggestions, setShowSuggestions] = useState(false);
@@ -1076,9 +1113,18 @@ function Kasir() {
                                                 </span>
                                             </div>
                                         </div>
-                                        <span className={`px-2 py-1 rounded-full text-xs ${getStatusStyle(order.status)}`}>
-                                            {getStatusLabel(order.status)}
-                                        </span>
+                                        <div className="flex flex-col items-end gap-2">
+                                            <span className={`px-2 py-1 rounded-full text-xs ${getStatusStyle(order.status)}`}>
+                                                {getStatusLabel(order.status)}
+                                            </span>
+                                            <button
+                                                onClick={(e) => { e.stopPropagation(); setSelectedOrderForDetail(order); }}
+                                                className="px-2 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-xs text-gray-300 hover:text-white border border-white/10 transition-colors flex items-center gap-1"
+                                                title="Lihat Detail & Opsi Pembatalan"
+                                            >
+                                                ℹ️ Detail
+                                            </button>
+                                        </div>
                                     </div>
 
 
@@ -1124,42 +1170,90 @@ function Kasir() {
                                             <p className="font-bold text-green-400">{formatCurrency(order.total || 0)}</p>
                                         </div>
                                         <div className="flex gap-2">
-                                            {order.status === 'new' && (
-                                                <button
-                                                    onClick={() => updateOrderStatus(order.id, 'process')}
-                                                    disabled={processingOrderId === order.id || isAdmin}
-                                                    className={`px-3 py-1 bg-blue-500/20 text-blue-400 rounded-lg text-sm hover:bg-blue-500/30 ${processingOrderId === order.id ? 'opacity-50 cursor-wait' : ''} ${isAdmin ? 'opacity-50 cursor-not-allowed' : ''}`}
-                                                >
-                                                    {processingOrderId === order.id ? '⏳ Proses...' : '▶️ Proses'}
-                                                </button>
-                                            )}
-                                            {order.status === 'pending_payment' && (
-                                                <button
-                                                    onClick={() => updateOrderStatus(order.id, 'process')}
-                                                    disabled={processingOrderId === order.id || isAdmin}
-                                                    className={`px-3 py-1 bg-blue-500/20 text-blue-400 rounded-lg text-sm hover:bg-blue-500/30 flex items-center gap-1 ${processingOrderId === order.id ? 'opacity-50 cursor-wait' : ''} ${isAdmin ? 'opacity-50 cursor-not-allowed' : ''}`}
-                                                >
-                                                    {processingOrderId === order.id ? '⏳ Proses...' : <><span>💰</span> Bayar & Proses</>}
-                                                </button>
-                                            )}
-                                            {order.status === 'process' && (
-                                                order.paymentStatus === 'paid' ? (
-                                                    <button
-                                                        onClick={() => updateOrderStatus(order.id, 'done')}
-                                                        disabled={processingOrderId === order.id}
-                                                        className={`px-3 py-1 bg-green-500/20 text-green-400 rounded-lg text-sm hover:bg-green-500/30 ${processingOrderId === order.id ? 'opacity-50 cursor-wait' : ''}`}
-                                                    >
-                                                        {processingOrderId === order.id ? '⏳ Proses...' : '✅ Selesai'}
-                                                    </button>
-                                                ) : (
-                                                    <button
-                                                        onClick={() => handleOpenPayment(order)}
-                                                        disabled={isAdmin}
-                                                        className={`px-3 py-1 bg-purple-500/20 text-purple-400 rounded-lg text-sm hover:bg-purple-500/30 flex items-center gap-1 ${isAdmin ? 'opacity-50 cursor-not-allowed' : ''}`}
-                                                    >
-                                                        <span>💸</span> Bayar
-                                                    </button>
-                                                )
+                                            {/* LOGIC: WAJIB BAYAR DULU (ON) vs STANDARD (OFF) */}
+                                            {settings?.isCashPrepaymentRequired ? (
+                                                /* SCENARIO 1: WAJIB BAYAR DULU (ON) */
+                                                <>
+                                                    {/* Step 1: Bayar dulu (Status New & Belum Lunas) */}
+                                                    {order.status === 'new' && order.paymentStatus !== 'paid' && (
+                                                        <button
+                                                            onClick={() => handleOpenPayment(order)}
+                                                            disabled={isAdmin}
+                                                            className={`px-3 py-1 bg-purple-500/20 text-purple-400 rounded-lg text-sm hover:bg-purple-500/30 flex items-center gap-1 ${isAdmin ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                                        >
+                                                            <span>💸</span> Bayar
+                                                        </button>
+                                                    )}
+
+                                                    {/* Step 2: Proses (Status New & Sudah Lunas) */}
+                                                    {order.status === 'new' && order.paymentStatus === 'paid' && (
+                                                        <button
+                                                            onClick={() => updateOrderStatus(order.id, 'process')}
+                                                            disabled={processingOrderId === order.id || isAdmin}
+                                                            className={`px-3 py-1 bg-blue-500/20 text-blue-400 rounded-lg text-sm hover:bg-blue-500/30 flex items-center gap-1 ${processingOrderId === order.id ? 'opacity-50 cursor-wait' : ''} ${isAdmin ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                                        >
+                                                            {processingOrderId === order.id ? '⏳ Proses...' : '▶️ Proses'}
+                                                        </button>
+                                                    )}
+
+                                                    {/* Step 3: Selesai (Status Process - otomatis sudah lunas karena langkah 1) */}
+                                                    {order.status === 'process' && (
+                                                        <button
+                                                            onClick={() => updateOrderStatus(order.id, 'done')}
+                                                            disabled={processingOrderId === order.id}
+                                                            className={`px-3 py-1 bg-green-500/20 text-green-400 rounded-lg text-sm hover:bg-green-500/30 ${processingOrderId === order.id ? 'opacity-50 cursor-wait' : ''}`}
+                                                        >
+                                                            {processingOrderId === order.id ? '⏳ Proses...' : '✅ Selesai'}
+                                                        </button>
+                                                    )}
+                                                </>
+                                            ) : (
+                                                /* SCENARIO 2: STANDARD FLOW (OFF) - Default */
+                                                <>
+                                                    {/* Step 1: Proses dulu (Status New) */}
+                                                    {order.status === 'new' && (
+                                                        <button
+                                                            onClick={() => updateOrderStatus(order.id, 'process')}
+                                                            disabled={processingOrderId === order.id || isAdmin}
+                                                            className={`px-3 py-1 bg-blue-500/20 text-blue-400 rounded-lg text-sm hover:bg-blue-500/30 ${processingOrderId === order.id ? 'opacity-50 cursor-wait' : ''} ${isAdmin ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                                        >
+                                                            {processingOrderId === order.id ? '⏳ Proses...' : '▶️ Proses'}
+                                                        </button>
+                                                    )}
+
+                                                    {/* Helper: Bayar & Proses (Status Pending Payment) */}
+                                                    {order.status === 'pending_payment' && (
+                                                        <button
+                                                            onClick={() => updateOrderStatus(order.id, 'process')}
+                                                            disabled={processingOrderId === order.id || isAdmin}
+                                                            className={`px-3 py-1 bg-blue-500/20 text-blue-400 rounded-lg text-sm hover:bg-blue-500/30 flex items-center gap-1 ${processingOrderId === order.id ? 'opacity-50 cursor-wait' : ''} ${isAdmin ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                                        >
+                                                            {processingOrderId === order.id ? '⏳ Proses...' : <><span>💰</span> Bayar & Proses</>}
+                                                        </button>
+                                                    )}
+
+                                                    {/* Step 2: Bayar (Status Process & Belum Lunas) */}
+                                                    {order.status === 'process' && order.paymentStatus !== 'paid' && (
+                                                        <button
+                                                            onClick={() => handleOpenPayment(order)}
+                                                            disabled={isAdmin}
+                                                            className={`px-3 py-1 bg-purple-500/20 text-purple-400 rounded-lg text-sm hover:bg-purple-500/30 flex items-center gap-1 ${isAdmin ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                                        >
+                                                            <span>💸</span> Bayar
+                                                        </button>
+                                                    )}
+
+                                                    {/* Step 3: Selesai (Status Process & Sudah Lunas) */}
+                                                    {order.status === 'process' && order.paymentStatus === 'paid' && (
+                                                        <button
+                                                            onClick={() => updateOrderStatus(order.id, 'done')}
+                                                            disabled={processingOrderId === order.id}
+                                                            className={`px-3 py-1 bg-green-500/20 text-green-400 rounded-lg text-sm hover:bg-green-500/30 ${processingOrderId === order.id ? 'opacity-50 cursor-wait' : ''}`}
+                                                        >
+                                                            {processingOrderId === order.id ? '⏳ Proses...' : '✅ Selesai'}
+                                                        </button>
+                                                    )}
+                                                </>
                                             )}
                                             {order.status === 'done' && (
                                                 <span className="px-3 py-1 text-gray-500 text-sm">
@@ -1349,6 +1443,167 @@ function Kasir() {
                     </div>
                 )
             }
+
+            {/* ORDER DETAIL MODAL (NEW) */}
+            {selectedOrderForDetail && (
+                <div className="modal-overlay" onClick={() => setSelectedOrderForDetail(null)}>
+                    <div className="bg-surface border border-purple-500/30 rounded-2xl w-full max-w-md max-h-[85vh] flex flex-col animate-scale-up shadow-2xl" onClick={e => e.stopPropagation()}>
+                        {/* Header */}
+                        <div className="p-4 border-b border-white/10 flex justify-between items-center bg-[#1A1A2E]/95 backdrop-blur">
+                            <div>
+                                <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                                    📋 Detail Pesanan
+                                    <span className={`text-xs px-2 py-0.5 rounded-full border ${getStatusStyle(selectedOrderForDetail.status)}`}>
+                                        {getStatusLabel(selectedOrderForDetail.status)}
+                                    </span>
+                                </h3>
+                                <p className="text-xs text-gray-400">Order ID: #{selectedOrderForDetail.id}</p>
+                            </div>
+                            <button onClick={() => setSelectedOrderForDetail(null)} className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-gray-400 hover:text-white transition-colors">
+                                ✕
+                            </button>
+                        </div>
+
+                        {/* Body */}
+                        <div className="p-4 overflow-y-auto flex-1 custom-scrollbar space-y-4">
+                            {/* Customer Info */}
+                            <div className="bg-white/5 rounded-xl p-3 border border-white/5">
+                                <p className="text-sm font-bold text-purple-300 mb-2">👤 Pelanggan</p>
+                                <div className="grid grid-cols-2 gap-2 text-sm">
+                                    <div>
+                                        <p className="text-xs text-gray-500">Nama</p>
+                                        <p className="font-medium text-white">{selectedOrderForDetail.customerName || '-'}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-xs text-gray-500">Meja / Tipe</p>
+                                        <p className="font-medium text-white">{selectedOrderForDetail.tableNumber ? `Meja ${selectedOrderForDetail.tableNumber}` : selectedOrderForDetail.orderType === 'take_away' ? 'Bungkus' : '-'}</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Items */}
+                            <div>
+                                <p className="text-sm font-bold text-gray-300 mb-2">📦 Item Pesanan</p>
+                                <div className="space-y-2">
+                                    {selectedOrderForDetail.items?.map((item, idx) => (
+                                        <div key={idx} className="flex justify-between items-start bg-black/20 p-2 rounded-lg">
+                                            <div>
+                                                <p className="text-sm font-medium text-white">{item.name}</p>
+                                                <p className="text-xs text-gray-500">{item.qty} x {formatCurrency(item.price)}</p>
+                                                {item.note && <p className="text-xs text-yellow-500/80 italic mt-0.5">📝 {item.note}</p>}
+                                            </div>
+                                            <p className="text-sm font-bold text-white">{formatCurrency(item.price * item.qty)}</p>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Summary */}
+                            <div className="border-t border-white/10 pt-3">
+                                <div className="flex justify-between items-center mb-1">
+                                    <span className="text-gray-400 text-sm">Status Bayar</span>
+                                    <span className={`text-xs font-bold px-2 py-0.5 rounded ${selectedOrderForDetail.paymentStatus === 'paid' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
+                                        {selectedOrderForDetail.paymentStatus === 'paid' ? 'LUNAS' : selectedOrderForDetail.paymentStatus === 'refunded' ? 'DIKEMBALIKAN' : 'BELUM BAYAR'}
+                                    </span>
+                                </div>
+                                <div className="flex justify-between items-center">
+                                    <span className="text-white font-bold">Total Akumulasi</span>
+                                    <span className="text-xl font-bold text-purple-400">{formatCurrency(selectedOrderForDetail.total)}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Footer Actions */}
+                        <div className="p-4 border-t border-white/10 bg-[#1A1A2E]/95 backdrop-blur space-y-3">
+                            {/* Cancel Button - Only if enabled */}
+                            {(selectedOrderForDetail.status !== 'done' && selectedOrderForDetail.status !== 'cancel') && (
+                                <button
+                                    onClick={() => setShowCancelModal(true)}
+                                    className="w-full py-2.5 rounded-xl border border-red-500/30 text-red-500 hover:bg-red-500/10 hover:border-red-500/50 font-bold transition-all flex items-center justify-center gap-2"
+                                >
+                                    ⛔ Batalkan Pesanan
+                                </button>
+                            )}
+
+                            <button
+                                onClick={() => setSelectedOrderForDetail(null)}
+                                className="w-full py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-gray-300 font-medium transition-all"
+                            >
+                                Tutup
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* CANCEL CONFIRMATION MODAL */}
+            {showCancelModal && (
+                <div className="modal-overlay z-[60]">
+                    <div className="bg-surface border border-red-500/30 rounded-2xl w-full max-w-sm animate-scale-up p-5 shadow-2xl relative">
+                        <div className="text-center mb-5">
+                            <div className="w-14 h-14 rounded-full bg-red-500/20 flex items-center justify-center mx-auto mb-3">
+                                <span className="text-2xl">⚠️</span>
+                            </div>
+                            <h3 className="text-xl font-bold text-white">Konfirmasi Pembatalan</h3>
+                            <p className="text-xs text-gray-400 mt-1">Stok akan dikembalikan otomatis ke inventaris.</p>
+                        </div>
+
+                        {/* Warning if Paid */}
+                        {selectedOrderForDetail?.paymentStatus === 'paid' && (
+                            <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3 mb-4 flex items-start gap-2">
+                                <span className="text-lg">💸</span>
+                                <div>
+                                    <p className="text-xs font-bold text-red-400">PERINGATAN!</p>
+                                    <p className="text-[10px] text-red-300/80 leading-tight">
+                                        Pesanan ini sudah LUNAS. Pastikan Anda melakukan REFUND manual uang kepada pelanggan.
+                                    </p>
+                                </div>
+                            </div>
+                        )}
+
+                        <div className="space-y-4 mb-6">
+                            <div>
+                                <label className="block text-xs font-medium text-gray-400 mb-1.5 ml-1">Alasan Pembatalan <span className="text-red-500">*</span></label>
+                                <CustomSelect
+                                    value={cancellationReason}
+                                    onChange={setCancellationReason}
+                                    placeholder="Pilih Alasan..."
+                                    options={[
+                                        { value: 'Pelanggan Membatalkan', label: 'Pelanggan Membatalkan', icon: '👤' },
+                                        { value: 'Stok Habis / Rusak', label: 'Stok Habis / Rusak', icon: '📦' },
+                                        { value: 'Kesalahan Input Kasir', label: 'Kesalahan Input Kasir', icon: '⌨️' },
+                                        { value: 'Lainnya', label: 'Lainnya (Tulis Sendiri)', icon: '📝' },
+                                    ]}
+                                />
+                            </div>
+
+                            {cancellationReason === 'Lainnya' && (
+                                <textarea
+                                    value={customReason}
+                                    onChange={(e) => setCustomReason(e.target.value)}
+                                    placeholder="Tulis alasan spesifik..."
+                                    className="w-full bg-black/20 border border-white/10 rounded-lg p-3 text-sm text-white focus:border-red-500 outline-none h-20 resize-none"
+                                />
+                            )}
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3">
+                            <button
+                                onClick={() => { setShowCancelModal(false); setCancellationReason(''); setCustomReason(''); }}
+                                className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-gray-400 font-medium"
+                            >
+                                Kembali
+                            </button>
+                            <button
+                                onClick={handleCancelOrder}
+                                className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold shadow-lg shadow-red-600/20"
+                            >
+                                Ya, Batalkan
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Payment Proof Modal */}
             {

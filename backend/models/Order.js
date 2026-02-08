@@ -15,7 +15,10 @@ const OrderSchema = new mongoose.Schema({
     note: String,
     paymentProofImage: String,
     is_archived_from_pos: { type: Boolean, default: false },
-    shiftId: String // Links order to a specific shift (for reporting)
+    shiftId: String, // Links order to a specific shift (for reporting)
+    stockDeducted: { type: Boolean, default: false }, // Tracks if inventory was deducted for this order
+    cancellationReason: String, // Reason for cancellation (POS only)
+    cancelledBy: String // Staff who cancelled the order
 });
 
 module.exports = mongoose.model('Order', OrderSchema);

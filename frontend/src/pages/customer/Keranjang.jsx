@@ -180,7 +180,15 @@ function Keranjang() {
         setSubmittedOrder(savedOrder);
         setOrderSuccess(true);
         toast.success('Pesanan berhasil dibuat!');
+        setOrderSuccess(true);
+        toast.success('Pesanan berhasil dibuat!');
         localStorage.setItem('currentOrderId', savedOrder.id);
+
+        // SMART HISTORY: Save to local storage
+        const currentHistory = JSON.parse(localStorage.getItem('myOrderHistory') || '[]');
+        currentHistory.unshift(savedOrder); // Add new order to top
+        localStorage.setItem('myOrderHistory', JSON.stringify(currentHistory));
+
         clearCart();
     };
 
@@ -273,7 +281,14 @@ function Keranjang() {
                 <div className="bg-white/5 rounded-2xl p-6 border border-green-500/30 no-print">
                     <div className="text-6xl mb-4">✅</div>
                     <h2 className="text-2xl font-bold text-green-400 mb-2">Pesanan Berhasil!</h2>
-                    <p className="text-gray-400">Pesanan akan segera diproses.</p>
+
+                    {submittedOrder.paymentMethod === 'cash' && settings.isCashPrepaymentRequired ? (
+                        <p className="text-yellow-400 font-bold animate-pulse text-lg">
+                            ⚠️ Silakan Bayar Di Kasir Untuk Memproses Pesanan
+                        </p>
+                    ) : (
+                        <p className="text-gray-400">Pesanan akan segera diproses.</p>
+                    )}
                 </div>
 
                 {/* Receipt Preview */}
@@ -523,6 +538,9 @@ function Keranjang() {
                         <span className="text-xs font-bold">Tunai</span>
                     </button>
 
+                    {/* INFO WAJIB BAYAR DULU (TUNAI) */}
+
+
                     <button
                         onClick={() => setPaymentMethod('qris')}
                         className={`p-3 rounded-xl border flex flex-col items-center gap-2 transition-all ${paymentMethod === 'qris'
@@ -556,6 +574,19 @@ function Keranjang() {
                         <span className="text-xs font-bold">{settings.ewalletType || 'E-Wallet'}</span>
                     </button>
                 </div>
+
+                {/* INFO WAJIB BAYAR DULU (TUNAI) - MOVED HERE */}
+                {paymentMethod === 'cash' && settings.isCashPrepaymentRequired && (
+                    <div className="mt-4 p-4 bg-yellow-500/10 rounded-xl border border-yellow-500/30 flex items-start gap-3 animate-fade-in">
+                        <span className="text-xl">ℹ️</span>
+                        <div>
+                            <p className="font-bold text-yellow-400 text-sm">Info Pembayaran</p>
+                            <p className="text-xs text-yellow-200/80 mt-0.5">
+                                Pesanan Akan Diproses Setelah Pembayaran Di Kasir
+                            </p>
+                        </div>
+                    </div>
+                )}
 
                 {/* Info & Upload for Non-Cash */}
                 {paymentMethod !== 'cash' && (
