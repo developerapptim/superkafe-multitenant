@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import SmartText from '../../components/SmartText';
 import useSWR from 'swr';
 import api, { reportsAPI, tablesAPI, menuAPI } from '../../services/api';
 
@@ -121,7 +122,7 @@ function Dashboard() {
                         <span className="text-xl md:text-2xl">💰</span>
                         <span className="text-[10px] md:text-xs text-green-400 bg-green-500/20 px-2 py-1 rounded-full">{stats.revenueChange}</span>
                     </div>
-                    <p className="text-lg md:text-2xl font-bold truncate">{stats.revenue}</p>
+                    <SmartText className="text-lg md:text-2xl font-bold">{stats.revenue}</SmartText>
                     <p className="text-[10px] md:text-xs text-gray-400">Pendapatan Hari Ini</p>
                 </div>
 
@@ -190,7 +191,7 @@ function Dashboard() {
                                     <span className="text-lg w-6">{index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `${index + 1}.`}</span>
                                     <div className="flex-1">
                                         <div className="flex justify-between text-sm mb-1">
-                                            <span className="truncate">{item.name}</span>
+                                            <SmartText className="flex-1">{item.name}</SmartText>
                                             <span className="text-purple-400 ml-2">{item.sold}</span>
                                         </div>
                                         <div className="h-1.5 bg-gray-700 rounded-full overflow-hidden">
@@ -264,7 +265,9 @@ function Dashboard() {
                                                 {tx.type === 'Dine In' ? '🍽️' : '🥡'} {tx.type}
                                             </span>
                                         </td>
-                                        <td className="py-3 px-2 max-w-[200px] truncate">{tx.menu}</td>
+                                        <td className="py-3 px-2 max-w-[200px]">
+                                            <SmartText>{tx.menu}</SmartText>
+                                        </td>
                                         <td className="py-3 px-2 text-right font-medium text-green-400">{formatCurrency(tx.total)}</td>
                                         <td className="py-3 px-2 text-center">
                                             <span className={`px-2 py-1 rounded-full text-xs ${tx.method === 'cash' ? 'bg-green-500/20 text-green-400' :

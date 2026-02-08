@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
+import SmartText from '../../components/SmartText';
 import CustomSelect from '../../components/CustomSelect';
 import { cashTransactionsAPI, cashAnalyticsAPI, debtsAPI, employeesAPI } from '../../services/api';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
@@ -231,9 +232,9 @@ function Keuangan() {
                         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                             <div>
                                 <p className="text-xs md:text-sm text-gray-400 mb-1">📈 Estimasi Laba Bersih</p>
-                                <p className={`text-2xl md:text-4xl font-bold break-all ${analytics.netProfit >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                <SmartText className={`text-xl md:text-4xl font-bold ${analytics.netProfit >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                                     {formatCurrency(analytics.netProfit)}
-                                </p>
+                                </SmartText>
                                 <p className="text-[10px] md:text-xs text-gray-500 mt-2">= Penjualan - HPP - Biaya Operasional</p>
                             </div>
                             <div className="text-left md:text-right text-xs md:text-sm space-y-1 border-t border-white/5 pt-2 md:border-0 md:pt-0">
@@ -248,27 +249,27 @@ function Keuangan() {
                         {/* Total Penjualan */}
                         <div className="glass rounded-xl p-3 md:p-5">
                             <p className="text-[10px] md:text-xs text-gray-500 mb-1">💰 Total Penjualan</p>
-                            <p className="text-lg md:text-xl font-bold text-green-400 truncate">{formatCurrency(analytics.totalSales || 0)}</p>
+                            <SmartText className="text-lg md:text-xl font-bold text-green-400">{formatCurrency(analytics.totalSales || 0)}</SmartText>
                         </div>
 
                         {/* HPP */}
                         <div className="glass rounded-xl p-3 md:p-5 border border-orange-500/30">
                             <p className="text-[10px] md:text-xs text-gray-500 mb-1">🏭 HPP (Modal Bahan)</p>
-                            <p className="text-lg md:text-xl font-bold text-orange-400 truncate">{formatCurrency(analytics.totalHPP || 0)}</p>
+                            <SmartText className="text-lg md:text-xl font-bold text-orange-400">{formatCurrency(analytics.totalHPP || 0)}</SmartText>
                         </div>
 
                         {/* Biaya Operasional */}
                         <div className="glass rounded-xl p-3 md:p-5">
                             <p className="text-[10px] md:text-xs text-gray-500 mb-1">📤 Biaya Operasional</p>
-                            <p className="text-lg md:text-xl font-bold text-red-400 truncate">{formatCurrency(analytics.totalOperationalExpense || 0)}</p>
+                            <SmartText className="text-lg md:text-xl font-bold text-red-400">{formatCurrency(analytics.totalOperationalExpense || 0)}</SmartText>
                         </div>
 
                         {/* Hutang Belum Lunas */}
                         <div className="glass rounded-xl p-3 md:p-5 border border-yellow-500/30">
                             <p className="text-[10px] md:text-xs text-gray-500 mb-1">⚠️ Hutang Aktif</p>
-                            <p className="text-lg md:text-xl font-bold text-yellow-400 truncate">
+                            <SmartText className="text-lg md:text-xl font-bold text-yellow-400">
                                 {formatCurrency(breakdown.totalKasbon + breakdown.totalPiutang)}
-                            </p>
+                            </SmartText>
                             <p className="text-[10px] md:text-xs text-gray-600 mt-1 truncate">
                                 Kasbon: {formatCurrency(breakdown.totalKasbon)}
                             </p>
@@ -372,7 +373,7 @@ function Keuangan() {
                                                 <span className="text-lg">{t.type === 'in' ? '📥' : '📤'}</span>
                                             </div>
                                             <div>
-                                                <p className="font-medium">{t.description || t.category}</p>
+                                                <SmartText className="font-medium">{t.description || t.category}</SmartText>
                                                 <p className="text-xs text-gray-400">
                                                     {t.category && <span className="mr-2 px-2 py-0.5 bg-purple-500/20 rounded">{t.category}</span>}
                                                     <span className={`mr-2 px-2 py-0.5 rounded ${t.paymentMethod === 'cash' ? 'bg-green-500/20' : 'bg-blue-500/20'}`}>

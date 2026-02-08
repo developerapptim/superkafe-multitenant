@@ -1,101 +1,19 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useLayoutEffect } from 'react';
 import { createPortal } from 'react-dom';
 import useSWR from 'swr';
 import toast from 'react-hot-toast';
 import Swal from 'sweetalert2';
 import api, { inventoryAPI, settingsAPI } from '../../services/api';
+import SmartText from '../../components/SmartText';
 
-const TruncatedValue = ({ value, colorClass }) => {
-    const [isOpen, setIsOpen] = useState(false);
-    const [coords, setCoords] = useState({ top: 0, left: 0 });
-    const containerRef = useRef(null);
 
-    useEffect(() => {
-        if (isOpen && containerRef.current) {
-            const updatePosition = () => {
-                const rect = containerRef.current.getBoundingClientRect();
-                setCoords({
-                    top: rect.top - 8, // Just above the element
-                    left: rect.left + (rect.width / 2) // Center horizontally
-                });
-            };
-
-            updatePosition();
-            // Optional: update on scroll/resize for better UX if they don't close immediately
-            // But closing on scroll is safer and easier.
-        }
-    }, [isOpen]);
-
-    useEffect(() => {
-        if (!isOpen) return;
-
-        const timer = setTimeout(() => setIsOpen(false), 5000);
-
-        const handleInteraction = (e) => {
-            // Close if clicking anywhere, including the popup itself (user said "user mengetuk yang lain", but clicking popup to dismiss is also standard)
-            // But we ignore the initial click on the trigger (containerRef) which toggles it.
-            if (containerRef.current && !containerRef.current.contains(e.target)) {
-                setIsOpen(false);
-            }
-        };
-
-        const handleScroll = () => setIsOpen(false);
-
-        document.addEventListener('mousedown', handleInteraction);
-        document.addEventListener('touchstart', handleInteraction);
-        window.addEventListener('scroll', handleScroll, true);
-        window.addEventListener('resize', handleScroll);
-
-        return () => {
-            clearTimeout(timer);
-            document.removeEventListener('mousedown', handleInteraction);
-            document.removeEventListener('touchstart', handleInteraction);
-            window.removeEventListener('scroll', handleScroll, true);
-            window.removeEventListener('resize', handleScroll);
-        };
-    }, [isOpen]);
-
-    return (
-        <>
-            <p
-                ref={containerRef}
-                className={`text-lg md:text-xl font-bold truncate cursor-pointer select-none active:scale-95 transition-transform ${colorClass}`}
-                onClick={(e) => {
-                    e.stopPropagation(); // Prevent immediate closing
-                    setIsOpen(!isOpen);
-                }}
-            >
-                {value}
-            </p>
-
-            {/* Popup via Portal to escape parent clipping */}
-            {isOpen && createPortal(
-                <div
-                    className="fixed z-[9999] pointer-events-none"
-                    style={{
-                        top: coords.top,
-                        left: coords.left,
-                        transform: 'translate(-50%, -100%)'
-                    }}
-                >
-                    <div className="bg-[#151235] border border-purple-500/50 rounded-xl shadow-[0_10px_40px_-10px_rgba(168,85,247,0.4)] px-4 py-3 text-sm md:text-base font-bold text-white relative animate-in fade-in zoom-in-95 slide-in-from-bottom-2 duration-200 origin-bottom select-none">
-                        <span className="whitespace-nowrap">{value}</span>
-                        {/* Down Arrow */}
-                        <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-[#151235] rotate-45 border-r border-b border-purple-500/50"></div>
-                    </div>
-                </div>,
-                document.body
-            )}
-        </>
-    );
-};
 
 // Custom Dropdown for Status Filter
 // Custom Dropdown for Status Filter
 const StatusFilterDropdown = ({ currentFilter, onFilterChange }) => {
     const [isOpen, setIsOpen] = useState(false);
     const containerRef = useRef(null);
-    const [coords, setCoords] = useState({ top: 0, left: 0, width: 0 });
+    const [coords, setCoords] = useState(null);
 
     const options = [
         { value: 'all', label: 'Semua Status', color: 'text-gray-300', icon: '📋' },
@@ -111,14 +29,14 @@ const StatusFilterDropdown = ({ currentFilter, onFilterChange }) => {
         if (containerRef.current) {
             const rect = containerRef.current.getBoundingClientRect();
             setCoords({
-                top: rect.bottom + window.scrollY + 8, // 8px gap
-                left: rect.left + window.scrollX,
+                top: rect.bottom + 8, // 8px gap
+                left: rect.left,
                 width: rect.width
             });
         }
     };
 
-    useEffect(() => {
+    useLayoutEffect(() => {
         if (isOpen) {
             updatePosition();
             window.addEventListener('resize', updatePosition);
@@ -148,7 +66,10 @@ const StatusFilterDropdown = ({ currentFilter, onFilterChange }) => {
     return (
         <div className="relative min-w-[180px]" ref={containerRef}>
             <button
-                onClick={() => setIsOpen(!isOpen)}
+                onClick={() => {
+                    if (!isOpen) setCoords(null); // Reset coords when opening
+                    setIsOpen(!isOpen);
+                }}
                 className="w-full px-4 py-2.5 rounded-lg bg-[#1e1e2d] border border-purple-500/30 text-white flex items-center justify-between focus:outline-none focus:border-purple-500 hover:bg-white/5 transition-all"
             >
                 <div className="flex items-center gap-2">
@@ -171,32 +92,34 @@ const StatusFilterDropdown = ({ currentFilter, onFilterChange }) => {
                     {/* Transparent Backdrop for click-outside */}
                     <div className="fixed inset-0 z-[9998]" onClick={() => setIsOpen(false)}></div>
 
-                    <div
-                        className="fixed z-[9999] bg-[#1e1e2d] border border-purple-500/30 rounded-xl shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-100"
-                        style={{
-                            top: coords.top,
-                            left: coords.left,
-                            width: coords.width
-                        }}
-                    >
-                        {options.map((option) => (
-                            <button
-                                key={option.value}
-                                onClick={() => {
-                                    onFilterChange(option.value);
-                                    setIsOpen(false);
-                                }}
-                                className={`w-full text-left px-4 py-3 flex items-center gap-2 hover:bg-white/5 transition-colors ${currentFilter === option.value ? 'bg-purple-500/20' : ''
-                                    }`}
-                            >
-                                <span>{option.icon}</span>
-                                <span className={`${option.color} font-medium`}>{option.label}</span>
-                                {currentFilter === option.value && (
-                                    <span className="ml-auto text-purple-400">✓</span>
-                                )}
-                            </button>
-                        ))}
-                    </div>
+                    {coords && (
+                        <div
+                            className="fixed z-[9999] bg-[#1e1e2d] border border-purple-500/30 rounded-xl shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-100 origin-top"
+                            style={{
+                                top: coords.top,
+                                left: coords.left,
+                                width: coords.width
+                            }}
+                        >
+                            {options.map((option) => (
+                                <button
+                                    key={option.value}
+                                    onClick={() => {
+                                        onFilterChange(option.value);
+                                        setIsOpen(false);
+                                    }}
+                                    className={`w-full text-left px-4 py-3 flex items-center gap-2 hover:bg-white/5 transition-colors ${currentFilter === option.value ? 'bg-purple-500/20' : ''
+                                        }`}
+                                >
+                                    <span>{option.icon}</span>
+                                    <span className={`${option.color} font-medium`}>{option.label}</span>
+                                    {currentFilter === option.value && (
+                                        <span className="ml-auto text-purple-400">✓</span>
+                                    )}
+                                </button>
+                            ))}
+                        </div>
+                    )}
                 </>,
                 document.body
             )}
@@ -278,22 +201,14 @@ function Inventaris() {
     });
 
     // Top Usage State
-    const [topUsage, setTopUsage] = useState([]);
+
 
     // Fetch data
     useEffect(() => {
         fetchData();
-        fetchTopUsage();
     }, []);
 
-    const fetchTopUsage = async () => {
-        try {
-            const res = await inventoryAPI.getTopUsage();
-            setTopUsage(res.data);
-        } catch (err) {
-            console.error('Error fetching top usage:', err);
-        }
-    };
+
 
     const fetchData = async () => {
         try {
@@ -818,11 +733,11 @@ function Inventaris() {
                     <>
                         <div className="glass rounded-xl p-3 md:p-4">
                             <p className="text-[10px] md:text-xs text-gray-400">Nilai Aset Stok</p>
-                            <TruncatedValue value={formatCurrency(stats.assetValue)} colorClass="text-green-400" />
+                            <SmartText className="text-lg md:text-xl font-bold text-green-400">{formatCurrency(stats.assetValue)}</SmartText>
                         </div>
                         <div className="glass rounded-xl p-3 md:p-4">
                             <p className="text-[10px] md:text-xs text-gray-400">Nilai + PPN</p>
-                            <TruncatedValue value={formatCurrency(stats.assetWithPPN)} colorClass="text-purple-400" />
+                            <SmartText className="text-lg md:text-xl font-bold text-purple-400">{formatCurrency(stats.assetWithPPN)}</SmartText>
                         </div>
                     </>
                 )}
@@ -867,50 +782,7 @@ function Inventaris() {
                 </div>
             </div>
 
-            {/* Top Usage Widget (Only visible on Master Bahan tab) */}
-            {activeTab === 'bahan' && topUsage.length > 0 && (
-                <div className="glass rounded-xl p-4 border border-purple-500/20 bg-gradient-to-r from-purple-900/20 to-blue-900/20">
-                    <h3 className="font-bold mb-3 flex items-center gap-2">
-                        🔥 Bahan Terlaris Hari Ini
-                    </h3>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-                        {topUsage.map((item, idx) => {
-                            // Robust Data Fallback
-                            const name = item.ingName || item.name || item.nama_bahan || 'Unknown Item';
-                            const usage = item.totalUsed || item.totalUsage || item.qty || 0;
 
-                            // Find ingredient for unit lookup
-                            const ingredient = ingredients.find(i => i.id === item._id || i.nama === name);
-                            const unit = ingredient?.satuan || item.unit || 'unit';
-
-                            // Formatting
-                            const qty = Math.abs(Number(usage)).toLocaleString('id-ID', { maximumFractionDigits: 2 });
-
-                            return (
-                                <div key={item._id || idx} className="flex items-center gap-3 bg-white/5 px-4 py-3 rounded-lg border border-white/5 w-full transition-colors hover:bg-white/10">
-                                    {/* Ranking Circle */}
-                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold shrink-0 ${idx === 0 ? 'bg-yellow-500 text-black shadow-lg shadow-yellow-500/20' :
-                                        idx === 1 ? 'bg-gray-400 text-black' :
-                                            idx === 2 ? 'bg-orange-700 text-white' : 'bg-white/10 text-white'
-                                        }`}>
-                                        {idx + 1}
-                                    </div>
-
-                                    {/* Info Text */}
-                                    <div className="min-w-0 flex-1">
-                                        <p className="text-sm truncate">
-                                            <span className="font-bold text-white">{name}</span>
-                                        </p>
-                                        <p className="text-xs text-gray-400 mt-0.5 truncate">
-                                            Terpakai: <span className="text-gray-200">{qty} {unit}</span>
-                                        </p>
-                                    </div>
-                                </div>
-                            );
-                        })}
-                    </div>
-                </div>
-            )}
 
             {/* Tab: Master Bahan */}
             {activeTab === 'bahan' && (
@@ -980,7 +852,7 @@ function Inventaris() {
                                                 <tr key={item.id} className="hover:bg-white/5">
                                                     <td className="px-4 py-3">
                                                         <div>
-                                                            <p className="font-medium text-white">{item.nama}</p>
+                                                            <SmartText className="font-medium text-white">{item.nama}</SmartText>
                                                             {item.type === 'non_physical' && (
                                                                 <span className="mt-1 inline-flex items-center gap-1 bg-purple-500/10 text-purple-300 border border-purple-500/20 text-[10px] font-semibold px-2 py-0.5 rounded-full w-fit">
                                                                     ⚡ Jasa / Non-Stok
@@ -1142,7 +1014,9 @@ function Inventaris() {
                                         {/* Row 1: Header */}
                                         <div className="flex justify-between items-start mb-3">
                                             <div>
-                                                <h4 className="font-bold text-white text-lg leading-tight">{item.nama}</h4>
+                                                <div className="font-bold text-white text-lg leading-tight">
+                                                    <SmartText maxLength={25}>{item.nama}</SmartText>
+                                                </div>
                                                 {item.type === 'non_physical' && (
                                                     <span className="inline-block mt-1 text-[10px] bg-purple-500/20 text-purple-300 px-2 py-0.5 rounded-full border border-purple-500/20">
                                                         ⚡ Jasa / Non-Stok
@@ -1192,21 +1066,21 @@ function Inventaris() {
                                             <div className="grid grid-cols-3 gap-2 mb-4 text-center">
                                                 <div className="bg-white/5 rounded-lg p-2">
                                                     <p className="text-[10px] text-gray-400 mb-0.5">Hrg Beli</p>
-                                                    <p className="text-xs font-medium text-emerald-400 truncate">
+                                                    <SmartText className="text-xs font-medium text-emerald-400">
                                                         {formatCurrency(modalPerUnit * (isKonversi ? item.isi_prod : 1))}
-                                                    </p>
+                                                    </SmartText>
                                                 </div>
                                                 <div className="bg-white/5 rounded-lg p-2">
                                                     <p className="text-[10px] text-gray-400 mb-0.5">Modal/Unit</p>
-                                                    <p className="text-xs font-medium text-white truncate">
+                                                    <SmartText className="text-xs font-medium text-white">
                                                         {formatCurrency(modalPerUnit)}
-                                                    </p>
+                                                    </SmartText>
                                                 </div>
                                                 <div className="bg-white/5 rounded-lg p-2">
                                                     <p className="text-[10px] text-gray-400 mb-0.5">Ni. Stok</p>
-                                                    <p className="text-xs font-bold text-purple-400 truncate">
+                                                    <SmartText className="text-xs font-bold text-purple-400">
                                                         {formatCurrency(stockValue)}
-                                                    </p>
+                                                    </SmartText>
                                                 </div>
                                             </div>
                                         )}
@@ -2064,7 +1938,9 @@ function StockHistoryTable() {
                                             <div className="font-medium">{item.date}</div>
                                             <div className="text-xs text-gray-500">{item.time}</div>
                                         </td>
-                                        <td className="px-4 py-3 font-medium text-white">{item.ingName}</td>
+                                        <td className="px-4 py-3 font-medium text-white">
+                                            <SmartText>{item.ingName}</SmartText>
+                                        </td>
                                         <td className="px-4 py-3 text-center">
                                             <span className={`px-2 py-1 rounded text-xs font-bold border ${item.type === 'in' || item.type === 'restock' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
                                                 item.type === 'out' ? 'bg-red-500/10 text-red-400 border-red-500/20' :
@@ -2079,8 +1955,8 @@ function StockHistoryTable() {
                                             }`}>
                                             {item.type === 'out' ? '-' : '+'}{item.qty}
                                         </td>
-                                        <td className="px-4 py-3 text-gray-400 text-xs max-w-xs truncate" title={item.note}>
-                                            {item.note || '-'}
+                                        <td className="px-4 py-3 text-gray-400 text-xs max-w-xs">
+                                            <SmartText>{item.note || '-'}</SmartText>
                                         </td>
                                     </tr>
                                 ))

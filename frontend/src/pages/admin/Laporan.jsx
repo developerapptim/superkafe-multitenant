@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
 import useSWR from 'swr';
+import SmartText from '../../components/SmartText';
 import api from '../../services/api';
 
 // Fetcher
@@ -88,7 +89,7 @@ function Laporan() {
                     <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
                         <div className="glass rounded-xl p-3 md:p-4 border-l-4 border-green-500">
                             <p className="text-[10px] md:text-xs text-gray-400">Total Pendapatan</p>
-                            <p className="text-lg md:text-xl font-bold truncate">{formatCurrency(stats.revenue)}</p>
+                            <SmartText className="text-lg md:text-xl font-bold">{formatCurrency(stats.revenue)}</SmartText>
                         </div>
                         <div className="glass rounded-xl p-3 md:p-4 border-l-4 border-blue-500">
                             <p className="text-[10px] md:text-xs text-gray-400">Total Pesanan</p>
@@ -96,7 +97,7 @@ function Laporan() {
                         </div>
                         <div className="glass rounded-xl p-3 md:p-4 border-l-4 border-purple-500">
                             <p className="text-[10px] md:text-xs text-gray-400">Rata-rata Transaksi</p>
-                            <p className="text-lg md:text-xl font-bold truncate">{formatCurrency(stats.avgOrderValue)}</p>
+                            <SmartText className="text-lg md:text-xl font-bold">{formatCurrency(stats.avgOrderValue)}</SmartText>
                         </div>
                         <div className="glass rounded-xl p-3 md:p-4 border-l-4 border-yellow-500">
                             <p className="text-[10px] md:text-xs text-gray-400">Pertumbuhan Omzet</p>
@@ -157,7 +158,7 @@ function Laporan() {
                                             </span>
                                             <div className="flex-1">
                                                 <div className="flex justify-between mb-1">
-                                                    <span className="text-sm truncate">{item.name}</span>
+                                                    <SmartText className="text-sm">{item.name}</SmartText>
                                                     <span className="text-sm text-gray-400">{item.count}x</span>
                                                 </div>
                                                 <div className="h-2 bg-white/10 rounded-full overflow-hidden">
@@ -187,7 +188,7 @@ function Laporan() {
                                             </span>
                                             <div className="flex-1">
                                                 <div className="flex justify-between mb-1">
-                                                    <span className="text-sm truncate">{item.name}</span>
+                                                    <SmartText className="text-sm">{item.name}</SmartText>
                                                     <span className="text-sm text-red-400">{item.count}x</span>
                                                 </div>
                                                 <div className="h-2 bg-white/10 rounded-full overflow-hidden">

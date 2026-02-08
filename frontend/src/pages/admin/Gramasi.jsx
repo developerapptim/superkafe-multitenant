@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
+import SmartText from '../../components/SmartText';
 import CustomSelect from '../../components/CustomSelect';
 import useSWR, { mutate } from 'swr';
 import api, { menuAPI, inventoryAPI, recipesAPI } from '../../services/api';
@@ -253,27 +254,19 @@ function Gramasi() {
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
                     <div className="glass rounded-xl p-3 md:p-4">
                         <p className="text-[10px] md:text-xs text-gray-400">Total HPP</p>
-                        <p className="text-sm md:text-xl font-bold text-red-400 truncate" title={formatCurrency(stats.totalHPP)}>
-                            {formatCurrency(stats.totalHPP)}
-                        </p>
+                        <SmartText className="text-sm md:text-xl font-bold text-red-400">{formatCurrency(stats.totalHPP)}</SmartText>
                     </div>
                     <div className="glass rounded-xl p-3 md:p-4">
                         <p className="text-[10px] md:text-xs text-gray-400">Total Harga Jual</p>
-                        <p className="text-sm md:text-xl font-bold text-green-400 truncate" title={formatCurrency(stats.totalSelling)}>
-                            {formatCurrency(stats.totalSelling)}
-                        </p>
+                        <SmartText className="text-sm md:text-xl font-bold text-green-400">{formatCurrency(stats.totalSelling)}</SmartText>
                     </div>
                     <div className="glass rounded-xl p-3 md:p-4">
                         <p className="text-[10px] md:text-xs text-gray-400">Total Keuntungan</p>
-                        <p className="text-sm md:text-xl font-bold text-purple-400 truncate" title={formatCurrency(stats.totalProfit)}>
-                            {formatCurrency(stats.totalProfit)}
-                        </p>
+                        <SmartText className="text-sm md:text-xl font-bold text-purple-400">{formatCurrency(stats.totalProfit)}</SmartText>
                     </div>
                     <div className="glass rounded-xl p-3 md:p-4">
                         <p className="text-[10px] md:text-xs text-gray-400">Avg Margin</p>
-                        <p className="text-sm md:text-xl font-bold text-blue-400 truncate" title={`${stats.avgMargin.toFixed(1)}%`}>
-                            {stats.avgMargin.toFixed(1)}%
-                        </p>
+                        <SmartText className="text-sm md:text-xl font-bold text-blue-400">{stats.avgMargin.toFixed(1)}%</SmartText>
                     </div>
                 </div>
             )}
