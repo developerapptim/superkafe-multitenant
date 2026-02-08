@@ -557,3 +557,24 @@ exports.payOrder = async (req, res) => {
         res.status(500).json({ error: 'Server error' });
     }
 };
+
+// Get orders for today (public/customer usage to sync status)
+exports.getTodayOrders = async (req, res) => {
+    try {
+        const startOfDay = new Date();
+        startOfDay.setHours(0, 0, 0, 0);
+
+        const endOfDay = new Date();
+        endOfDay.setHours(23, 59, 59, 999);
+
+        // Fetch minimal fields for status sync
+        const orders = await Order.find({
+            createdAt: { $gte: startOfDay, $lte: endOfDay }
+        }).select('id status total paymentStatus tableNumber timestamp createdAt');
+
+        res.json(orders);
+    } catch (err) {
+        console.error('Get Today Orders Error:', err);
+        res.status(500).json({ error: 'Server error' });
+    }
+};

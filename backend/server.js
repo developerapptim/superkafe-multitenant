@@ -56,5 +56,8 @@ app.use('/api/categories', require('./routes/categoryRoutes'));
 app.use('/api/users', require('./routes/userRoutes'));
 
 // ===== START SERVER =====
+app.use('/api/feedback', require('./routes/feedbackRoutes'));
+app.use('/api/service-request', require('./routes/serviceRequestRoutes'));
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));

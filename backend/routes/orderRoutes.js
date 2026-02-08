@@ -7,6 +7,7 @@ const { uploadPayment } = require('../middleware/uploadMiddleware');
 // router.use(checkApiKey); // Optional: if some are public, don't use global use
 
 router.get('/', checkApiKey, OrderController.getOrders);
+router.get('/today', OrderController.getTodayOrders); // Public status sync
 router.get('/:id', checkApiKey, OrderController.getOrderById); // New
 // Public-ish endpoint (secured by API Key) to check existing orders
 router.post('/check-phone', checkApiKey, OrderController.checkPhone);

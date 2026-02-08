@@ -24,6 +24,7 @@ const Shift = lazy(() => import('./pages/admin/Shift'));
 const Pelanggan = lazy(() => import('./pages/admin/Pelanggan'));
 const Pengaturan = lazy(() => import('./pages/admin/Pengaturan'));
 const DataCenter = lazy(() => import('./pages/admin/DataCenter'));
+const FeedbackList = lazy(() => import('./pages/admin/FeedbackList'));
 
 // Customer Layout & Pages
 const CustomerLayout = lazy(() => import('./pages/customer/CustomerLayout'));
@@ -118,6 +119,7 @@ function App() {
                 <DataCenter />
               </ProtectedRoute>
             } />
+            <Route path="feedback" element={<FeedbackList />} />
             <Route path="gramasi" element={
               <ProtectedRoute allowedRoles={['admin', 'staf']}>
                 <Gramasi />

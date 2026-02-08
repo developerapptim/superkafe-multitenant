@@ -6,6 +6,7 @@ import { motion } from 'framer-motion';
 import api from '../../services/api';
 import Sidebar from '../../components/Sidebar';
 import CommandPalette from '../../components/CommandPalette';
+import NotificationBell from '../../components/admin/NotificationBell';
 
 // Fetcher
 const fetcher = url => api.get(url).then(res => res.data);
@@ -138,10 +139,14 @@ function AdminLayout() {
                                 '/admin/pelanggan': '❤️ Pelanggan & CRM',
                                 '/admin/pengaturan': '⚙️ Pengaturan',
                                 '/admin/data-center': '🗄️ Pusat Data',
+                                '/admin/feedback': '💬 Masukan Pelanggan',
                             };
                             return titles[path] || 'Admin Panel';
                         })()}
                     </h1>
+                    <div className="mr-2">
+                        <NotificationBell />
+                    </div>
 
                     {/* Monitor Mode Badge - Mobile Only */}
                     {(user.role === 'admin' || user.role === 'owner') && location.pathname === '/admin/kasir' && (
@@ -151,6 +156,39 @@ function AdminLayout() {
                         </div>
                     )}
                 </div>
+
+                {/* Desktop Header */}
+                <header className="hidden lg:flex items-center justify-between px-6 py-3 bg-[#151235] border-b border-purple-500/20">
+                    <h2 className="text-white font-bold text-lg">
+                        {(() => {
+                            const path = location.pathname;
+                            const titles = {
+                                '/admin/dashboard': '📊 Dashboard',
+                                '/admin/menu': '🍽️ Manajemen Menu',
+                                '/admin/kasir': '🧾 Kasir (POS)',
+                                '/admin/gramasi': '⚖️ Gramasi & HPP',
+                                '/admin/inventaris': '📦 Inventaris',
+                                '/admin/keuangan': '💰 Keuangan & Kas',
+                                '/admin/pegawai': '👥 Pegawai',
+                                '/admin/meja': '🪑 Meja & Reservasi',
+                                '/admin/laporan': '📈 Laporan & Analitik',
+                                '/admin/shift': '🔐 Laporan Shift',
+                                '/admin/pelanggan': '❤️ Pelanggan & CRM',
+                                '/admin/pengaturan': '⚙️ Pengaturan',
+                                '/admin/data-center': '🗄️ Pusat Data',
+                                '/admin/feedback': '💬 Masukan Pelanggan',
+                            };
+                            return titles[path] || 'Admin Panel';
+                        })()}
+                    </h2>
+                    <div className="flex items-center gap-4">
+                        <NotificationBell />
+                        <div className="flex items-center gap-2 px-3 py-1.5 bg-white/5 rounded-full border border-white/10">
+                            <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+                            <span className="text-xs text-gray-300 font-medium">{user.name || 'Admin'}</span>
+                        </div>
+                    </div>
+                </header>
 
                 {/* Main Content */}
                 <main className="flex-1 overflow-y-auto p-4 content-container relative">

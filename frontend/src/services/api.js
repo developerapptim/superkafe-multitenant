@@ -199,6 +199,19 @@ export const userAPI = {
     changePassword: (data) => api.put('/users/change-password', data),
 };
 
+// ========== FEEDBACK API ==========
+export const feedbackAPI = {
+    getAll: () => api.get('/feedback'),
+    create: (data) => api.post('/feedback', data),
+};
+
+// ========== SERVICE REQUEST API ==========
+export const serviceAPI = {
+    create: (data) => api.post('/service-request', data),
+    getPending: () => api.get('/service-request/pending'),
+    complete: (id) => api.put(`/service-request/${id}/complete`),
+};
+
 export default api;
 
 

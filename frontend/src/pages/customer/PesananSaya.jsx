@@ -55,6 +55,14 @@ function PesananSaya() {
         }
     };
 
+    const sortOrders = (list) => {
+        return list.sort((a, b) => {
+            const dateA = new Date(a.createdAt || a.timestamp || 0);
+            const dateB = new Date(b.createdAt || b.timestamp || 0);
+            return dateB - dateA;
+        });
+    };
+
     // 2. Fetch Data (Sync Local History with API)
     const fetchData = async () => {
         try {
@@ -78,30 +86,22 @@ function PesananSaya() {
 
             if (localOrders.length > 0) {
                 // Sync Status: Fetch latest status for these orders
-                const res = await ordersAPI.getToday();
-                const serverOrders = Array.isArray(res.data) ? res.data : [];
+                try {
+                    const res = await ordersAPI.getToday();
+                    const serverOrders = Array.isArray(res.data) ? res.data : [];
 
-                // Update local orders with server data if found
-                const updatedOrders = localOrders.map(local => {
-                    const serverMatch = serverOrders.find(s => s.id === local.id);
-                    return serverMatch ? { ...local, ...serverMatch } : local;
-                });
+                    // Update local orders with server data if found
+                    const updatedOrders = localOrders.map(local => {
+                        const serverMatch = serverOrders.find(s => s.id === local.id);
+                        return serverMatch ? { ...local, ...serverMatch } : local;
+                    });
 
-                // NOTE: Removed tableId filter. 
-                // Since this uses localStorage ('myOrderHistory'), it is personal to the device.
-                // We should show ALL personal orders regardless of which table they are currently at.
-                // This prevents history from determining "disappearing" when switching context.
-
-                const filtered = updatedOrders;
-
-                // Sort by newest
-                filtered.sort((a, b) => {
-                    const dateA = new Date(a.createdAt || a.timestamp || 0);
-                    const dateB = new Date(b.createdAt || b.timestamp || 0);
-                    return dateB - dateA;
-                });
-
-                setOrders(filtered);
+                    setOrders(sortOrders(updatedOrders));
+                } catch (apiErr) {
+                    console.warn("Sync failed, using local history:", apiErr);
+                    // Fallback: Use local history as is
+                    setOrders(sortOrders(localOrders));
+                }
             } else {
                 setOrders([]);
             }
@@ -182,16 +182,25 @@ function PesananSaya() {
         return order?.id?.slice(-6) || '------';
     };
 
-    // Handle Cancel Order
-    const handleCancelOrder = async () => {
-        if (!activeOrder) return;
+    // Handle Generic Cancel (Active or History)
+    const handleGenericCancel = async (order) => {
+        if (!order) return;
+
+        if (!window.confirm("Batalkan pesanan ini?")) return;
+
         setLoading(true);
         try {
-            await ordersAPI.cancel(activeOrder.id);
-            // Update local state immediately
-            setActiveOrder(prev => ({ ...prev, status: 'cancelled' }));
-            // Also update history list
-            setOrders(prev => prev.map(o => o.id === activeOrder.id ? { ...o, status: 'cancelled' } : o));
+            await ordersAPI.cancel(order.id);
+
+            // Update Active Order if it matches
+            if (activeOrder && activeOrder.id === order.id) {
+                setActiveOrder(prev => ({ ...prev, status: 'cancelled' }));
+            }
+
+            // Update History List
+            setOrders(prev => prev.map(o => o.id === order.id ? { ...o, status: 'cancelled' } : o));
+
+            // If it was the active order interaction, close modal
             setShowCancelModal(false);
         } catch (err) {
             console.error("Failed to cancel order", err);
@@ -201,150 +210,183 @@ function PesananSaya() {
         }
     };
 
-    const renderActiveOrder = () => {
-        if (!activeOrder) return null;
+    const renderOrderCard = (order, isFeatured = false) => {
+        if (!order) return null;
 
-        const currentStep = getStatusStep(activeOrder.status);
-        // Updated: Only 3 steps
+        const currentStep = getStatusStep(order.status);
         const steps = [
             { label: 'Diterima', icon: '📝', step: 1 },
             { label: 'Diproses', icon: '👨‍🍳', step: 2 },
             { label: 'Selesai', icon: '✅', step: 3 },
         ];
 
-        const takeAway = isTakeAway(activeOrder);
+        const takeAway = isTakeAway(order);
+        const isCancellable = order.status === 'new' && order.paymentStatus === 'unpaid';
+        const isDeletable = !isFeatured && (order.status === 'done' || order.status === 'cancelled' || order.status === 'completed');
 
         return (
-            <div className="bg-gradient-to-br from-purple-900/50 to-blue-900/50 rounded-2xl p-6 border border-purple-500/50 mb-8 relative overflow-hidden">
-                <div className="absolute top-0 right-0 p-4 opacity-20 text-9xl transform translate-x-1/4 -translate-y-1/4">
+            <div className={`relative overflow-hidden rounded-2xl p-6 border transition-all ${isFeatured
+                ? 'bg-gradient-to-br from-purple-900/50 to-blue-900/50 border-purple-500/50 mb-8 shadow-lg shadow-purple-900/20'
+                : 'bg-white/5 border-white/10 mb-4 hover:border-white/20'
+                }`}>
+                {/* Background Icon Watermark */}
+                <div className="absolute top-0 right-0 p-4 opacity-10 text-9xl transform translate-x-1/4 -translate-y-1/4 pointer-events-none">
                     {steps[currentStep - 1]?.icon || '📋'}
                 </div>
 
-                <div className="relative z-10">
-                    <div className="flex justify-between items-start mb-6">
-                        <div>
-                            <h3 className="text-2xl font-bold bg-gradient-to-r from-white to-purple-200 bg-clip-text text-transparent">
-                                Pesanan Aktif
-                            </h3>
-                            <div className="flex flex-col">
-                                <p className="text-purple-300">#{getOrderNumber(activeOrder)} • {activeOrder.tableNumber ? `Meja ${activeOrder.tableNumber}` : 'Take Away'}</p>
-                                <p className="text-gray-400 text-xs mt-0.5 flex items-center gap-1">
-                                    📅 {formatDateTime(activeOrder.createdAt || activeOrder.timestamp)}
-                                </p>
-                            </div>
-                        </div>
-                        <div className="text-right">
-                            <p className="text-sm text-gray-400">Total</p>
-                            <p className="text-xl font-bold text-green-400">{formatCurrency(activeOrder.total)}</p>
-                        </div>
-                    </div>
-
-                    {/* Progress Bar - 3 Steps */}
-                    <div className="mb-8">
-                        <div className="flex justify-between relative">
-                            {/* Line Base */}
-                            <div className="absolute top-1/2 left-0 w-full h-1 bg-white/10 -z-0"></div>
-                            {/* Line Active */}
-                            <div
-                                className="absolute top-1/2 left-0 h-1 bg-purple-500 -z-0 transition-all duration-1000"
-                                style={{ width: `${((currentStep - 1) / (steps.length - 1)) * 100}%` }}
-                            ></div>
-
-                            {steps.map((s, idx) => {
-                                const isActive = currentStep >= s.step;
-                                const isCurrent = currentStep === s.step;
-                                return (
-                                    <div key={idx} className="relative z-10 flex flex-col items-center gap-2">
-                                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-all duration-500 ${isActive ? 'bg-purple-500 text-white shadow-[0_0_15px_rgba(168,85,247,0.5)]' : 'bg-gray-800 text-gray-500 border border-white/10'
-                                            } ${isCurrent ? 'scale-125 ring-2 ring-purple-400 ring-offset-2 ring-offset-[#1E1B4B]' : ''}`}>
-                                            {isActive ? '✓' : idx + 1}
-                                        </div>
-                                        <span className={`text-xs font-medium transition-colors ${isActive ? 'text-white' : 'text-gray-500'}`}>
-                                            {s.label}
-                                        </span>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    </div>
-
-                    {/* Order Details Preview with Thumbnails */}
-                    <div className="bg-black/20 rounded-xl p-4 backdrop-blur-sm border border-white/5">
-                        <p className="text-sm text-gray-400 mb-2">Item Pesanan:</p>
-                        <ul className="space-y-2">
-                            {(activeOrder.items || []).slice(0, 3).map((item, idx) => (
-                                <li key={idx} className="flex items-center gap-3">
-                                    {/* Thumbnail */}
-                                    <div className="w-12 h-12 rounded-md bg-gradient-to-br from-purple-900/50 to-blue-900/50 flex-shrink-0 overflow-hidden">
-                                        {item.image ? (
-                                            <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
-                                        ) : (
-                                            <div className="w-full h-full flex items-center justify-center text-lg">☕</div>
-                                        )}
-                                    </div>
-                                    {/* Name & Qty */}
-                                    <div className="flex-1 min-w-0">
-                                        <p className="text-sm font-medium truncate">{item.name}</p>
-                                        <p className="text-xs text-gray-400">{item.qty}x {item.note && <span className="text-purple-400">• {item.note}</span>}</p>
-                                    </div>
-                                    {/* Price */}
-                                    <span className="text-sm text-gray-400 flex-shrink-0">{formatCurrency(item.subtotal || item.price * item.qty)}</span>
-                                </li>
-                            ))}
-                            {(activeOrder.items?.length > 3) && (
-                                <li className="text-xs text-gray-500 pt-1 pl-15">+{activeOrder.items.length - 3} item lainnya...</li>
-                            )}
-                        </ul>
-                    </div>
-
-                    {/* Actions - Dynamic Button */}
-                    <div className="mt-6 flex gap-3">
-                        {/* Dynamic Action Button based on orderType */}
-                        {takeAway ? (
-                            <button
-                                onClick={() => setShowTicketModal(true)}
-                                className="flex-1 py-3 rounded-lg bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 transition-all flex items-center justify-center gap-2 font-bold shadow-lg shadow-purple-500/25"
-                            >
-                                🎫 Lihat Tiket / QR
-                            </button>
-                        ) : (
-                            <button
-                                onClick={() => setShowDetailModal(true)}
-                                className="flex-1 py-3 rounded-lg bg-transparent border border-purple-500/50 hover:bg-purple-500/10 transition-all flex items-center justify-center gap-2 text-purple-300"
-                            >
-                                📄 Lihat Rincian
-                            </button>
-                        )}
-
-                        {(activeOrder.status === 'done' || activeOrder.status === 'completed' || activeOrder.status === 'cancelled') && (
-                            <button
-                                onClick={clearActiveSession}
-                                className="flex-1 py-3 rounded-lg bg-purple-600 hover:bg-purple-500 transition-colors shadow-lg font-bold"
-                            >
-                                ✨ Pesan Lagi
-                            </button>
-                        )}
-                    </div>
-
-                    {/* SAFE CANCEL LOGIC */}
-                    <div className="mt-4 pt-4 border-t border-white/5 flex justify-center">
-                        {activeOrder.status === 'new' && activeOrder.paymentStatus === 'unpaid' ? (
-                            <button
-                                onClick={() => setShowCancelModal(true)}
-                                className="text-red-500/70 text-sm hover:text-red-400 hover:bg-red-500/10 px-3 py-1 rounded-lg transition-colors flex items-center gap-1"
-                            >
-                                ⛔ Batalkan Pesanan
-                            </button>
-                        ) : (activeOrder.paymentStatus === 'paid' && activeOrder.status !== 'cancelled' && activeOrder.status !== 'done' && activeOrder.status !== 'completed' ? (
-                            <p className="text-xs text-center text-gray-500 flex items-center gap-1">
-                                ℹ️ Pesanan sudah dibayar. Hubungi kasir jika ingin membatalkan.
+                {/* Header */}
+                <div className="relative z-10 flex justify-between items-start mb-6">
+                    <div>
+                        <h3 className={`text-xl font-bold ${isFeatured ? 'bg-gradient-to-r from-white to-purple-200 bg-clip-text text-transparent' : 'text-gray-200'}`}>
+                            {isFeatured ? 'Pesanan Aktif' : `Pesanan #${getOrderNumber(order)}`}
+                        </h3>
+                        <div className="flex flex-col mt-1">
+                            <p className="text-purple-300 text-sm">
+                                {isFeatured ? `#${getOrderNumber(order)} • ` : ''}
+                                {order.tableNumber ? `Meja ${order.tableNumber}` : 'Take Away'}
                             </p>
-                        ) : null)}
+                            <p className="text-gray-400 text-xs mt-0.5 flex items-center gap-1">
+                                📅 {formatDateTime(order.createdAt || order.timestamp)}
+                            </p>
+                        </div>
+                    </div>
+
+                    <div className="text-right flex flex-col items-end gap-2">
+                        <div>
+                            <p className="text-xs text-gray-400">Total</p>
+                            <p className="text-xl font-bold text-green-400">{formatCurrency(order.total)}</p>
+                        </div>
+
+                        {/* Delete Button (History Only) */}
+                        {isDeletable && (
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDeleteHistory(order.id);
+                                }}
+                                className="p-2 rounded-full bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors"
+                                title="Hapus Riwayat"
+                            >
+                                🗑️
+                            </button>
+                        )}
                     </div>
                 </div>
+
+                {/* Progress Bar */}
+                <div className="relative z-10 mb-8">
+                    <div className="flex justify-between relative">
+                        {/* Line Base */}
+                        <div className="absolute top-1/2 left-0 w-full h-1 bg-white/10 -z-0"></div>
+                        {/* Line Active */}
+                        <div
+                            className="absolute top-1/2 left-0 h-1 bg-purple-500 -z-0 transition-all duration-1000"
+                            style={{ width: `${((currentStep - 1) / (steps.length - 1)) * 100}%` }}
+                        ></div>
+
+                        {steps.map((s, idx) => {
+                            const isActive = currentStep >= s.step;
+                            const isCurrent = currentStep === s.step;
+                            return (
+                                <div key={idx} className="relative z-10 flex flex-col items-center gap-2">
+                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-all duration-500 ${isActive ? 'bg-purple-500 text-white shadow-[0_0_15px_rgba(168,85,247,0.5)]' : 'bg-gray-800 text-gray-500 border border-white/10'
+                                        } ${isCurrent ? 'scale-125 ring-2 ring-purple-400 ring-offset-2 ring-offset-[#1E1B4B]' : ''}`}>
+                                        {isActive ? '✓' : idx + 1}
+                                    </div>
+                                    <span className={`text-xs font-medium transition-colors ${isActive ? 'text-white' : 'text-gray-500'}`}>
+                                        {s.label}
+                                    </span>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+
+                {/* Items Preview */}
+                <div className="relative z-10 bg-black/20 rounded-xl p-4 backdrop-blur-sm border border-white/5 mb-6">
+                    <p className="text-xs text-gray-400 mb-2 uppercase tracking-wider">Item Pesanan:</p>
+                    <ul className="space-y-3">
+                        {(order.items || []).slice(0, 3).map((item, idx) => (
+                            <li key={idx} className="flex items-center gap-3">
+                                {/* Thumbnail */}
+                                <div className="w-10 h-10 rounded-md bg-gradient-to-br from-purple-900/50 to-blue-900/50 flex-shrink-0 overflow-hidden">
+                                    {item.image ? (
+                                        <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
+                                    ) : (
+                                        <div className="w-full h-full flex items-center justify-center text-lg">☕</div>
+                                    )}
+                                </div>
+                                {/* Name */}
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-medium truncate">{item.name}</p>
+                                    <p className="text-xs text-gray-400">{item.qty}x</p>
+                                </div>
+                                {/* Price */}
+                                <span className="text-sm text-gray-400">{formatCurrency(item.subtotal || item.price * item.qty)}</span>
+                            </li>
+                        ))}
+                        {(order.items?.length > 3) && (
+                            <li className="text-xs text-gray-500 pt-1 pl-14">+{order.items.length - 3} item lainnya...</li>
+                        )}
+                    </ul>
+                </div>
+
+                {/* Actions */}
+                <div className="relative z-10 flex gap-3">
+                    {/* View Ticket/Detail */}
+                    {takeAway ? (
+                        <button
+                            onClick={() => {
+                                // If featured, use state; if history, we might need to set activeOrder or handle differently
+                                // For simplicity, we set this order as 'activeOrder' momentarily for the modal to read?
+                                // Better: Pass order to modal, but modal logic uses 'activeOrder' state.
+                                // Quick fix: Set activeOrder state when clicking view (visual only)
+                                setActiveOrder(order);
+                                setShowTicketModal(true);
+                            }}
+                            className="flex-1 py-2.5 rounded-lg bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 transition-all flex items-center justify-center gap-2 font-bold shadow-lg shadow-purple-500/25 text-sm"
+                        >
+                            🎫 Lihat Tiket
+                        </button>
+                    ) : (
+                        <button
+                            onClick={() => {
+                                setActiveOrder(order);
+                                setShowDetailModal(true);
+                            }}
+                            className="flex-1 py-2.5 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 transition-all flex items-center justify-center gap-2 text-purple-300 text-sm"
+                        >
+                            📄 Rincian
+                        </button>
+                    )}
+
+                    {/* Re-order */}
+                    {(order.status === 'done' || order.status === 'completed' || order.status === 'cancelled') && (
+                        <button
+                            onClick={clearActiveSession}
+                            className="flex-1 py-2.5 rounded-lg bg-purple-600 hover:bg-purple-500 transition-colors shadow-lg font-bold text-sm"
+                        >
+                            ✨ Pesan Lagi
+                        </button>
+                    )}
+                </div>
+
+                {/* Cancel Button */}
+                {isCancellable && (
+                    <div className="mt-4 pt-4 border-t border-white/5 flex justify-center">
+                        <button
+                            onClick={() => handleGenericCancel(order)}
+                            className="text-red-500/70 text-xs hover:text-red-400 hover:bg-red-500/10 px-3 py-1 rounded-lg transition-colors flex items-center gap-1"
+                        >
+                            ⛔ Batalkan Pesanan
+                        </button>
+                    </div>
+                )}
             </div>
         );
     };
+
+    // ... Modals (using activeOrder state, so buttons above set it) ...
 
     // Modal: Detail Pesanan (for Dine In)
     const renderDetailModal = () => {
@@ -492,22 +534,6 @@ function PesananSaya() {
         );
     };
 
-    const getStatusBadge = (status) => {
-        const statusMap = {
-            new: { label: 'Menunggu', color: 'bg-yellow-500/20 text-yellow-400', icon: '⏳' },
-            pending: { label: 'Menunggu', color: 'bg-yellow-500/20 text-yellow-400', icon: '⏳' },
-            process: { label: 'Diproses', color: 'bg-blue-500/20 text-blue-400', icon: '👨‍🍳' },
-            done: { label: 'Selesai', color: 'bg-green-500/20 text-green-400', icon: '✅' },
-            cancelled: { label: 'Dibatalkan', color: 'bg-red-500/20 text-red-400', icon: '❌' }
-        };
-        const info = statusMap[status] || statusMap.pending;
-        return (
-            <span className={`px-2 py-1 rounded-full text-xs ${info.color}`}>
-                {info.icon} {info.label}
-            </span>
-        );
-    };
-
     if (loading) {
         return (
             <div className="flex items-center justify-center h-64">
@@ -523,129 +549,53 @@ function PesananSaya() {
                 <h2 className="text-xl font-bold">📋 Pesanan Saya</h2>
             </div>
 
-            {/* Active Order Section */}
-            {renderActiveOrder()}
+            {/* Active Order */}
+            {activeOrder && renderOrderCard(activeOrder, true)}
 
-            {/* Modals */}
+            {/* Modals - relying on activeOrder state */}
             {renderDetailModal()}
             {renderTicketModal()}
 
-            {renderDetailModal()}
-            {renderTicketModal()}
-
-            {/* Cancel Confirmation Modal */}
-            {showCancelModal && createPortal(
-                <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setShowCancelModal(false)}>
-                    <div
-                        className="bg-[#1a1a2e] rounded-2xl w-full max-w-sm border border-red-500/30 shadow-2xl animate-scale-up p-5 text-center"
-                        onClick={(e) => e.stopPropagation()}
-                    >
-                        <div className="w-16 h-16 rounded-full bg-red-500/10 flex items-center justify-center mx-auto mb-4">
-                            <span className="text-3xl">⚠️</span>
-                        </div>
-                        <h3 className="text-lg font-bold text-white mb-2">Batalkan Pesanan?</h3>
-                        <p className="text-sm text-gray-400 mb-6">
-                            Yakin ingin membatalkan pesanan ini? <br />
-                            Pesanan yang dibatalkan <span className="text-red-400 font-bold">tidak dapat dikembalikan</span>.
-                        </p>
-                        <div className="grid grid-cols-2 gap-3">
-                            <button
-                                onClick={() => setShowCancelModal(false)}
-                                className="py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-gray-300 font-medium transition-colors"
-                            >
-                                Kembali
-                            </button>
-                            <button
-                                onClick={handleCancelOrder}
-                                className="py-2.5 rounded-xl bg-red-500/20 hover:bg-red-500/30 text-red-500 border border-red-500/30 font-bold transition-all shadow-lg shadow-red-500/10"
-                            >
-                                Ya, Batalkan
-                            </button>
-                        </div>
-                    </div>
-                </div>,
-                document.body
-            )}
+            {/* Cancel Confirmation Modal - for 'Active' specific cancel button if used, 
+                but our new handleGenericCancel uses window.confirm or could use this modal. 
+                For simplicity, handleGenericCancel handles it. 
+                We can keep this modal if we want custom UI for cancel, 
+                but for now let's just use the logic we built.
+            */}
 
             {/* History List */}
-            <div className="flex items-center justify-between mb-3">
-                <h3 className="font-bold text-gray-400 text-sm uppercase tracking-wider">
-                    Riwayat
-                </h3>
-                <span className="text-[10px] text-gray-500 bg-white/5 px-2 py-1 rounded-full border border-white/5">
-                    ♻️ Reset dalam 24 Jam
-                </span>
-            </div>
+            {orders.length > 0 && (
+                <div className="mt-8">
+                    <div className="flex items-center justify-between mb-4">
+                        <h3 className="font-bold text-gray-400 text-sm uppercase tracking-wider">
+                            Riwayat ({orders.length})
+                        </h3>
+                        <span className="text-[10px] text-gray-500 bg-white/5 px-2 py-1 rounded-full border border-white/5">
+                            ♻️ 24 Jam
+                        </span>
+                    </div>
 
-            {orders.length === 0 ? (
-                <div className="text-center py-8 bg-white/5 rounded-xl border border-white/5">
-                    <p className="text-gray-500 text-sm">Belum ada riwayat pesanan.</p>
+                    <div className="space-y-4">
+                        {orders.map(order => {
+                            // Don't show active order in history list if it's already shown above
+                            if (activeOrderId && order.id === activeOrderId) return null;
+                            return (
+                                <div key={order.id}>
+                                    {renderOrderCard(order, false)}
+                                </div>
+                            );
+                        })}
+                    </div>
                 </div>
-            ) : (
-                <div className="space-y-3">
-                    {orders.map(order => (
-                        <div key={order.id} className={`bg-white/5 rounded-xl border overflow-hidden ${order.id === activeOrderId ? 'border-purple-500/50 ring-1 ring-purple-500/20' : 'border-white/10'}`}>
-                            {/* Header */}
-                            <div className="p-3 border-b border-white/10 flex items-center justify-between bg-black/20">
-                                <div className="flex items-center gap-3">
-                                    <div>
-                                        <p className="text-xs text-gray-400">#{order.id?.slice(-6)}</p>
-                                        <p className="text-xs text-gray-500">{formatDateTime(order.createdAt || order.timestamp)}</p>
-                                    </div>
-                                </div>
+            )}
 
-                                <div className="flex items-center gap-2">
-                                    {getStatusBadge(order.status)}
-
-                                    {/* DELETE BUTTON (Only for Done/Cancelled) */}
-                                    {(order.status === 'done' || order.status === 'cancelled' || order.status === 'completed') && (
-                                        <button
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                handleDeleteHistory(order.id);
-                                            }}
-                                            className="w-6 h-6 rounded-full bg-red-500/10 text-red-400 flex items-center justify-center hover:bg-red-500/20 transition-colors"
-                                            title="Hapus Riwayat"
-                                        >
-                                            🗑️
-                                        </button>
-                                    )}
-                                </div>
-                            </div>
-
-                            {/* Items with Thumbnails */}
-                            <div className="p-3">
-                                <div className="space-y-2">
-                                    {(order.items || []).slice(0, 2).map((item, idx) => (
-                                        <div key={idx} className="flex items-center gap-3">
-                                            {/* Thumbnail */}
-                                            <div className="w-10 h-10 rounded-md bg-gradient-to-br from-purple-900/50 to-blue-900/50 flex-shrink-0 overflow-hidden">
-                                                {item.image ? (
-                                                    <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
-                                                ) : (
-                                                    <div className="w-full h-full flex items-center justify-center text-sm">☕</div>
-                                                )}
-                                            </div>
-                                            {/* Name & Qty */}
-                                            <div className="flex-1 min-w-0">
-                                                <p className="text-sm text-gray-300 truncate">{item.name}</p>
-                                                <p className="text-xs text-gray-500">{item.qty}x</p>
-                                            </div>
-                                            {/* Price */}
-                                            <span className="text-sm text-gray-400">{formatCurrency(item.subtotal || item.price * item.qty)}</span>
-                                        </div>
-                                    ))}
-                                    {(order.items || []).length > 2 && (
-                                        <p className="text-gray-500 text-xs pl-13">+{order.items.length - 2} item lainnya</p>
-                                    )}
-                                </div>
-                                <div className="mt-2 pt-2 border-t border-white/10 flex justify-between font-bold text-sm">
-                                    <span>Total</span>
-                                    <span className="text-green-400">{formatCurrency(order.total)}</span>
-                                </div>
-                            </div>
-                        </div>
-                    ))}
+            {!activeOrder && orders.length === 0 && (
+                <div className="text-center py-12 bg-white/5 rounded-2xl border border-white/5 border-dashed">
+                    <p className="text-5xl mb-4">🍽️</p>
+                    <p className="text-gray-400">Belum ada pesanan aktif.</p>
+                    <button onClick={clearActiveSession} className="mt-4 px-6 py-2 bg-purple-600 rounded-full text-white font-bold shadow-lg">
+                        Buat Pesanan Baru
+                    </button>
                 </div>
             )}
         </div>

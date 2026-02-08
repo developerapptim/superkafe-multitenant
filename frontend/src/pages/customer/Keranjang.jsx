@@ -196,6 +196,7 @@ function Keranjang() {
                 name: item.name,
                 price: item.price,
                 qty: item.qty,
+                image: item.image,
                 note: item.note || '',
                 subtotal: item.price * item.qty
             })),
@@ -218,8 +219,6 @@ function Keranjang() {
         const savedOrder = res.data;
 
         setSubmittedOrder(savedOrder);
-        setOrderSuccess(true);
-        toast.success('Pesanan berhasil dibuat!');
         setOrderSuccess(true);
         toast.success('Pesanan berhasil dibuat!');
         localStorage.setItem('currentOrderId', savedOrder.id);
@@ -247,6 +246,7 @@ function Keranjang() {
                 name: item.name,
                 price: item.price,
                 qty: item.qty,
+                image: item.image,
                 note: item.note || ''
             }));
 

@@ -21,6 +21,7 @@ const menuItems = [
   { path: '/admin/laporan', icon: '📈', label: 'Laporan & Analitik', section: 'report', access: 'Laporan', roles: ['admin', 'owner'] },
   { path: '/admin/shift', icon: '🔐', label: 'Laporan Shift', section: 'shiftReport', access: 'Laporan', roles: ['admin', 'owner'] },
   { path: '/admin/pelanggan', icon: '❤️', label: 'Pelanggan & Loyalti', section: 'customer', access: 'Pelanggan' },
+  { path: '/admin/feedback', icon: '💬', label: 'Masukan Pelanggan', section: 'feedback', access: 'Dashboard' },
   {
     label: 'Pengaturan',
     icon: '⚙️',
