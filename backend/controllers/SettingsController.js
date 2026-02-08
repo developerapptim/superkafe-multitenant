@@ -109,3 +109,28 @@ exports.removeUnit = async (req, res) => {
         res.status(500).json({ error: 'Server error' });
     }
 };
+
+exports.uploadSound = async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ error: 'No sound file uploaded' });
+        }
+
+        // URL to access the file
+        // Assuming server.js serves /uploads static folder
+        // The file is saved in public/uploads/sounds (we will configure this in routes)
+        const soundUrl = `${process.env.API_URL || ''}/uploads/sounds/${req.file.filename}`;
+
+        // Update setting
+        await Setting.findOneAndUpdate(
+            { key: 'notificationSoundUrl' },
+            { $set: { value: soundUrl, updatedAt: new Date() } },
+            { upsert: true, new: true }
+        );
+
+        res.json({ success: true, soundUrl });
+    } catch (err) {
+        console.error('Upload sound error:', err);
+        res.status(500).json({ error: 'Server error during upload' });
+    }
+};
