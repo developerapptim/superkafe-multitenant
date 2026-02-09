@@ -11,6 +11,9 @@ function Bantuan() {
     // State for Call Waiter Modal
     const [showCallModal, setShowCallModal] = useState(false);
     const [callLoading, setCallLoading] = useState(false);
+    const [manualTable, setManualTable] = useState(() => sessionStorage.getItem('manualTable') || '');
+    // Custom Request State
+    const [customRequest, setCustomRequest] = useState('');
 
     // State for Feedback Form
     const [feedbackName, setFeedbackName] = useState('');
@@ -42,21 +45,36 @@ function Bantuan() {
         }
     ];
 
-    // Handle Call Waiter
-    const handleCallWaiter = async (type) => {
-        if (!tableId) {
-            toast.error('Fitur ini hanya tersedia jika Anda scan QR Meja.');
+    // Handle Open Call Modal
+    const openCallModal = () => {
+        setShowCallModal(true);
+    };
+
+    // Handle Submit Call
+    const submitCallWaiter = async (type, note = '') => {
+        const targetTable = tableId || manualTable;
+
+        if (!targetTable) {
+            toast.error('Mohon isi nomor meja Anda, kak.');
             return;
         }
 
         setCallLoading(true);
         try {
             await serviceAPI.create({
-                table_number: tableId,
-                request_type: type
+                table_number: targetTable,
+                request_type: type,
+                note: note
             });
-            toast.success(`Permintaan '${type}' berhasil dikirim!`);
+
+            // Save manual table if successful and not using QR
+            if (!tableId) {
+                sessionStorage.setItem('manualTable', targetTable);
+            }
+
+            toast.success(type === 'Lainnya' ? 'Pesan berhasil dikirim!' : `Permintaan '${type}' berhasil dikirim!`);
             setShowCallModal(false);
+            setCustomRequest(''); // Reset custom request
         } catch (error) {
             console.error('Call Waiter Error:', error);
             toast.error('Gagal memanggil pelayan. Silakan coba lagi.');
@@ -107,7 +125,7 @@ function Bantuan() {
                 </h3>
                 <div className="grid grid-cols-2 gap-3">
                     <button
-                        onClick={() => setShowCallModal(true)}
+                        onClick={openCallModal}
                         className="p-4 bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 hover:scale-[1.02] transition-all flex flex-col items-center gap-2 group"
                     >
                         <span className="text-3xl group-hover:animate-bounce">🔔</span>
@@ -202,13 +220,31 @@ function Bantuan() {
                             onClick={e => e.stopPropagation()}
                         >
                             <h3 className="text-xl font-bold text-center mb-4">🔔 Panggil Pelayan</h3>
-                            <p className="text-gray-400 text-center text-sm mb-6">
-                                Apa yang bisa kami bantu untuk Meja {tableId || 'ini'}?
-                            </p>
+
+                            {/* Manual Table Input Fallback */}
+                            {!tableId ? (
+                                <div className="mb-6">
+                                    <label className="block text-sm text-gray-400 mb-2 text-center">
+                                        Anda duduk di meja nomor berapa?
+                                    </label>
+                                    <input
+                                        type="number"
+                                        value={manualTable}
+                                        onChange={(e) => setManualTable(e.target.value)}
+                                        placeholder="Contoh: 5"
+                                        autoFocus
+                                        className="w-full px-4 py-3 rounded-xl bg-black/30 border border-purple-500/50 text-white text-center text-lg font-bold focus:border-purple-500 focus:ring-1 focus:ring-purple-500 outline-none transition-all"
+                                    />
+                                </div>
+                            ) : (
+                                <p className="text-gray-400 text-center text-sm mb-6">
+                                    Apa yang bisa kami bantu untuk Meja {tableId}?
+                                </p>
+                            )}
 
                             <div className="grid grid-cols-2 gap-3 mb-4">
                                 <button
-                                    onClick={() => handleCallWaiter('Bill')}
+                                    onClick={() => submitCallWaiter('Bill')}
                                     disabled={callLoading}
                                     className="p-3 bg-white/5 hover:bg-white/10 rounded-xl border border-white/10 flex flex-col items-center gap-2 transition-colors"
                                 >
@@ -216,7 +252,7 @@ function Bantuan() {
                                     <span className="text-sm font-medium">Minta Bill</span>
                                 </button>
                                 <button
-                                    onClick={() => handleCallWaiter('Alat Makan')}
+                                    onClick={() => submitCallWaiter('Alat Makan')}
                                     disabled={callLoading}
                                     className="p-3 bg-white/5 hover:bg-white/10 rounded-xl border border-white/10 flex flex-col items-center gap-2 transition-colors"
                                 >
@@ -224,7 +260,7 @@ function Bantuan() {
                                     <span className="text-sm font-medium">Alat Makan</span>
                                 </button>
                                 <button
-                                    onClick={() => handleCallWaiter('Bersihkan')}
+                                    onClick={() => submitCallWaiter('Bersihkan')}
                                     disabled={callLoading}
                                     className="p-3 bg-white/5 hover:bg-white/10 rounded-xl border border-white/10 flex flex-col items-center gap-2 transition-colors"
                                 >
@@ -232,12 +268,35 @@ function Bantuan() {
                                     <span className="text-sm font-medium">Bersihkan</span>
                                 </button>
                                 <button
-                                    onClick={() => handleCallWaiter('Panggil')}
+                                    onClick={() => submitCallWaiter('Panggil')}
                                     disabled={callLoading}
                                     className="p-3 bg-white/5 hover:bg-white/10 rounded-xl border border-white/10 flex flex-col items-center gap-2 transition-colors"
                                 >
                                     <span className="text-2xl">🙋‍♂️</span>
                                     <span className="text-sm font-medium">Panggil Manual</span>
+                                </button>
+                            </div>
+
+                            {/* Divider & Custom Request */}
+                            <div className="mb-4">
+                                <div className="flex items-center gap-2 mb-2">
+                                    <div className="h-[1px] bg-white/10 flex-1"></div>
+                                    <span className="text-xs text-gray-500 uppercase font-bold">Atau tulis pesan</span>
+                                    <div className="h-[1px] bg-white/10 flex-1"></div>
+                                </div>
+                                <textarea
+                                    value={customRequest}
+                                    onChange={(e) => setCustomRequest(e.target.value)}
+                                    placeholder="Contoh: Minta saus sambal, kursi bayi..."
+                                    rows="2"
+                                    className="w-full px-3 py-2 rounded-lg bg-black/20 border border-white/10 text-white text-sm focus:border-purple-500 outline-none resize-none mb-2"
+                                ></textarea>
+                                <button
+                                    onClick={() => submitCallWaiter('Lainnya', customRequest)}
+                                    disabled={callLoading || !customRequest.trim()}
+                                    className="w-full py-2 bg-purple-600/20 text-purple-400 border border-purple-600/50 rounded-lg text-sm font-bold hover:bg-purple-600/30 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                                >
+                                    Kirim Pesan
                                 </button>
                             </div>
 

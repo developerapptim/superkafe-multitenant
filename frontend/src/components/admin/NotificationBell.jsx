@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { serviceAPI } from '../../services/api';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
@@ -8,10 +8,31 @@ function NotificationBell() {
     const [showDropdown, setShowDropdown] = useState(false);
     const [loading, setLoading] = useState(false);
 
+    // Audio ref
+    const audioRef = useRef(new Audio('/notif.mp3'));
+    const previousCount = useRef(0);
+
     const fetchNotifications = async () => {
         try {
             const res = await serviceAPI.getPending();
-            setNotifications(res.data || []);
+            const newData = res.data || [];
+
+            // Logic for sound alert
+            if (newData.length > previousCount.current) {
+                try {
+                    const playPromise = audioRef.current.play();
+                    if (playPromise !== undefined) {
+                        playPromise.catch(error => {
+                            console.warn("Audio autoplay blocked:", error);
+                        });
+                    }
+                } catch (err) {
+                    console.warn("Audio play error:", err);
+                }
+            }
+
+            setNotifications(newData);
+            previousCount.current = newData.length;
         } catch (error) {
             console.error('Failed to fetch notifications', error);
         }
@@ -19,7 +40,20 @@ function NotificationBell() {
 
     // Polling every 15 seconds
     useEffect(() => {
-        fetchNotifications();
+        // Initial fetch logic to set count without sound
+        const initialFetch = async () => {
+            try {
+                const res = await serviceAPI.getPending();
+                const data = res.data || [];
+                setNotifications(data);
+                previousCount.current = data.length;
+            } catch (error) {
+                console.error('Failed to fetch initial notifications', error);
+            }
+        };
+
+        initialFetch();
+
         const interval = setInterval(fetchNotifications, 15000);
         return () => clearInterval(interval);
     }, []);
@@ -40,7 +74,10 @@ function NotificationBell() {
     return (
         <div className="relative z-50">
             <button
-                onClick={() => setShowDropdown(!showDropdown)}
+                onClick={(e) => {
+                    e.stopPropagation();
+                    setShowDropdown(!showDropdown);
+                }}
                 className="relative p-2 rounded-xl hover:bg-white/10 transition-colors"
             >
                 <span className="text-xl">🔔</span>
@@ -56,13 +93,17 @@ function NotificationBell() {
                     <>
                         <div
                             className="fixed inset-0 z-40"
-                            onClick={() => setShowDropdown(false)}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                setShowDropdown(false);
+                            }}
                         ></div>
                         <motion.div
                             initial={{ opacity: 0, y: 10, scale: 0.95 }}
                             animate={{ opacity: 1, y: 0, scale: 1 }}
                             exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                            className="absolute right-0 mt-2 w-80 bg-[#1e1e2f] border border-white/10 rounded-xl shadow-2xl overflow-hidden z-50 origin-top-right"
+                            className="fixed md:absolute top-16 md:top-auto left-4 right-4 md:left-auto md:right-0 md:mt-2 w-auto md:w-80 bg-[#1e1e2f] border border-white/10 rounded-xl shadow-2xl overflow-hidden z-50 origin-top-right"
+                            onClick={(e) => e.stopPropagation()}
                         >
                             <div className="p-3 border-b border-white/10 flex justify-between items-center bg-white/5">
                                 <h3 className="font-bold text-sm">Notifikasi</h3>
@@ -91,7 +132,12 @@ function NotificationBell() {
                                                         {new Date(notif.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                                     </span>
                                                 </div>
-                                                <p className="text-sm font-medium mb-2">{notif.request_type}</p>
+                                                <p className="text-sm font-medium mb-1">{notif.request_type}</p>
+                                                {notif.note && (
+                                                    <p className="text-xs text-gray-400 italic mb-2 bg-black/20 p-1.5 rounded border border-white/5">
+                                                        "{notif.note}"
+                                                    </p>
+                                                )}
 
                                                 <button
                                                     onClick={() => handleComplete(notif._id)}

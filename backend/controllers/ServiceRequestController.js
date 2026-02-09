@@ -3,7 +3,7 @@ const ServiceRequest = require('../models/ServiceRequest');
 // POST /api/service-request
 exports.createRequest = async (req, res) => {
     try {
-        const { table_number, request_type } = req.body;
+        const { table_number, request_type, note } = req.body;
 
         if (!table_number || !request_type) {
             return res.status(400).json({ error: 'Table number and request type are required' });
@@ -11,7 +11,8 @@ exports.createRequest = async (req, res) => {
 
         const newRequest = new ServiceRequest({
             table_number,
-            request_type
+            request_type,
+            note: note || ''
         });
 
         await newRequest.save();

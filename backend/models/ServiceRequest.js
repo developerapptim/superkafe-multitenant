@@ -7,8 +7,12 @@ const ServiceRequestSchema = new mongoose.Schema({
     },
     request_type: {
         type: String,
-        enum: ['Bill', 'Alat Makan', 'Panggil', 'Bersihkan'],
+        enum: ['Bill', 'Alat Makan', 'Panggil', 'Bersihkan', 'Lainnya'],
         required: true
+    },
+    note: {
+        type: String,
+        required: false
     },
     status: {
         type: String,
@@ -17,7 +21,8 @@ const ServiceRequestSchema = new mongoose.Schema({
     },
     created_at: {
         type: Date,
-        default: Date.now
+        default: Date.now,
+        expires: 86400 // 24 hours
     }
 });
 
