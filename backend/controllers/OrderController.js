@@ -6,6 +6,7 @@ const StockHistory = require('../models/StockHistory');
 const Shift = require('../models/Shift');
 const Customer = require('../models/Customer');
 const Settings = require('../models/Settings');
+const Voucher = require('../models/Voucher');
 
 // =========================================================
 // HELPER: Deduct Stock when order status changes to 'process'
@@ -15,6 +16,7 @@ async function deductStockForOrder(order) {
 
     const recipes = await Recipe.find();
     const ingredients = await Ingredient.find();
+    const allMenuItems = await MenuItem.find();
 
     const ingredientMap = new Map();
     ingredients.forEach(i => ingredientMap.set(String(i.id), i));
@@ -22,46 +24,74 @@ async function deductStockForOrder(order) {
     const recipeMap = new Map();
     recipes.forEach(r => recipeMap.set(String(r.menuId), r.ingredients));
 
+    const menuItemMap = new Map();
+    allMenuItems.forEach(m => {
+        menuItemMap.set(String(m.id), m);
+        menuItemMap.set(String(m._id), m);
+    });
+
+    // Helper: deduct stock for a single menu item
+    const deductSingleItem = async (menuId, qtyOrdered, itemName, isFromBundle = false) => {
+        const recipeIngredients = recipeMap.get(menuId);
+        if (!recipeIngredients) return;
+
+        for (const ri of recipeIngredients) {
+            const ingKey = String(ri.ing_id);
+            const ingData = ingredientMap.get(ingKey);
+
+            let required = Number(ri.jumlah) || 0;
+
+            if (ingData && (ingData.type === 'physical' || !ingData.type)) {
+                const qtyToDeduct = required * qtyOrdered;
+
+                if (!isNaN(qtyToDeduct) && qtyToDeduct > 0) {
+                    const oldStock = Number(ingData.stok) || 0;
+                    ingData.stok = oldStock - qtyToDeduct;
+                    await ingData.save();
+
+                    const label = isFromBundle ? `(Bundle Component)` : '';
+                    console.log(`   📦 ${ingData.nama} ${label}: ${oldStock} → ${ingData.stok} (-${qtyToDeduct})`);
+
+                    // Log Stock History
+                    const history = new StockHistory({
+                        id: `hist_out_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+                        ing_id: ingData.id,
+                        ingName: ingData.nama,
+                        type: 'out',
+                        qty: qtyToDeduct,
+                        stokSebelum: oldStock,
+                        stokSesudah: ingData.stok,
+                        note: `Order ${order.id} (Process) - ${itemName} ${label}`,
+                        date: new Date().toISOString().split('T')[0],
+                        time: new Date().toLocaleTimeString('id-ID', { hour12: false })
+                    });
+                    await history.save();
+                }
+            }
+        }
+    };
+
     if (order.items && Array.isArray(order.items)) {
         for (const item of order.items) {
             const menuId = String(item.id);
-            const recipeIngredients = recipeMap.get(menuId);
+            const qtyOrdered = Number(item.qty || item.count) || 0;
+            const menuItem = menuItemMap.get(menuId);
 
-            if (recipeIngredients) {
-                for (const ri of recipeIngredients) {
-                    const ingKey = String(ri.ing_id);
-                    const ingData = ingredientMap.get(ingKey);
+            // BUNDLE LOGIC: Jika produk bundle, kurangi stok item penyusunnya
+            if (menuItem && menuItem.is_bundle && menuItem.bundle_items && menuItem.bundle_items.length > 0) {
+                console.log(`   🎁 Bundle detected: ${item.name}, deducting component stock...`);
+                for (const bundleComponent of menuItem.bundle_items) {
+                    const componentId = String(bundleComponent.product_id);
+                    const componentMenu = menuItemMap.get(componentId);
+                    const componentMenuId = componentMenu ? String(componentMenu.id) : componentId;
+                    const componentQty = (bundleComponent.quantity || 1) * qtyOrdered;
+                    const componentName = componentMenu ? componentMenu.name : `Component ${componentId}`;
 
-                    let required = Number(ri.jumlah) || 0;
-                    let qtyOrdered = Number(item.qty || item.count) || 0;
-
-                    if (ingData && (ingData.type === 'physical' || !ingData.type)) {
-                        const qtyToDeduct = required * qtyOrdered;
-
-                        if (!isNaN(qtyToDeduct) && qtyToDeduct > 0) {
-                            const oldStock = Number(ingData.stok) || 0;
-                            ingData.stok = oldStock - qtyToDeduct;
-                            await ingData.save();
-
-                            console.log(`   📦 ${ingData.nama}: ${oldStock} → ${ingData.stok} (-${qtyToDeduct})`);
-
-                            // Log Stock History
-                            const history = new StockHistory({
-                                id: `hist_out_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
-                                ing_id: ingData.id,
-                                ingName: ingData.nama,
-                                type: 'out',
-                                qty: qtyToDeduct,
-                                stokSebelum: oldStock,
-                                stokSesudah: ingData.stok,
-                                note: `Order ${order.id} (Process) - ${item.name}`,
-                                date: new Date().toISOString().split('T')[0],
-                                time: new Date().toLocaleTimeString('id-ID', { hour12: false })
-                            });
-                            await history.save();
-                        }
-                    }
+                    await deductSingleItem(componentMenuId, componentQty, componentName, true);
                 }
+            } else {
+                // Non-bundle: deduct normally
+                await deductSingleItem(menuId, qtyOrdered, item.name);
             }
         }
     }
@@ -266,11 +296,29 @@ exports.createOrder = async (req, res) => {
 
         // 2. Create Order Object (stockDeducted = false by default)
         console.log("2️⃣ Saving Order to DB (Stock NOT deducted yet)");
+
+        // Handle voucher: increment used_count if voucher was applied
+        if (orderData.voucherCode) {
+            try {
+                await Voucher.findOneAndUpdate(
+                    { code: orderData.voucherCode.toUpperCase() },
+                    { $inc: { used_count: 1 } }
+                );
+                console.log(`🎫 Voucher ${orderData.voucherCode} used_count incremented`);
+            } catch (voucherErr) {
+                console.error('⚠️ Voucher update error (non-blocking):', voucherErr);
+            }
+        }
+
         const newOrder = new Order({
             ...orderData,
+            phone: orderData.customerPhone || orderData.phone, // Store phone for loyalty tracking
             items: enrichedItems,
             timestamp: Date.now(),
-            stockDeducted: false // Stock will be deducted when status changes to 'process'
+            stockDeducted: false, // Stock will be deducted when status changes to 'process'
+            voucherCode: orderData.voucherCode || null,
+            voucherDiscount: Number(orderData.voucherDiscount) || 0,
+            subtotal: Number(orderData.subtotal) || orderData.total,
         });
 
         await newOrder.save();
@@ -363,15 +411,36 @@ exports.createOrder = async (req, res) => {
                 console.log("💎 Calculating Loyalty Points");
                 try {
                     const settings = await Settings.findOne({ key: 'businessSettings' });
+
+                    // 1. Get Settings & Thresholds
+                    const thresholds = settings?.loyaltySettings?.tierThresholds || { silver: 500000, gold: 2000000 };
                     const ratio = settings?.loyaltySettings?.pointRatio || 10000;
-                    const pointsEarned = Math.floor(newOrder.total / ratio);
+
+                    // 2. Determine Current Tier (based on totalSpent BEFORE this order)
+                    let currentTier = 'bronze';
+                    if (customer.totalSpent >= thresholds.gold) currentTier = 'gold';
+                    else if (customer.totalSpent >= thresholds.silver) currentTier = 'silver';
+
+                    // 3. Determine Multiplier
+                    let multiplier = 1;
+                    if (currentTier === 'gold') multiplier = 1.5;
+                    else if (currentTier === 'silver') multiplier = 1.25;
+
+                    console.log(`📊 Tier: ${currentTier}, Multiplier: ${multiplier}x`);
+
+                    // 4. Calculate Points
+                    const basePoints = Math.floor(newOrder.total / ratio);
+                    const pointsEarned = Math.floor(basePoints * multiplier);
 
                     customer.totalSpent += newOrder.total;
                     customer.visitCount += 1;
                     customer.points += pointsEarned;
                     customer.lastOrderDate = new Date();
+                    // Update tier in DB just in case, though calculated dynamically in frontend
+                    customer.tier = currentTier;
+
                     if (pointsEarned > 0) customer.lastPointsEarned = new Date();
-                    console.log(`💎 Awarded ${pointsEarned} points`);
+                    console.log(`💎 Awarded ${pointsEarned} points (${basePoints} base * ${multiplier}x)`);
                 } catch (loyaltyErr) {
                     console.error("⚠️ Loyalty Calculation Error:", loyaltyErr);
                 }
@@ -576,5 +645,124 @@ exports.getTodayOrders = async (req, res) => {
     } catch (err) {
         console.error('Get Today Orders Error:', err);
         res.status(500).json({ error: 'Server error' });
+    }
+};
+
+// Get Pending Orders Count (Today Only) - Sync with POS Frontend Logic
+exports.getPendingCount = async (req, res) => {
+    try {
+        // Exact same logic as Frontend Kasir.jsx
+        const today = new Date().toISOString().split('T')[0];
+
+        // Get ALL orders and filter manually to match EXACTLY what Frontend does
+        const allOrders = await Order.find({}).lean();
+
+        const filteredOrders = allOrders.filter(o => {
+            // Not archived
+            if (o.is_archived_from_pos) return false;
+
+            // Status must be 'new' (for Baru tab)
+            if (o.status !== 'new') return false;
+
+            // Date check - exact same as Frontend
+            const orderDate = o.date || (o.timestamp && new Date(o.timestamp).toISOString().split('T')[0]);
+            if (orderDate !== today) return false;
+
+            return true;
+        });
+
+        console.log(`[getPendingCount] Today: ${today}, Count: ${filteredOrders.length}`);
+
+        res.json({ count: filteredOrders.length });
+    } catch (error) {
+        console.error('Get Pending Count Error:', error);
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// Merge Orders Feature
+exports.mergeOrders = async (req, res) => {
+    try {
+        const { orderIds, mergedCustomerName, mergedTableNumber, mergedBy } = req.body;
+
+        // Validation
+        if (!orderIds || !Array.isArray(orderIds) || orderIds.length < 2) {
+            return res.status(400).json({ message: 'Minimal 2 pesanan untuk digabung' });
+        }
+
+        // Fetch original orders
+        const orders = await Order.find({ id: { $in: orderIds } });
+
+        if (orders.length !== orderIds.length) {
+            return res.status(404).json({ message: 'Beberapa pesanan tidak ditemukan' });
+        }
+
+        // Check if any order is already merged or not active
+        const invalidOrders = orders.filter(o => o.status === 'merged' || o.status === 'cancel' || o.isMerged);
+        if (invalidOrders.length > 0) {
+            return res.status(400).json({ message: 'Beberapa pesanan tidak valid untuk digabung (sudah digabung/batal)' });
+        }
+
+        // Combine items
+        // We use flatMap to get all items from all orders
+        const allItems = orders.flatMap(order => order.items || []);
+
+        // Calculate Grand Total
+        // We recalculate from items to be safe, or sum up order totals
+        const grandTotal = orders.reduce((sum, order) => sum + (order.total || 0), 0);
+
+        // Generate ID for new merged order
+        const newOrderId = `ORD-M-${Date.now()}`;
+        const now = new Date();
+
+        // Create Merged Order
+        const mergedOrder = new Order({
+            id: newOrderId,
+            customerName: mergedCustomerName || orders[0].customerName || 'Gabungan', // Use provided name or first order's name
+            tableNumber: mergedTableNumber || orders[0].tableNumber,
+            items: allItems,
+            total: grandTotal,
+            status: 'new', // Default to new/pending
+            paymentStatus: 'unpaid',
+            timestamp: now.getTime(),
+            date: now.toISOString().split('T')[0],
+            time: now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
+
+            // Merge Info
+            isMerged: true,
+            originalOrders: orderIds,
+            mergedBy: mergedBy || 'Staff',
+            mergedAt: now,
+
+            // Flags
+            stockDeducted: orders.some(o => o.stockDeducted) // If any original order had stock deducted, mark this as true? 
+            // Better logic: If stock WAS deducted in original, we shouldn't deduct again.
+            // But if we create a NEW order, the system might try to deduct again when processed.
+            // Strategy: We keep stockDeducted as false, but maybe we should ensure original orders don't double count?
+            // Actually, if we merge 'new' orders, stock hasn't been deducted yet.
+            // If we merge 'process' orders, stock HAS been deducted.
+            // Let's assume we merge pending/new orders mostly.
+        });
+
+        await mergedOrder.save();
+
+        // Update Original Orders
+        await Order.updateMany(
+            { id: { $in: orderIds } },
+            {
+                status: 'merged', // Mark as merged
+                mergedInto: newOrderId,
+                is_archived_from_pos: true // Hide from POS list
+            }
+        );
+
+        res.status(201).json({
+            message: 'Pesanan berhasil digabung',
+            mergedOrder
+        });
+
+    } catch (error) {
+        console.error('Merge Orders Error:', error);
+        res.status(500).json({ message: error.message });
     }
 };

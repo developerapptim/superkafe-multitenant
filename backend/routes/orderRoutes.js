@@ -8,6 +8,8 @@ const { uploadPayment } = require('../middleware/uploadMiddleware');
 
 router.get('/', checkApiKey, OrderController.getOrders);
 router.get('/today', OrderController.getTodayOrders); // Public status sync
+router.get('/pending-count', checkApiKey, OrderController.getPendingCount); // New: Pending count for badge
+router.post('/merge', checkApiKey, OrderController.mergeOrders); // New: Merge orders
 router.get('/:id', checkApiKey, OrderController.getOrderById); // New
 // Public-ish endpoint (secured by API Key) to check existing orders
 router.post('/check-phone', checkApiKey, OrderController.checkPhone);

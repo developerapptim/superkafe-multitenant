@@ -20,7 +20,7 @@ const excelDir = path.join(publicDir, 'uploads', 'imports');
 const paymentStorage = multer.memoryStorage();
 exports.uploadPayment = multer({
     storage: paymentStorage,
-    limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
+    limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
     fileFilter: (req, file, cb) => {
         if (file.mimetype.startsWith('image/')) cb(null, true);
         else cb(new Error('Only image files allowed'), false);
@@ -38,7 +38,7 @@ const audioStorage = multer.diskStorage({
 });
 exports.uploadAudio = multer({
     storage: audioStorage,
-    limits: { fileSize: 5 * 1024 * 1024 },
+    limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
     fileFilter: (req, file, cb) => {
         if (file.mimetype.startsWith('audio/')) cb(null, true);
         else cb(new Error('Only audio files allowed'), false);
@@ -74,3 +74,15 @@ exports.uploadExcel = multer({
         }
     }
 });
+
+// 5. Banner Storage (Memory Storage for Cloudinary)
+const bannerStorage = multer.memoryStorage();
+exports.uploadBanner = multer({
+    storage: bannerStorage,
+    limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
+    fileFilter: (req, file, cb) => {
+        if (file.mimetype.startsWith('image/')) cb(null, true);
+        else cb(new Error('Only image files allowed'), false);
+    }
+});
+

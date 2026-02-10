@@ -158,7 +158,7 @@ function AdminLayout() {
                 </div>
 
                 {/* Desktop Header */}
-                <header className="hidden lg:flex items-center justify-between px-6 py-3 bg-[#151235] border-b border-purple-500/20">
+                <header className="hidden lg:flex h-16 items-center justify-between px-6 bg-[#151235] border-b border-purple-500/30">
                     <h2 className="text-white font-bold text-lg">
                         {(() => {
                             const path = location.pathname;

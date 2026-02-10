@@ -74,6 +74,7 @@ const MenuItem = ({ item, saveOrder, getCategoryEmoji, getCategoryName, formatCu
                                 {item.label === 'best-seller' && <span title="Best Seller" className="text-sm">🔥</span>}
                                 {item.label === 'signature' && <span title="Signature" className="text-sm">⭐</span>}
                                 {item.label === 'new' && <span title="New" className="text-sm">🆕</span>}
+                                {item.is_bundle && <span className="px-1.5 py-0.5 text-[10px] bg-blue-500/20 text-blue-300 rounded-full border border-blue-500/20 whitespace-nowrap">📦 Bundle</span>}
                             </div>
                             {!item.is_active && (
                                 <span className="px-2 py-0.5 text-[10px] bg-red-500/20 text-red-400 rounded-full border border-red-500/20 whitespace-nowrap">Nonaktif</span>
@@ -166,12 +167,15 @@ function MenuManagement() {
         id: '',
         name: '',
         price: '',
+        base_price: '',
         category: '',
         description: '',
         image: '',
         label: 'none',
         is_active: true,
-        use_stock_check: true
+        use_stock_check: true,
+        is_bundle: false,
+        bundle_items: []
     });
     const [categoryForm, setCategoryForm] = useState({ name: '', emoji: '📦' });
 
@@ -263,12 +267,15 @@ function MenuManagement() {
             id: generateId(),
             name: '',
             price: '',
+            base_price: '',
             category: categories.length > 0 ? categories[0].id : '',
             description: '',
             image: '',
             label: 'none',
             is_active: true,
-            use_stock_check: true
+            use_stock_check: true,
+            is_bundle: false,
+            bundle_items: []
         });
         setShowMenuModal(true);
     };
@@ -280,12 +287,15 @@ function MenuManagement() {
             id: item.id,
             name: item.name,
             price: item.price,
+            base_price: item.base_price || '',
             category: item.category || '',
             description: item.description || '',
             image: item.image || '',
             label: item.label || 'none',
             is_active: item.is_active !== false,
-            use_stock_check: item.use_stock_check !== false
+            use_stock_check: item.use_stock_check !== false,
+            is_bundle: item.is_bundle || false,
+            bundle_items: item.bundle_items || []
         });
         setShowMenuModal(true);
     };
@@ -303,7 +313,10 @@ function MenuManagement() {
         try {
             const dataToSend = {
                 ...formData,
-                price: Number(formData.price)
+                price: Number(formData.price),
+                base_price: formData.base_price ? Number(formData.base_price) : 0,
+                is_bundle: formData.is_bundle || false,
+                bundle_items: formData.is_bundle ? formData.bundle_items : []
             };
 
             if (editingItem) {
@@ -482,7 +495,7 @@ function MenuManagement() {
     if (loading) {
         return (
             <section className="p-4 md:p-6 space-y-6">
-                <h2 className="text-2xl font-bold hidden md:block">🍽️ Manajemen Menu</h2>
+
                 <div className="flex items-center justify-center h-64">
                     <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500"></div>
                 </div>
@@ -493,7 +506,7 @@ function MenuManagement() {
     if (error) {
         return (
             <section className="p-4 md:p-6 space-y-6">
-                <h2 className="text-2xl font-bold hidden md:block">🍽️ Manajemen Menu</h2>
+
                 <div className="glass rounded-xl p-6 text-center">
                     <p className="text-red-400">{error}</p>
                     <button onClick={() => mutate('/menu')} className="mt-4 px-4 py-2 bg-purple-500 rounded-lg hover:bg-purple-600">
@@ -507,8 +520,8 @@ function MenuManagement() {
     return (
         <section className="p-4 md:p-6 space-y-6">
             {/* Header */}
-            <div className="flex items-center justify-between">
-                <h2 className="text-2xl font-bold hidden md:block">🍽️ Manajemen Menu</h2>
+            <div className="flex items-center justify-end">
+                {/* <h2 className="text-2xl font-bold hidden md:block">🍽️ Manajemen Menu</h2> - Moved to Header */}
                 <button
                     onClick={openAddModal}
                     className="bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-all"
@@ -679,7 +692,7 @@ function MenuManagement() {
                                 {/* Price & Category */}
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
-                                        <label className="block text-sm text-gray-400 mb-1">Harga *</label>
+                                        <label className="block text-sm text-gray-400 mb-1">Harga Jual *</label>
                                         <input
                                             type="number"
                                             value={formData.price}
@@ -688,6 +701,17 @@ function MenuManagement() {
                                             placeholder="15000"
                                             required
                                         />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm text-gray-400 mb-1">Harga Coret / Harga Asli</label>
+                                        <input
+                                            type="number"
+                                            value={formData.base_price}
+                                            onChange={(e) => setFormData({ ...formData, base_price: e.target.value })}
+                                            className="w-full px-4 py-2 rounded-lg bg-white/5 border border-purple-500/30 text-white focus:outline-none focus:border-purple-500"
+                                            placeholder="20000"
+                                        />
+                                        <p className="text-[10px] text-gray-500 mt-1">Kosongkan jika tidak ada harga coret</p>
                                     </div>
                                     <div>
                                         <label className="block text-sm text-gray-400 mb-1">Kategori</label>
@@ -752,7 +776,7 @@ function MenuManagement() {
                                 </div>
 
                                 {/* Toggles */}
-                                <div className="flex items-center gap-6">
+                                <div className="flex flex-wrap items-center gap-4">
                                     <label className="flex items-center gap-2 cursor-pointer">
                                         <input
                                             type="checkbox"
@@ -762,16 +786,93 @@ function MenuManagement() {
                                         />
                                         <span className="text-sm">Aktif Dijual</span>
                                     </label>
+                                    {!formData.is_bundle && (
+                                        <label className="flex items-center gap-2 cursor-pointer">
+                                            <input
+                                                type="checkbox"
+                                                checked={formData.use_stock_check}
+                                                onChange={(e) => setFormData({ ...formData, use_stock_check: e.target.checked })}
+                                                className="w-4 h-4 rounded accent-purple-500"
+                                            />
+                                            <span className="text-sm">Cek Stok Otomatis</span>
+                                        </label>
+                                    )}
                                     <label className="flex items-center gap-2 cursor-pointer">
                                         <input
                                             type="checkbox"
-                                            checked={formData.use_stock_check}
-                                            onChange={(e) => setFormData({ ...formData, use_stock_check: e.target.checked })}
-                                            className="w-4 h-4 rounded accent-purple-500"
+                                            checked={formData.is_bundle}
+                                            onChange={(e) => setFormData({ ...formData, is_bundle: e.target.checked, use_stock_check: false })}
+                                            className="w-4 h-4 rounded accent-blue-500"
                                         />
-                                        <span className="text-sm">Cek Stok Otomatis</span>
+                                        <span className="text-sm">📦 Jadikan Paket Bundling</span>
                                     </label>
                                 </div>
+
+                                {/* Bundle Items Repeater */}
+                                {formData.is_bundle && (
+                                    <div className="bg-blue-500/5 border border-blue-500/20 rounded-xl p-4 space-y-3">
+                                        <div className="flex items-center justify-between">
+                                            <label className="text-sm font-bold text-blue-300">📦 Item Penyusun Bundle</label>
+                                            <button
+                                                type="button"
+                                                onClick={() => setFormData({
+                                                    ...formData,
+                                                    bundle_items: [...formData.bundle_items, { product_id: '', quantity: 1 }]
+                                                })}
+                                                className="px-3 py-1 text-xs bg-blue-500/20 text-blue-300 rounded-lg hover:bg-blue-500/30"
+                                            >
+                                                + Tambah Item
+                                            </button>
+                                        </div>
+                                        {formData.bundle_items.length === 0 && (
+                                            <p className="text-xs text-gray-500 text-center py-2">Belum ada item. Klik "+ Tambah Item" untuk menambah produk penyusun.</p>
+                                        )}
+                                        {formData.bundle_items.map((bi, idx) => (
+                                            <div key={idx} className="flex items-center gap-2">
+                                                <div className="flex-1">
+                                                    <select
+                                                        value={bi.product_id}
+                                                        onChange={(e) => {
+                                                            const updated = [...formData.bundle_items];
+                                                            updated[idx].product_id = e.target.value;
+                                                            setFormData({ ...formData, bundle_items: updated });
+                                                        }}
+                                                        className="w-full px-3 py-2 rounded-lg bg-white/5 border border-blue-500/30 text-white text-sm focus:outline-none focus:border-blue-500 appearance-none"
+                                                    >
+                                                        <option value="" className="bg-[#1e1b4b]">-- Pilih Produk --</option>
+                                                        {menuItems.filter(m => m.id !== formData.id && !m.is_bundle).map(m => (
+                                                            <option key={m.id} value={m._id} className="bg-[#1e1b4b]">{m.name}</option>
+                                                        ))}
+                                                    </select>
+                                                </div>
+                                                <div className="w-20">
+                                                    <input
+                                                        type="number"
+                                                        min="1"
+                                                        value={bi.quantity}
+                                                        onChange={(e) => {
+                                                            const updated = [...formData.bundle_items];
+                                                            updated[idx].quantity = Number(e.target.value) || 1;
+                                                            setFormData({ ...formData, bundle_items: updated });
+                                                        }}
+                                                        className="w-full px-2 py-2 rounded-lg bg-white/5 border border-blue-500/30 text-white text-sm text-center focus:outline-none focus:border-blue-500"
+                                                        placeholder="Qty"
+                                                    />
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        const updated = formData.bundle_items.filter((_, i) => i !== idx);
+                                                        setFormData({ ...formData, bundle_items: updated });
+                                                    }}
+                                                    className="w-8 h-8 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30 flex items-center justify-center text-sm"
+                                                >
+                                                    ✕
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
 
                                 {/* Submit */}
                                 <div className="flex gap-3 pt-4">

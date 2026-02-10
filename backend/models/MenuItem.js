@@ -17,6 +17,14 @@ const MenuItemSchema = new mongoose.Schema({
         default: 'none'
     },
 
+    // Marketing & Bundling fields
+    base_price: { type: Number, default: 0 }, // Harga coret (harga asli sebelum diskon)
+    is_bundle: { type: Boolean, default: false }, // Penanda produk paket bundling
+    bundle_items: [{
+        product_id: { type: mongoose.Schema.Types.ObjectId, ref: 'MenuItem' },
+        quantity: { type: Number, default: 1 }
+    }],
+
     // Calculated fields (virtuals not stored, but good to know)
     // stock & hpp are calculated at runtime
 });

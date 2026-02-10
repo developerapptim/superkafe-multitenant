@@ -162,12 +162,7 @@ export default function DataCenter() {
 
     return (
         <div className="p-6 min-h-screen bg-[#0F0A2A] text-white">
-            <div className="mb-8">
-                <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent hidden md:block">
-                    Pusat Data
-                </h1>
-                <p className="text-gray-400 mt-2">Pusat kontrol untuk Export, Import, Audit, dan Maintenance Database.</p>
-            </div>
+
 
             {/* Tabs */}
             <div className="flex flex-wrap gap-2 mb-8 border-b border-purple-500/30 pb-1">

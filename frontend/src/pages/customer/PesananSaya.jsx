@@ -3,9 +3,10 @@ import { useOutletContext } from 'react-router-dom';
 import { createPortal } from 'react-dom';
 import { QRCodeSVG } from 'qrcode.react';
 import { ordersAPI } from '../../services/api';
+import PointsQuickCard from '../../components/PointsQuickCard';
 
 function PesananSaya() {
-    const { tableId } = useOutletContext();
+    const { tableId, settings } = useOutletContext();
     const [orders, setOrders] = useState([]);
     // activeOrderId from localStorage
     const [activeOrderId, setActiveOrderId] = useState(localStorage.getItem('currentOrderId'));
@@ -551,6 +552,12 @@ function PesananSaya() {
 
             {/* Active Order */}
             {activeOrder && renderOrderCard(activeOrder, true)}
+
+            {/* Points Quick Card - Only shows if loyalty enabled */}
+            <PointsQuickCard
+                phone={activeOrder?.phone || localStorage.getItem('customerPhone')}
+                settings={settings}
+            />
 
             {/* Modals - relying on activeOrder state */}
             {renderDetailModal()}

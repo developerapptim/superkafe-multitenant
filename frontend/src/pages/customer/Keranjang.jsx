@@ -4,11 +4,12 @@ import { createPortal } from 'react-dom';
 import CustomSelect from '../../components/CustomSelect';
 import toast from 'react-hot-toast';
 import useSWR from 'swr';
-import api, { ordersAPI } from '../../services/api';
+import api, { ordersAPI, cartAPI } from '../../services/api';
 import { useCart } from '../../context/CartContext';
 import Struk from '../../components/Struk';
 import { toPng } from 'html-to-image';
 import jsPDF from 'jspdf';
+import PointsEarnedBanner from '../../components/PointsEarnedBanner';
 
 // Fetcher for SWR
 const fetcher = url => api.get(url).then(res => res.data);
@@ -37,6 +38,12 @@ function Keranjang() {
     const [loading, setLoading] = useState(false);
     const [orderSuccess, setOrderSuccess] = useState(false);
     const [submittedOrder, setSubmittedOrder] = useState(null);
+
+    // Voucher State
+    const [voucherCode, setVoucherCode] = useState('');
+    const [voucherDiscount, setVoucherDiscount] = useState(0);
+    const [voucherApplied, setVoucherApplied] = useState(false);
+    const [applyingVoucher, setApplyingVoucher] = useState(false);
 
     // Smart Autocomplete State
     const [historyOptions, setHistoryOptions] = useState([]);
@@ -201,7 +208,9 @@ function Keranjang() {
                 subtotal: item.price * item.qty
             })),
             subtotal: cartTotal,
-            total: cartTotal,
+            total: cartTotal - voucherDiscount,
+            voucherCode: voucherApplied ? voucherCode : undefined,
+            voucherDiscount: voucherApplied ? voucherDiscount : 0,
             paymentMethod: paymentMethod,
             source: 'customer-app',
             createdAt: new Date().toISOString(),
@@ -333,6 +342,9 @@ function Keranjang() {
                         <p className="text-gray-400">Pesanan akan segera diproses.</p>
                     )}
                 </div>
+
+                {/* Points Earned Banner - Only shows if loyalty enabled */}
+                <PointsEarnedBanner order={submittedOrder} settings={settings} />
 
                 {/* Receipt Preview */}
                 <div className="flex justify-center">
@@ -720,6 +732,59 @@ function Keranjang() {
                 )}
             </div>
 
+            {/* Voucher Input */}
+            <div className="bg-white/5 rounded-xl p-4 border border-purple-500/20">
+                <h3 className="font-bold text-sm text-purple-300 mb-3">🎟️ Kode Voucher</h3>
+                {voucherApplied ? (
+                    <div className="flex items-center justify-between bg-green-500/10 border border-green-500/30 rounded-xl p-3">
+                        <div>
+                            <p className="text-green-300 font-bold text-sm flex items-center gap-1">
+                                ✅ Voucher <span className="font-mono">{voucherCode}</span> diterapkan!
+                            </p>
+                            <p className="text-green-400/70 text-xs">Hemat {formatCurrency(voucherDiscount)}</p>
+                        </div>
+                        <button
+                            onClick={() => {
+                                setVoucherApplied(false);
+                                setVoucherDiscount(0);
+                                setVoucherCode('');
+                            }}
+                            className="px-3 py-1.5 text-xs bg-red-500/20 text-red-300 rounded-lg hover:bg-red-500/30"
+                        >
+                            Hapus
+                        </button>
+                    </div>
+                ) : (
+                    <div className="flex gap-2">
+                        <input
+                            type="text"
+                            value={voucherCode}
+                            onChange={(e) => setVoucherCode(e.target.value.toUpperCase())}
+                            className="flex-1 px-4 py-2 rounded-lg bg-white/5 border border-purple-500/30 text-white font-mono uppercase placeholder-gray-500 focus:border-purple-500 outline-none text-sm"
+                            placeholder="Masukkan kode voucher"
+                        />
+                        <button
+                            onClick={async () => {
+                                if (!voucherCode.trim()) { toast.error('Masukkan kode voucher!'); return; }
+                                setApplyingVoucher(true);
+                                try {
+                                    const res = await cartAPI.applyVoucher(voucherCode.trim(), cartTotal);
+                                    setVoucherDiscount(res.data.discount);
+                                    setVoucherApplied(true);
+                                    toast.success(res.data.message || 'Voucher berhasil diterapkan!');
+                                } catch (err) {
+                                    toast.error(err.response?.data?.error || 'Voucher tidak valid');
+                                } finally { setApplyingVoucher(false); }
+                            }}
+                            disabled={applyingVoucher || !voucherCode.trim()}
+                            className="px-4 py-2 rounded-lg bg-gradient-to-r from-blue-600 to-purple-600 text-sm font-bold disabled:opacity-50 whitespace-nowrap"
+                        >
+                            {applyingVoucher ? '...' : 'Pakai'}
+                        </button>
+                    </div>
+                )}
+            </div>
+
             {/* Order Summary */}
             <div className="bg-white/5 rounded-xl p-4 border border-purple-500/20">
                 <h3 className="font-bold mb-3">Ringkasan Pesanan</h3>
@@ -728,6 +793,12 @@ function Keranjang() {
                         <span className="text-gray-400">Subtotal ({cart.reduce((s, i) => s + i.qty, 0)} item)</span>
                         <span>{formatCurrency(cartTotal)}</span>
                     </div>
+                    {voucherApplied && voucherDiscount > 0 && (
+                        <div className="flex justify-between text-green-400">
+                            <span className="flex items-center gap-1">🎟️ Diskon Voucher</span>
+                            <span>-{formatCurrency(voucherDiscount)}</span>
+                        </div>
+                    )}
                     {tableId && (
                         <div className="flex justify-between">
                             <span className="text-gray-400">Meja</span>
@@ -736,7 +807,7 @@ function Keranjang() {
                     )}
                     <div className="border-t border-white/10 pt-2 flex justify-between font-bold text-lg">
                         <span>Total</span>
-                        <span className="text-green-400">{formatCurrency(cartTotal)}</span>
+                        <span className="text-green-400">{formatCurrency(cartTotal - voucherDiscount)}</span>
                     </div>
                 </div>
             </div>

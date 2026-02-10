@@ -56,13 +56,14 @@ export const ordersAPI = {
     getById: (id) => api.get(`/orders/${id}`),
     create: (data) => api.post('/orders', data),
     updateStatus: (id, status) => api.patch(`/orders/${id}/status`, { status }),
-    payOrder: (id, paymentMethod) => api.patch(`/orders/${id}/pay`, { paymentMethod }),
+    pay: (id, paymentData) => api.patch(`/orders/${id}/pay`, paymentData),
+    payOrder: (id, paymentMethod) => api.patch(`/orders/${id}/pay`, { paymentMethod }), // Keep for compatibility if used
     delete: (id) => api.delete(`/orders/${id}`),
     // New endpoints for smart matching and merging
     checkPhone: (phone) => api.post('/orders/check-phone', { phone }),
-    merge: (orderIds) => api.post('/orders/merge', { orderIds }),
+    merge: (data) => api.post('/orders/merge', data), // New Merge API
     appendItems: (id, items) => api.patch(`/orders/${id}/append`, { items }),
-    cancel: (id) => api.patch(`/orders/${id}/status`, { status: 'cancelled' }), // Reuse updateStatus for ease
+    cancel: (id) => api.patch(`/orders/${id}/status`, { status: 'cancelled' }),
 };
 
 
@@ -188,6 +189,8 @@ export const debtsAPI = {
 export const customersAPI = {
     getAll: () => api.get('/customers'),
     getById: (id) => api.get(`/customers/${id}`),
+    search: (q) => api.get('/customers/search', { params: { q } }),
+    getPoints: (phone) => api.get(`/customers/points/${phone}`),
     create: (data) => api.post('/customers', data),
     update: (id, data) => api.put(`/customers/${id}`, data),
     delete: (id) => api.delete(`/customers/${id}`),
@@ -212,6 +215,25 @@ export const serviceAPI = {
     complete: (id) => api.put(`/service-request/${id}/complete`),
 };
 
+// ========== VOUCHER API ==========
+export const voucherAPI = {
+    getAll: () => api.get('/vouchers'),
+    create: (data) => api.post('/vouchers', data),
+    update: (id, data) => api.put(`/vouchers/${id}`, data),
+    toggle: (id) => api.patch(`/vouchers/${id}/toggle`),
+    delete: (id) => api.delete(`/vouchers/${id}`),
+};
+
+// ========== BANNER API ==========
+export const bannerAPI = {
+    getAll: (activeOnly = false) => api.get(`/banners${activeOnly ? '?active_only=true' : ''}`),
+    create: (formData) => api.post('/banners', formData),
+    delete: (id) => api.delete(`/banners/${id}`),
+};
+
+// ========== CART API ==========
+export const cartAPI = {
+    applyVoucher: (code, subtotal) => api.post('/cart/apply-voucher', { code, subtotal }),
+};
+
 export default api;
-
-

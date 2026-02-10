@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useMemo } from 'react';
 import toast from 'react-hot-toast';
 import useSWR, { mutate } from 'swr';
 import api, { menuAPI, ordersAPI, tablesAPI, shiftAPI } from '../../services/api';
+import PrintButton from '../../components/PrintButton';
 
 // Generic fetcher for SWR
 const fetcher = url => api.get(url).then(res => res.data);
@@ -677,7 +678,7 @@ function Kasir() {
     };
 
     // Handle merge bill
-    const handleMergeBill = async () => {
+    const handleMergeBill = async (mergeData) => {
         if (selectedForMerge.length < 2) {
             toast.error('Pilih minimal 2 pesanan untuk digabung');
             return;
@@ -685,14 +686,19 @@ function Kasir() {
 
         const toastId = toast.loading('Menggabungkan tagihan...');
         try {
-            await ordersAPI.merge(selectedForMerge);
+            await ordersAPI.merge({
+                orderIds: selectedForMerge,
+                mergedCustomerName: mergeData?.mergedCustomerName,
+                mergedTableNumber: mergeData?.mergedTableNumber,
+                mergedBy: JSON.parse(localStorage.getItem('user') || '{}').name || 'Kasir'
+            });
             mutate('/orders');
             setSelectedForMerge([]);
             setShowMergeModal(false);
             toast.success('Tagihan berhasil digabungkan!', { id: toastId });
         } catch (err) {
             console.error('Error merging orders:', err);
-            toast.error(err.response?.data?.error || 'Gagal menggabungkan tagihan', { id: toastId });
+            toast.error(err.response?.data?.message || 'Gagal menggabungkan tagihan', { id: toastId });
         }
     };
 
@@ -715,10 +721,7 @@ function Kasir() {
     if (!menuData && !ordersData) {
         return (
             <section className="flex flex-col h-[calc(100vh-80px)]">
-                {/* Header Bar Skeleton */}
-                <div className="flex items-center justify-between p-4 border-b border-purple-500/20 bg-surface/50">
-                    <h2 className="text-2xl font-bold hidden md:block">🧾 Kasir (POS)</h2>
-                </div>
+
                 <div className="flex-1 flex items-center justify-center">
                     <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500"></div>
                 </div>
@@ -803,16 +806,10 @@ function Kasir() {
                 <div className="hidden md:flex flex-col gap-3">
                     {/* Top Row: Title & Actions */}
                     <div className="flex items-center justify-between">
-                        {/* Title Group */}
-                        <div className="flex items-center gap-2">
+                        {/* Title Group - REMOVED (Moved to Header) */}
+                        {/* <div className="flex items-center gap-2">
                             <h2 className="text-xl md:text-2xl font-bold text-left hidden md:block">🧾 Kasir</h2>
-                            {isAdmin && (
-                                <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-yellow-500/10 border border-yellow-500/20 text-yellow-500 text-xs font-medium animate-fade-in select-none whitespace-nowrap">
-                                    <span>👁️</span>
-                                    <span>Mode Pantau</span>
-                                </div>
-                            )}
-                        </div>
+                        </div> */}
 
                         {/* Actions Group */}
                         <div className="flex items-center gap-2">
@@ -1515,6 +1512,9 @@ function Kasir() {
 
                         {/* Footer Actions */}
                         <div className="p-4 border-t border-white/10 bg-[#1A1A2E]/95 backdrop-blur space-y-3">
+                            {/* Print Receipt Button */}
+                            <PrintButton order={selectedOrderForDetail} settings={settings} variant="primary" />
+
                             {/* Cancel Button - Only if enabled */}
                             {(selectedOrderForDetail.status !== 'done' && selectedOrderForDetail.status !== 'cancel') && (
                                 <button

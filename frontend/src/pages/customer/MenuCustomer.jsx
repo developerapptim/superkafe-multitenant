@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { motion, AnimatePresence } from "framer-motion";
-import { menuAPI, categoriesAPI } from '../../services/api';
+import { menuAPI, categoriesAPI, bannerAPI } from '../../services/api';
 import { useCart } from '../../context/CartContext';
 
 function MenuCustomer() {
@@ -10,6 +10,8 @@ function MenuCustomer() {
 
     const [menuItems, setMenuItems] = useState([]);
     const [categories, setCategories] = useState([]);
+    const [banners, setBanners] = useState([]);
+    const [activeBanner, setActiveBanner] = useState(0);
     const [activeCategory, setActiveCategory] = useState('all');
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
@@ -21,23 +23,24 @@ function MenuCustomer() {
     const fetchData = async () => {
         try {
             setLoading(true);
-            const [menuRes, catRes] = await Promise.all([
+            const [menuRes, catRes, bannerRes] = await Promise.all([
                 menuAPI.getAll(),
-                categoriesAPI.getAll()
+                categoriesAPI.getAll(),
+                bannerAPI.getAll(true)
             ]);
 
             const menuData = Array.isArray(menuRes.data) ? menuRes.data : [];
             const catData = Array.isArray(catRes.data) ? catRes.data : [];
+            const bannerData = Array.isArray(bannerRes.data) ? bannerRes.data : [];
 
-            // Dual Control: Show all items, sorting will handle order
             const sortedMenu = menuData.sort((a, b) => {
-                // Non-active goes to bottom
                 if (a.status === 'NON_ACTIVE' && b.status !== 'NON_ACTIVE') return 1;
                 if (a.status !== 'NON_ACTIVE' && b.status === 'NON_ACTIVE') return -1;
                 return 0;
             });
             setMenuItems(sortedMenu);
             setCategories(catData);
+            setBanners(bannerData);
         } catch (err) {
             console.error('Error fetching menu:', err);
         } finally {
@@ -87,6 +90,15 @@ function MenuCustomer() {
         });
     };
 
+    // Auto-rotate banner
+    useEffect(() => {
+        if (banners.length <= 1) return;
+        const timer = setInterval(() => {
+            setActiveBanner(prev => (prev + 1) % banners.length);
+        }, 4000);
+        return () => clearInterval(timer);
+    }, [banners.length]);
+
     if (loading) {
         return (
             <div className="flex items-center justify-center h-64">
@@ -97,6 +109,34 @@ function MenuCustomer() {
 
     return (
         <div className="py-4 space-y-4">
+            {/* Banner Slider */}
+            {banners.length > 0 && (
+                <div className="relative rounded-xl overflow-hidden border border-purple-500/20 h-36 md:h-48">
+                    <AnimatePresence mode="wait">
+                        <motion.img
+                            key={activeBanner}
+                            src={banners[activeBanner]?.image_url}
+                            alt={banners[activeBanner]?.title || 'Banner Promo'}
+                            className="w-full h-full object-cover"
+                            initial={{ opacity: 0, x: 30 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{ opacity: 0, x: -30 }}
+                            transition={{ duration: 0.3 }}
+                        />
+                    </AnimatePresence>
+                    {banners.length > 1 && (
+                        <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1.5">
+                            {banners.map((_, i) => (
+                                <button
+                                    key={i}
+                                    onClick={() => setActiveBanner(i)}
+                                    className={`w-2 h-2 rounded-full transition-all ${i === activeBanner ? 'bg-white w-5' : 'bg-white/40'}`}
+                                />
+                            ))}
+                        </div>
+                    )}
+                </div>
+            )}
             {/* Search */}
             <div className="relative">
                 <input
@@ -196,6 +236,18 @@ function MenuCustomer() {
                                                         item.label === 'new' ? 'NEW' : ''}
                                             </div>
                                         )}
+                                        {/* Discount Percentage Badge */}
+                                        {!!item.base_price && item.base_price > item.price && !isSoldOut && !isNonActive && (
+                                            <div className="absolute top-2 right-2 px-2 py-1 rounded bg-red-500 text-white text-[10px] font-bold shadow-lg">
+                                                -{Math.round((1 - item.price / item.base_price) * 100)}%
+                                            </div>
+                                        )}
+                                        {/* Bundle badge */}
+                                        {item.is_bundle && !isSoldOut && !isNonActive && (
+                                            <div className="absolute bottom-2 left-2 px-2 py-0.5 rounded bg-blue-600/90 text-white text-[10px] font-bold">
+                                                📦 BUNDLING
+                                            </div>
+                                        )}
                                         {isSoldOut && (
                                             <div className="absolute inset-0 bg-black/70 flex items-center justify-center">
                                                 <span className="text-red-400 font-bold">HABIS</span>
@@ -211,7 +263,16 @@ function MenuCustomer() {
                                     {/* Info */}
                                     <div className="p-3">
                                         <h3 className="font-medium text-sm truncate">{item.name}</h3>
-                                        <p className="text-purple-400 font-bold mt-1">{formatCurrency(item.price)}</p>
+                                        <div className="mt-1 flex items-center gap-1.5 flex-wrap">
+                                            {item.base_price && item.base_price > item.price ? (
+                                                <>
+                                                    <span className="text-gray-400 line-through text-xs">{formatCurrency(item.base_price)}</span>
+                                                    <span className="text-green-400 font-bold text-sm">{formatCurrency(item.price)}</span>
+                                                </>
+                                            ) : (
+                                                <span className="text-purple-400 font-bold">{formatCurrency(item.price)}</span>
+                                            )}
+                                        </div>
 
                                         {/* Add to Cart */}
                                         {isDisabled ? (

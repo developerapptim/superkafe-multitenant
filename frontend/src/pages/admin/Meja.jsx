@@ -299,7 +299,7 @@ function Meja() {
         <section className="p-4 md:p-6 space-y-6">
             {/* Header */}
             <div className="flex flex-wrap items-center justify-between gap-3">
-                <h2 className="text-2xl font-bold hidden md:block">🪑 Meja & Reservasi</h2>
+
                 <div className="flex gap-2">
                     <button
                         onClick={openGeneralQRModal}

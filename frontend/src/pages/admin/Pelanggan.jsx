@@ -357,7 +357,7 @@ function Pelanggan() {
         <section className="p-4 md:p-6 space-y-6">
             {/* Header */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <h2 className="text-2xl font-bold hidden md:block">❤️ Pelanggan & CRM</h2>
+
                 <button
                     onClick={openAddModal}
                     className="w-full md:w-auto bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 px-4 py-2 rounded-lg text-sm font-medium flex items-center justify-center gap-2"

@@ -194,7 +194,7 @@ function Pegawai() {
     if (isLoading) {
         return (
             <section className="p-4 md:p-6 space-y-6">
-                <h2 className="text-2xl font-bold hidden md:block">👥 Manajemen Pegawai</h2>
+
                 <div className="flex items-center justify-center h-64">
                     <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500"></div>
                 </div>
@@ -206,12 +206,7 @@ function Pegawai() {
         <section className="p-4 md:p-6 space-y-6">
             {/* Header / Top Bar */}
             <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-                <div>
-                    <h1 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-blue-400">
-                        Manajemen Pegawai
-                    </h1>
-                    <p className="text-gray-400 text-sm">Kelola data karyawan & gaji</p>
-                </div>
+
 
                 <div className="flex flex-wrap gap-3">
                     <button

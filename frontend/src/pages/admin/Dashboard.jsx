@@ -98,9 +98,7 @@ function Dashboard() {
     if (!statsData && !tablesData && !menuData) {
         return (
             <section className="p-4 md:p-6 space-y-6">
-                <div className="flex items-center justify-between">
-                    <h2 className="text-2xl font-bold">📊 Dashboard</h2>
-                </div>
+
                 <div className="flex items-center justify-center min-h-[50vh]">
                     <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500"></div>
                 </div>
@@ -110,9 +108,7 @@ function Dashboard() {
 
     return (
         <section className="p-4 md:p-6 space-y-6">
-            <div className="hidden md:flex items-center justify-between">
-                <h2 className="text-2xl font-bold">📊 Dashboard</h2>
-            </div>
+
 
             {/* Stats Cards */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">

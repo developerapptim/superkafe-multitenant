@@ -182,7 +182,7 @@ function Pengaturan() {
     if (isLoading) {
         return (
             <section className="p-4 md:p-6 space-y-6">
-                <h2 className="text-2xl font-bold hidden md:block">⚙️ Pengaturan</h2>
+
                 <div className="flex items-center justify-center h-64">
                     <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500"></div>
                 </div>
@@ -192,7 +192,7 @@ function Pengaturan() {
 
     return (
         <section className="p-4 md:p-6 space-y-6">
-            <h2 className="text-2xl font-bold">⚙️ Pengaturan</h2>
+
 
             {/* Business Profile */}
             <div className="glass rounded-xl p-4">

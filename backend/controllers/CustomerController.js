@@ -213,3 +213,80 @@ exports.getAnalytics = async (req, res) => {
         res.status(500).json({ error: 'Server error' });
     }
 };
+
+/**
+ * Get Customer Points & Loyalty Info
+ * GET /customers/points/:phone
+ * Auto-creates customer if not found
+ */
+exports.getCustomerPoints = async (req, res) => {
+    try {
+        const { phone } = req.params;
+
+        if (!phone) {
+            return res.status(400).json({ error: 'Phone number is required' });
+        }
+
+        // Normalize phone number (remove non-digits)
+        const normalizedPhone = phone.replace(/\D/g, '');
+
+        // Find customer by phone
+        let customer = await Customer.findOne({
+            $or: [
+                { phone: normalizedPhone },
+                { phone: phone },
+                { phone: { $regex: normalizedPhone.slice(-10) + '$' } } // Match last 10 digits
+            ]
+        });
+
+        // Auto-create if not found
+        if (!customer) {
+            customer = new Customer({
+                id: `cust_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+                name: 'Pelanggan',
+                phone: normalizedPhone,
+                points: 0,
+                totalSpent: 0,
+                visitCount: 0,
+                tier: 'bronze'
+            });
+            await customer.save();
+        }
+
+        // Get recent point activities from orders
+        const recentOrders = await Order.find({
+            $or: [
+                { phone: normalizedPhone },
+                { phone: phone },
+                { customerId: customer.id }
+            ],
+            paymentStatus: 'paid',
+            status: { $ne: 'cancel' }
+        })
+            .sort({ timestamp: -1 })
+            .limit(5)
+            .select('id timestamp total createdAt');
+
+        // Format recent activities
+        const recentActivities = recentOrders.map(order => ({
+            id: order.id,
+            date: order.createdAt || new Date(order.timestamp),
+            total: order.total,
+            pointsEarned: Math.floor(order.total / 10000) // Default ratio, will be overridden by frontend
+        }));
+
+        res.json({
+            name: customer.name || 'Pelanggan',
+            phone: customer.phone,
+            points: customer.points || 0,
+            tier: customer.tier || 'bronze',
+            totalSpent: customer.totalSpent || 0,
+            visitCount: customer.visitCount || 0,
+            recentActivities
+        });
+
+    } catch (err) {
+        console.error('Get Customer Points Error:', err);
+        res.status(500).json({ error: 'Server error' });
+    }
+};

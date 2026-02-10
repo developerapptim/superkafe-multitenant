@@ -217,7 +217,7 @@ function Gramasi() {
     if (isLoading) {
         return (
             <section className="p-4 md:p-6 space-y-6">
-                <h2 className="text-2xl font-bold hidden md:block">⚖️ Gramasi & HPP</h2>
+
                 <div className="flex items-center justify-center h-64">
                     <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500"></div>
                 </div>
@@ -231,8 +231,8 @@ function Gramasi() {
     return (
         <section className="p-4 md:p-6 space-y-6">
             {/* Header */}
-            <div className="flex items-center justify-between">
-                <h2 className="text-2xl font-bold hidden md:block">⚖️ Gramasi & HPP</h2>
+            <div className="flex items-center justify-end">
+                {/* <h2 className="text-2xl font-bold hidden md:block">⚖️ Gramasi & HPP</h2> - Moved to Header */}
                 {canEdit && (
                     <button
                         onClick={() => {

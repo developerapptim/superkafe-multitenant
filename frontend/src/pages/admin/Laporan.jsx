@@ -61,7 +61,7 @@ function Laporan() {
 
     return (
         <section className="p-4 md:p-6 space-y-6">
-            <h2 className="text-2xl font-bold hidden md:block">📈 Laporan & Analitik</h2>
+
 
             {/* Period Filter */}
             <div className="flex gap-2 flex-wrap">
