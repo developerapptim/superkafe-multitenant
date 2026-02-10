@@ -576,8 +576,8 @@ function Meja() {
                         <div ref={qrRef} className="bg-white rounded-xl p-6 flex flex-col items-center">
                             <QRCodeSVG
                                 value={showGeneralQR
-                                    ? `${getBaseUrl()}/customer`
-                                    : `${getBaseUrl()}/customer?meja=${selectedQRTable?.number}`
+                                    ? `${getBaseUrl()}`
+                                    : `${getBaseUrl()}?meja=${selectedQRTable?.number}`
                                 }
                                 size={200}
                                 level="H"

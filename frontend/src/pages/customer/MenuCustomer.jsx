@@ -150,10 +150,10 @@ function MenuCustomer() {
             </div>
 
             {/* Category Filter */}
-            <div className="flex gap-2 overflow-x-auto pb-2 -mx-4 px-4 scrollbar-hide">
+            <div className="flex gap-2 overflow-x-auto pb-2 -mx-4 px-4 scrollbar-hide scroll-smooth">
                 <button
                     onClick={() => setActiveCategory('all')}
-                    className={`relative px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all overflow-hidden ${activeCategory === 'all'
+                    className={`relative px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all overflow-hidden flex-shrink-0 ${activeCategory === 'all'
                         ? 'text-white'
                         : 'bg-white/10 text-gray-300'
                         }`}
@@ -170,7 +170,7 @@ function MenuCustomer() {
                     <button
                         key={cat.id || cat.name}
                         onClick={() => setActiveCategory(cat.id)}
-                        className={`relative px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all overflow-hidden ${activeCategory === cat.id
+                        className={`relative px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all overflow-hidden flex-shrink-0 ${activeCategory === cat.id
                             ? 'text-white'
                             : 'bg-white/10 text-gray-300'
                             }`}

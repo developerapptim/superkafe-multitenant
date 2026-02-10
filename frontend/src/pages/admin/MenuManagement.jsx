@@ -140,6 +140,7 @@ const MenuItem = ({ item, saveOrder, getCategoryEmoji, getCategoryName, formatCu
 
 function MenuManagement() {
     const { isSidebarCollapsed } = useOutletContext();
+    const [showReorderModal, setShowReorderModal] = useState(false);
     // SWR Data Fetching
     const { data: menuData, error: menuError } = useSWR('/menu', fetcher);
     const { data: categoriesData, error: categoriesError } = useSWR('/categories', fetcher);
@@ -532,15 +533,23 @@ function MenuManagement() {
 
             {/* Categories */}
             <div className="glass rounded-xl p-4">
-                <div className="flex items-center justify-between mb-4">
+                <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
                     <h3 className="font-bold">📁 Kategori</h3>
 
-                    <button
-                        onClick={openCreateCategoryModal}
-                        className="px-3 py-1 rounded-lg bg-purple-500/50 hover:bg-purple-500 text-xs font-medium flex items-center gap-1 transition-all"
-                    >
-                        <span>➕</span> Tambah
-                    </button>
+                    <div className="flex items-center gap-2">
+                        <button
+                            onClick={() => setShowReorderModal(true)}
+                            className="px-3 py-1.5 rounded-lg bg-blue-500/50 hover:bg-blue-500 text-xs font-medium flex items-center gap-1 transition-all"
+                        >
+                            <span>⇅</span> Urutkan
+                        </button>
+                        <button
+                            onClick={openCreateCategoryModal}
+                            className="px-3 py-1.5 rounded-lg bg-purple-500/50 hover:bg-purple-500 text-xs font-medium flex items-center gap-1 transition-all"
+                        >
+                            <span>➕</span> Tambah
+                        </button>
+                    </div>
                 </div>
                 <div className="flex overflow-x-auto pb-2 snap-x md:grid md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 md:gap-3 custom-scrollbar">
                     <button
@@ -945,8 +954,100 @@ function MenuManagement() {
                     </div>
                     , document.body)
             }
+
+            <CategoryReorderModal
+                isOpen={showReorderModal}
+                onClose={() => setShowReorderModal(false)}
+                categories={categories}
+            />
         </section >
     );
 }
+
+// Reorder Modal Component
+const CategoryReorderModal = ({ isOpen, onClose, categories }) => {
+    const [items, setItems] = useState([]);
+    const [isSaving, setIsSaving] = useState(false);
+
+    useEffect(() => {
+        if (isOpen) {
+            setItems(categories);
+        }
+    }, [isOpen, categories]);
+
+    const handleSave = async () => {
+        setIsSaving(true);
+        try {
+            // Map items to { id, order }
+            const formattedItems = items.map((item, index) => ({
+                id: item.id,
+                order: index
+            }));
+
+            await categoriesAPI.reorder(formattedItems);
+            mutate('/categories'); // Refresh list
+            toast.success('Urutan kategori disimpan');
+            onClose();
+        } catch (err) {
+            console.error('Failed to reorder:', err);
+            toast.error('Gagal menyimpan urutan');
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    if (!isOpen) return null;
+
+    return createPortal(
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+            <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="bg-[#1a1625] border border-white/10 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden flex flex-col max-h-[80vh]"
+            >
+                <div className="p-4 border-b border-white/10 flex justify-between items-center bg-white/5">
+                    <h3 className="font-bold text-lg">Atur Urutan Kategori</h3>
+                    <button onClick={onClose} className="text-gray-400 hover:text-white">✕</button>
+                </div>
+
+                <div className="p-4 overflow-y-auto flex-1 custom-scrollbar">
+                    <p className="text-sm text-gray-400 mb-4">Geser (drag) item untuk mengubah urutan.</p>
+
+                    <Reorder.Group axis="y" values={items} onReorder={setItems} className="space-y-2">
+                        {items.map((item) => (
+                            <Reorder.Item key={item.id} value={item}>
+                                <div className="bg-white/5 border border-white/5 p-3 rounded-xl flex items-center gap-3 cursor-grab active:cursor-grabbing hover:bg-white/10 transition-colors">
+                                    <span className="text-gray-500 text-xl select-none">⋮⋮</span>
+                                    <div className="w-8 h-8 rounded bg-white/10 flex items-center justify-center text-lg select-none">
+                                        {item.emoji}
+                                    </div>
+                                    <span className="font-medium select-none flex-1">{item.name}</span>
+                                </div>
+                            </Reorder.Item>
+                        ))}
+                    </Reorder.Group>
+                </div>
+
+                <div className="p-4 border-t border-white/10 bg-white/5 flex justify-end gap-3">
+                    <button
+                        onClick={onClose}
+                        className="px-4 py-2 rounded-lg bg-gray-600/50 hover:bg-gray-600 text-sm font-medium transition-colors"
+                        disabled={isSaving}
+                    >
+                        Batal
+                    </button>
+                    <button
+                        onClick={handleSave}
+                        className="px-4 py-2 rounded-lg bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-sm font-bold shadow-lg transition-all"
+                        disabled={isSaving}
+                    >
+                        {isSaving ? 'Menyimpan...' : 'Simpan Urutan'}
+                    </button>
+                </div>
+            </motion.div>
+        </div>,
+        document.body
+    );
+};
 
 export default MenuManagement;

@@ -57,7 +57,7 @@ function CustomerLayout() {
 
     const fetchSettings = async () => {
         try {
-            const res = await settingsAPI.get();
+            const res = await settingsAPI.getPublic();
             if (res.data) {
                 const newSettings = {
                     ...res.data,

@@ -1519,7 +1519,9 @@ function Kasir() {
                             {(selectedOrderForDetail.status !== 'done' && selectedOrderForDetail.status !== 'cancel') && (
                                 <button
                                     onClick={() => setShowCancelModal(true)}
-                                    className="w-full py-2.5 rounded-xl border border-red-500/30 text-red-500 hover:bg-red-500/10 hover:border-red-500/50 font-bold transition-all flex items-center justify-center gap-2"
+                                    disabled={isAdmin}
+                                    className={`w-full py-2.5 rounded-xl border font-bold transition-all flex items-center justify-center gap-2 ${isAdmin ? 'border-gray-500/30 text-gray-500 cursor-not-allowed' : 'border-red-500/30 text-red-500 hover:bg-red-500/10 hover:border-red-500/50'}`}
+                                    title={isAdmin ? "Admin tidak dapat membatalkan pesanan" : ""}
                                 >
                                     ⛔ Batalkan Pesanan
                                 </button>

@@ -7,6 +7,7 @@ const Shift = require('../models/Shift');
 const Customer = require('../models/Customer');
 const Settings = require('../models/Settings');
 const Voucher = require('../models/Voucher');
+const Table = require('../models/Table');
 
 // =========================================================
 // HELPER: Deduct Stock when order status changes to 'process'
@@ -324,8 +325,6 @@ exports.createOrder = async (req, res) => {
         await newOrder.save();
         console.log("✅ Order Saved Successfully");
 
-        // 3. Update Shift
-        console.log("3️⃣ Updating Active Shift");
         if (newOrder.status === 'done' || newOrder.paymentStatus === 'paid') {
             const activeShift = await Shift.findOne({ endTime: null });
             if (activeShift) {
@@ -351,6 +350,37 @@ exports.createOrder = async (req, res) => {
             }
         } else {
             console.log("ℹ️ Order not paid/done, skipping shift update");
+        }
+
+        // 3.5 Update Table Status (if dine_in and tableNumber exists)
+        if (newOrder.orderType === 'dine_in' && newOrder.tableNumber) {
+            console.log(`🔍 Checking Table Update for Order ${newOrder.id}`);
+            console.log(`   - Order Type: ${newOrder.orderType}`);
+            console.log(`   - Table Number: ${newOrder.tableNumber} (Type: ${typeof newOrder.tableNumber})`);
+
+            try {
+                // Find table by number (or id if you store id in tableNumber, but schema says number)
+                // In your frontend, you send table.number as value.
+                const table = await Table.findOne({ number: newOrder.tableNumber.toString() }); // Force string comparison
+                if (table) {
+                    console.log(`   - Table Found: ${table.number} (ID: ${table.id})`);
+                    console.log(`   - Current Status: ${table.status}`);
+
+                    table.status = 'occupied';
+                    table.currentOrderId = newOrder.id; // Link active order
+                    if (!table.currentOrderIds) table.currentOrderIds = [];
+                    if (!table.currentOrderIds.includes(newOrder.id)) table.currentOrderIds.push(newOrder.id);
+                    table.occupiedSince = new Date();
+                    await table.save();
+                    console.log(`✅ Table ${newOrder.tableNumber} status updated to OCCUPIED`);
+                } else {
+                    console.log(`⚠️ Table ${newOrder.tableNumber} NOT FOUND in database`);
+                }
+            } catch (tblErr) {
+                console.error("⚠️ Failed to update table status:", tblErr);
+            }
+        } else {
+            console.log(`ℹ️ Skipping Table Update: Type=${newOrder.orderType}, Table=${newOrder.tableNumber}`);
         }
 
         // 4. Update Customer Loyalty

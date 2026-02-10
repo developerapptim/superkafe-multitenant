@@ -89,3 +89,27 @@ exports.delete = async (req, res) => {
         res.status(500).json({ error: 'Server error' });
     }
 };
+
+// Reorder categories
+exports.reorder = async (req, res) => {
+    try {
+        const { categories } = req.body; // Array of { id, order }
+
+        if (!categories || !Array.isArray(categories)) {
+            return res.status(400).json({ error: 'Invalid data format' });
+        }
+
+        const bulkOps = categories.map((cat, index) => ({
+            updateOne: {
+                filter: { id: cat.id },
+                update: { $set: { order: index } }
+            }
+        }));
+
+        await Category.bulkWrite(bulkOps);
+        res.json({ message: 'Urutan kategori diperbarui' });
+    } catch (err) {
+        console.error('Error reordering categories:', err);
+        res.status(500).json({ error: 'Server error' });
+    }
+};

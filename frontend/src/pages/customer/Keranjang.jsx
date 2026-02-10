@@ -427,16 +427,6 @@ function Keranjang() {
                                 <p className="text-green-400/70 text-xs">Terdeteksi dari QR Code</p>
                             </div>
                         </div>
-                        <button
-                            onClick={() => {
-                                clearScannedTable();
-                                setOrderType('take_away');
-                                setTableNumber('');
-                            }}
-                            className="text-xs text-gray-400 hover:text-white px-2 py-1 rounded bg-white/10"
-                        >
-                            Ganti
-                        </button>
                     </div>
                 )}
 
@@ -446,21 +436,18 @@ function Keranjang() {
                             setOrderType('dine_in');
                             if (isTableLocked && tableId) setTableNumber(tableId);
                         }}
-                        disabled={isTableLocked && tableId}
+
                         className={`py-3 px-4 rounded-xl border-2 transition-all flex items-center justify-center gap-2 ${orderType === 'dine_in'
                             ? 'border-purple-500 bg-purple-500/20 text-purple-300'
                             : 'border-white/10 bg-white/5 text-gray-400 hover:border-purple-500/50'
-                            } ${isTableLocked && tableId ? 'opacity-80' : ''}`}
+                            }`
+                        }
                     >
                         <span className="text-xl">🍽️</span>
                         <span className="font-medium text-sm">Makan di Tempat</span>
                     </button>
                     <button
                         onClick={() => {
-                            if (isTableLocked && tableId) {
-                                toast('Anda scan QR Meja. Klik "Ganti" untuk pilih Bungkus.', { icon: 'ℹ️' });
-                                return;
-                            }
                             setOrderType('take_away');
                         }}
                         className={`py-3 px-4 rounded-xl border-2 transition-all flex items-center justify-center gap-2 ${orderType === 'take_away'
@@ -829,56 +816,58 @@ function Keranjang() {
             </button>
 
             {/* Smart Merge Modal */}
-            {showMergeModal && createPortal(
-                <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-                    <div className="bg-gradient-to-br from-purple-900/90 to-blue-900/90 rounded-2xl p-6 w-full max-w-md border border-purple-500/30 shadow-2xl animate-scale-up">
-                        <div className="text-center mb-4">
-                            <div className="text-5xl mb-2">👋</div>
-                            <h3 className="text-xl font-bold">Halo, {customerName}!</h3>
-                            <p className="text-gray-400 mt-2">
-                                Ada pesanan aktif sebelumnya dengan nomor ini
-                            </p>
-                        </div>
-
-                        {existingOrders.length > 0 && (
-                            <div className="bg-white/5 rounded-xl p-4 mb-4 border border-purple-500/20">
-                                <div className="flex justify-between items-center mb-2">
-                                    <span className="text-sm text-gray-400">Pesanan Sebelumnya</span>
-                                    <span className="text-xs text-gray-500">
-                                        {existingOrders[0].tableNumber ? `Meja ${existingOrders[0].tableNumber}` : 'Take Away'}
-                                    </span>
-                                </div>
-                                <div className="flex justify-between items-center">
-                                    <span className="font-medium">{existingOrders[0].itemCount} item</span>
-                                    <span className="font-bold text-green-400">
-                                        {formatCurrency(existingOrders[0].total)}
-                                    </span>
-                                </div>
-                                <p className="text-xs text-gray-500 mt-1">Waktu: {existingOrders[0].time}</p>
+            {
+                showMergeModal && createPortal(
+                    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                        <div className="bg-gradient-to-br from-purple-900/90 to-blue-900/90 rounded-2xl p-6 w-full max-w-md border border-purple-500/30 shadow-2xl animate-scale-up">
+                            <div className="text-center mb-4">
+                                <div className="text-5xl mb-2">👋</div>
+                                <h3 className="text-xl font-bold">Halo, {customerName}!</h3>
+                                <p className="text-gray-400 mt-2">
+                                    Ada pesanan aktif sebelumnya dengan nomor ini
+                                </p>
                             </div>
-                        )}
 
-                        <p className="text-center text-sm text-gray-400 mb-4">
-                            Mau tambahkan ke pesanan sebelumnya?
-                        </p>
+                            {existingOrders.length > 0 && (
+                                <div className="bg-white/5 rounded-xl p-4 mb-4 border border-purple-500/20">
+                                    <div className="flex justify-between items-center mb-2">
+                                        <span className="text-sm text-gray-400">Pesanan Sebelumnya</span>
+                                        <span className="text-xs text-gray-500">
+                                            {existingOrders[0].tableNumber ? `Meja ${existingOrders[0].tableNumber}` : 'Take Away'}
+                                        </span>
+                                    </div>
+                                    <div className="flex justify-between items-center">
+                                        <span className="font-medium">{existingOrders[0].itemCount} item</span>
+                                        <span className="font-bold text-green-400">
+                                            {formatCurrency(existingOrders[0].total)}
+                                        </span>
+                                    </div>
+                                    <p className="text-xs text-gray-500 mt-1">Waktu: {existingOrders[0].time}</p>
+                                </div>
+                            )}
 
-                        <div className="grid grid-cols-2 gap-3">
-                            <button
-                                onClick={handleNewOrderAfterCheck}
-                                className="py-3 rounded-xl bg-gray-500/20 text-gray-300 font-medium hover:bg-gray-500/30 transition-colors"
-                            >
-                                🆕 Pesanan Baru
-                            </button>
-                            <button
-                                onClick={handleMergeOrder}
-                                className="py-3 rounded-xl bg-gradient-to-r from-green-500 to-emerald-600 font-bold hover:from-green-600 hover:to-emerald-700 transition-colors"
-                            >
-                                ✅ Ya, Gabungkan
-                            </button>
+                            <p className="text-center text-sm text-gray-400 mb-4">
+                                Mau tambahkan ke pesanan sebelumnya?
+                            </p>
+
+                            <div className="grid grid-cols-2 gap-3">
+                                <button
+                                    onClick={handleNewOrderAfterCheck}
+                                    className="py-3 rounded-xl bg-gray-500/20 text-gray-300 font-medium hover:bg-gray-500/30 transition-colors"
+                                >
+                                    🆕 Pesanan Baru
+                                </button>
+                                <button
+                                    onClick={handleMergeOrder}
+                                    className="py-3 rounded-xl bg-gradient-to-r from-green-500 to-emerald-600 font-bold hover:from-green-600 hover:to-emerald-700 transition-colors"
+                                >
+                                    ✅ Ya, Gabungkan
+                                </button>
+                            </div>
                         </div>
                     </div>
-                </div>
-                , document.body)}
+                    , document.body)
+            }
         </div >
 
     );

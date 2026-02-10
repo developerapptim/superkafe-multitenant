@@ -73,6 +73,7 @@ export const categoriesAPI = {
     create: (data) => api.post('/categories', data),
     update: (id, data) => api.put(`/categories/${id}`, data),
     delete: (id) => api.delete(`/categories/${id}`),
+    reorder: (categories) => api.put('/categories/reorder', { categories }),
 };
 
 // ========== TABLES API ==========
@@ -147,6 +148,7 @@ export const reportsAPI = {
 // ========== SETTINGS API ==========
 export const settingsAPI = {
     get: () => api.get('/settings'),
+    getPublic: () => api.get('/settings/public'),
     update: (data) => api.put('/settings', data),
     updateLoyalty: (loyaltySettings) => api.put('/settings', { loyaltySettings }),
     uploadSound: (formData) => api.post('/settings/upload-sound', formData),
