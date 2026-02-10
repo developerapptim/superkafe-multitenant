@@ -23,11 +23,21 @@ function MenuCustomer() {
     const fetchData = async () => {
         try {
             setLoading(true);
-            const [menuRes, catRes, bannerRes] = await Promise.all([
-                menuAPI.getAll(),
+            // Try lightweight customer endpoint first, fallback to full menu if not available
+            let menuPromise;
+            try {
+                menuPromise = await menuAPI.getCustomer();
+            } catch (menuErr) {
+                // Fallback: jika endpoint /customer belum ada di server (404)
+                console.warn('Customer endpoint not available, using fallback');
+                menuPromise = await menuAPI.getAll();
+            }
+
+            const [catRes, bannerRes] = await Promise.all([
                 categoriesAPI.getAll(),
                 bannerAPI.getAll(true)
             ]);
+            const menuRes = menuPromise;
 
             const menuData = Array.isArray(menuRes.data) ? menuRes.data : [];
             const catData = Array.isArray(catRes.data) ? catRes.data : [];
@@ -101,8 +111,30 @@ function MenuCustomer() {
 
     if (loading) {
         return (
-            <div className="flex items-center justify-center h-64">
-                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500"></div>
+            <div className="py-4 space-y-4">
+                {/* Skeleton Banner */}
+                <div className="rounded-xl bg-white/5 h-36 md:h-48 animate-pulse" />
+                {/* Skeleton Search */}
+                <div className="h-12 rounded-xl bg-white/5 animate-pulse" />
+                {/* Skeleton Category Pills */}
+                <div className="flex gap-2 overflow-hidden">
+                    {[1, 2, 3, 4].map(i => (
+                        <div key={i} className="h-9 w-20 rounded-full bg-white/5 animate-pulse flex-shrink-0" />
+                    ))}
+                </div>
+                {/* Skeleton Menu Grid */}
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6">
+                    {[1, 2, 3, 4, 5, 6].map(i => (
+                        <div key={i} className="bg-white/5 rounded-xl overflow-hidden border border-purple-500/10">
+                            <div className="aspect-square bg-white/5 animate-pulse" />
+                            <div className="p-3 space-y-2">
+                                <div className="h-4 w-3/4 bg-white/5 rounded animate-pulse" />
+                                <div className="h-4 w-1/2 bg-white/5 rounded animate-pulse" />
+                                <div className="h-9 w-full bg-white/5 rounded-lg animate-pulse" />
+                            </div>
+                        </div>
+                    ))}
+                </div>
             </div>
         );
     }
@@ -193,9 +225,17 @@ function MenuCustomer() {
                     <p className="text-gray-400">Tidak ada menu ditemukan</p>
                 </div>
             ) : (
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6">
+                <motion.div
+                    className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6"
+                    initial="hidden"
+                    animate="visible"
+                    variants={{
+                        hidden: {},
+                        visible: { transition: { staggerChildren: 0.06 } }
+                    }}
+                >
                     <AnimatePresence mode='popLayout'>
-                        {filteredItems.map(item => {
+                        {filteredItems.map((item, index) => {
                             const cartQty = getCartQty(item.id);
                             const isSoldOut = item.status === 'SOLD_OUT';
                             const isNonActive = item.status === 'NON_ACTIVE';
@@ -205,10 +245,12 @@ function MenuCustomer() {
                                 <motion.div
                                     key={item.id}
                                     layout
-                                    initial={{ opacity: 0, scale: 0.9 }}
-                                    animate={{ opacity: 1, scale: 1 }}
+                                    variants={{
+                                        hidden: { opacity: 0, y: 20 },
+                                        visible: { opacity: 1, y: 0 }
+                                    }}
                                     exit={{ opacity: 0, scale: 0.9 }}
-                                    transition={{ duration: 0.2 }}
+                                    transition={{ duration: 0.3, ease: "easeOut" }}
                                     className={`bg-white/5 rounded-xl overflow-hidden border border-purple-500/20 transition-all hover:border-purple-500/50 ${isNonActive ? 'opacity-50' : ''}`}
                                 >
                                     {/* Image */}
@@ -217,6 +259,8 @@ function MenuCustomer() {
                                             <img
                                                 src={item.image}
                                                 alt={item.name}
+                                                loading="lazy"
+                                                decoding="async"
                                                 className="w-full h-full object-cover"
                                             />
                                         ) : (
@@ -309,7 +353,7 @@ function MenuCustomer() {
                             );
                         })}
                     </AnimatePresence>
-                </div>
+                </motion.div>
             )}
         </div>
     );

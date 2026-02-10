@@ -42,6 +42,7 @@ api.interceptors.response.use(
 // ========== MENU API ==========
 export const menuAPI = {
     getAll: () => api.get('/menu'),
+    getCustomer: () => api.get('/menu/customer'),
     getById: (id) => api.get(`/menu/${id}`),
     create: (data) => api.post('/menu', data),
     reorder: (items) => api.put('/menu/reorder', { items }),

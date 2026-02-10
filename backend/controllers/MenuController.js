@@ -3,6 +3,27 @@ const Recipe = require('../models/Recipe');
 const Ingredient = require('../models/Ingredient');
 const logActivity = require('../utils/activityLogger'); // NEW: Activity Logger
 
+// ─── In-Memory Cache untuk Customer Menu ───
+let customerMenuCache = null;
+let customerMenuCacheTime = 0;
+const CACHE_TTL = 5 * 60 * 1000; // 5 menit
+
+const invalidateCustomerMenuCache = () => {
+    customerMenuCache = null;
+    customerMenuCacheTime = 0;
+};
+
+// Helper: Optimasi URL gambar Cloudinary (resize + auto quality)
+const optimizeCloudinaryUrl = (url, width = 400) => {
+    if (!url || typeof url !== 'string') return url;
+    // Hanya proses URL Cloudinary
+    if (!url.includes('res.cloudinary.com')) return url;
+    // Jangan proses jika sudah ada transformasi
+    if (url.includes('/w_') || url.includes('/c_') || url.includes('/q_')) return url;
+    // Insert transformation sebelum /v{version}/ atau /upload/
+    return url.replace(/\/upload\//, `/upload/w_${width},c_fill,q_auto,f_auto/`);
+};
+
 exports.getMenus = async (req, res) => {
     try {
         const items = await MenuItem.find().sort({ order: 1, category: 1, name: 1 });
@@ -111,6 +132,101 @@ exports.getMenus = async (req, res) => {
     }
 };
 
+// ─── GET /api/menu/customer — Endpoint ringan untuk halaman customer ───
+exports.getMenusCustomer = async (req, res) => {
+    try {
+        // Cek cache
+        if (customerMenuCache && (Date.now() - customerMenuCacheTime < CACHE_TTL)) {
+            return res.json(customerMenuCache);
+        }
+
+        const items = await MenuItem.find()
+            .select('id name price imageUrl is_active category categoryId label base_price is_bundle order use_stock_check')
+            .sort({ order: 1, category: 1, name: 1 })
+            .lean();
+
+        const recipes = await Recipe.find().select('menuId ingredients.ing_id ingredients.jumlah').lean();
+        const ingredients = await Ingredient.find().select('id stok type').lean();
+
+        // Map ingredients
+        const ingredientMap = new Map();
+        ingredients.forEach(ing => {
+            ingredientMap.set(String(ing.id), {
+                stok: Number(ing.stok || 0),
+                type: ing.type || 'physical'
+            });
+        });
+
+        // Map recipes
+        const recipeMap = new Map();
+        recipes.forEach(r => {
+            recipeMap.set(String(r.menuId), r.ingredients);
+        });
+
+        // Process items (tanpa HPP/profit)
+        const processedItems = items.map(item => {
+            // Fix image mapping
+            let image = item.imageUrl || null;
+            image = optimizeCloudinaryUrl(image);
+
+            let status = 'AVAILABLE';
+            let availableQty = 0;
+
+            const isActive = item.is_active !== undefined ? item.is_active : true;
+            const useStockCheck = item.use_stock_check !== undefined ? item.use_stock_check : true;
+
+            if (!isActive) {
+                status = 'NON_ACTIVE';
+                availableQty = 0;
+            } else if (!useStockCheck) {
+                status = 'AVAILABLE';
+                availableQty = 9999;
+            } else {
+                const recipeIngredients = recipeMap.get(String(item.id));
+                if (recipeIngredients && recipeIngredients.length > 0) {
+                    let minPortions = Infinity;
+                    for (const ri of recipeIngredients) {
+                        const ingData = ingredientMap.get(String(ri.ing_id));
+                        const required = Number(ri.jumlah || 0);
+                        if (ingData && ingData.type === 'physical' && required > 0) {
+                            const portions = Math.floor(ingData.stok / required);
+                            if (portions < minPortions) minPortions = portions;
+                        }
+                    }
+                    availableQty = (minPortions === Infinity) ? 9999 : minPortions;
+                } else {
+                    availableQty = 9999;
+                }
+                if (availableQty < 1) status = 'SOLD_OUT';
+            }
+
+            return {
+                id: item.id,
+                name: item.name,
+                price: item.price,
+                image,
+                category: item.category,
+                categoryId: item.categoryId,
+                label: item.label,
+                base_price: item.base_price,
+                is_bundle: item.is_bundle,
+                order: item.order,
+                status,
+                available_qty: availableQty
+            };
+        });
+
+        // Simpan ke cache
+        customerMenuCache = processedItems;
+        customerMenuCacheTime = Date.now();
+
+        res.json(processedItems);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Server error' });
+    }
+};
+
 exports.getMenuById = async (req, res) => {
     try {
         const item = await MenuItem.findOne({ id: req.params.id });
@@ -147,6 +263,7 @@ exports.createMenu = async (req, res) => {
 
         const item = new MenuItem(menuItemData);
         await item.save();
+        invalidateCustomerMenuCache();
 
         // 2. Create Recipe if ingredients provided
         if (data.ingredients && Array.isArray(data.ingredients)) {
@@ -175,6 +292,7 @@ exports.updateMenu = async (req, res) => {
         }
 
         const item = await MenuItem.findOneAndUpdate({ id: req.params.id }, updateData, { new: true });
+        invalidateCustomerMenuCache();
 
         // Also update recipe if provided?
         // User often hits specific /api/recipes endpoint, but let's support it here too if needed.
@@ -195,6 +313,7 @@ exports.deleteMenu = async (req, res) => {
     try {
         await MenuItem.deleteOne({ id: req.params.id });
         await Recipe.deleteOne({ menuId: req.params.id }); // Logic for cascading delete
+        invalidateCustomerMenuCache();
 
         await logActivity({ req, action: 'DELETE_MENU', module: 'MENU', description: `Deleted menu ID: ${req.params.id}`, metadata: { menuId: req.params.id } });
 
@@ -255,6 +374,7 @@ exports.reorderMenus = async (req, res) => {
         }));
 
         await MenuItem.bulkWrite(bulkOps);
+        invalidateCustomerMenuCache();
 
         await logActivity({ req, action: 'REORDER_MENU', module: 'MENU', description: 'Reordered menu items' });
 

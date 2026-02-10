@@ -15,6 +15,7 @@ const { checkApiKey, checkJwt } = require('../middleware/auth');
 
 // Routes
 router.get('/', MenuController.getMenus);
+router.get('/customer', MenuController.getMenusCustomer); // Lightweight endpoint untuk customer
 router.get('/:id', MenuController.getMenuById);
 router.post('/', checkJwt, MenuController.createMenu);
 router.put('/reorder', checkJwt, MenuController.reorderMenus);

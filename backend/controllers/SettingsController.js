@@ -1,4 +1,5 @@
 const Setting = require('../models/Setting');
+const Settings = require('../models/Settings');
 
 exports.getSettings = async (req, res) => {
     try {
@@ -16,11 +17,27 @@ exports.getSettings = async (req, res) => {
 
 exports.getPublicSettings = async (req, res) => {
     try {
+        // Get key-value settings (branding)
         const settings = await Setting.find({ key: { $in: ['businessName', 'tagline', 'logo', 'showLogo'] } });
         const settingsMap = {};
         settings.forEach(s => {
             settingsMap[s.key] = s.value;
         });
+
+        // Also get singleton Settings for loyalty & payment info needed by customer app
+        const singletonSettings = await Settings.findOne({ key: 'businessSettings' }).lean();
+        if (singletonSettings) {
+            settingsMap.loyaltySettings = singletonSettings.loyaltySettings;
+            settingsMap.isCashPrepaymentRequired = singletonSettings.isCashPrepaymentRequired;
+            settingsMap.qrisImage = singletonSettings.qrisImage;
+            settingsMap.bankAccount = singletonSettings.bankAccount;
+            settingsMap.bankName = singletonSettings.bankName;
+            settingsMap.bankAccountName = singletonSettings.bankAccountName;
+            settingsMap.ewalletType = singletonSettings.ewalletType;
+            settingsMap.ewalletNumber = singletonSettings.ewalletNumber;
+            settingsMap.ewalletName = singletonSettings.ewalletName;
+        }
+
         res.json(settingsMap);
     } catch (err) {
         console.error('Get public settings error:', err);
