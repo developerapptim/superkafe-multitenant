@@ -18,5 +18,6 @@ router.post('/', uploadPayment.single('paymentProof'), OrderController.createOrd
 
 router.patch('/:id/status', checkApiKey, OrderController.updateOrderStatus);
 router.patch('/:id/pay', checkApiKey, OrderController.payOrder); // Fix: Add pay route
+router.delete('/:id', checkApiKey, OrderController.deleteOrder); // New: Delete Route
 
 module.exports = router;

@@ -497,10 +497,88 @@ exports.createOrder = async (req, res) => {
 
 exports.getOrders = async (req, res) => {
     try {
-        const limit = req.query.limit ? parseInt(req.query.limit) : 50;
-        const orders = await Order.find().sort({ timestamp: -1 }).limit(limit);
-        res.json(orders);
+        const { startDate, endDate, status, limit, page } = req.query;
+        let query = {};
+
+        // Date Filter
+        if (startDate || endDate) {
+            query.timestamp = {};
+            if (startDate) {
+                const start = new Date(startDate);
+                start.setHours(0, 0, 0, 0);
+                query.timestamp.$gte = start.getTime();
+            }
+            if (endDate) {
+                const end = new Date(endDate);
+                end.setHours(23, 59, 59, 999);
+                query.timestamp.$lte = end.getTime();
+            }
+        }
+
+        // Status Filter
+        if (status && status !== 'all') {
+            query.status = status;
+        }
+
+        // Pagination Logic
+        const pageNum = parseInt(page) || 1;
+        const limitNum = parseInt(limit) || 10; // Default limit 10
+        const skip = (pageNum - 1) * limitNum;
+
+        // Count Total Documents for Pagination Metadata
+        const totalItems = await Order.countDocuments(query);
+        const totalPages = Math.ceil(totalItems / limitNum);
+
+        // Fetch Paginated Data
+        const orders = await Order.find(query)
+            .sort({ timestamp: -1 })
+            .skip(skip)
+            .limit(limitNum)
+            .lean(); // Use lean() for performance
+
+        // Return Structured Response
+        res.json({
+            data: orders,
+            pagination: {
+                currentPage: pageNum,
+                totalPages,
+                totalItems,
+                hasMore: pageNum < totalPages
+            }
+        });
+
     } catch (err) {
+        console.error('Get Orders Error:', err);
+        res.status(500).json({ error: 'Server error' });
+    }
+};
+
+exports.deleteOrder = async (req, res) => {
+    try {
+        const orderId = req.params.id;
+        const order = await Order.findOne({ id: orderId });
+
+        if (!order) {
+            return res.status(404).json({ error: 'Order not found' });
+        }
+
+        // Security Check: Prevent deleting Paid/Done orders
+        if (order.paymentStatus === 'paid' || order.status === 'done') {
+            return res.status(403).json({ error: 'Tidak dapat menghapus pesanan yang sudah lunas/selesai demi integritas data.' });
+        }
+
+        // Double check: Only allow specific statuses
+        const allowedStatuses = ['new', 'process', 'pending', 'cancel', 'merged'];
+        if (!allowedStatuses.includes(order.status) && order.paymentStatus !== 'unpaid') {
+            return res.status(403).json({ error: 'Status pesanan tidak valid untuk dihapus.' });
+        }
+
+        await Order.deleteOne({ id: orderId });
+        console.log(`🗑️ Order ${orderId} deleted by user`);
+
+        res.json({ message: 'Pesanan berhasil dihapus' });
+    } catch (err) {
+        console.error('Delete Order Error:', err);
         res.status(500).json({ error: 'Server error' });
     }
 };

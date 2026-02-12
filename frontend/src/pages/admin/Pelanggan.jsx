@@ -1,6 +1,9 @@
-import { useState, useEffect } from 'react';
-import { customersAPI, settingsAPI } from '../../services/api';
+import { useState, useEffect, useMemo } from 'react';
+import useSWR, { mutate } from 'swr';
+import api, { customersAPI, settingsAPI } from '../../services/api';
 import toast from 'react-hot-toast';
+
+const fetcher = url => api.get(url).then(res => res.data);
 
 const InsightModal = ({ customer, analytics, onClose, onUpdateTags }) => {
     const [tagInput, setTagInput] = useState('');
@@ -168,8 +171,40 @@ const InsightModal = ({ customer, analytics, onClose, onUpdateTags }) => {
 
 function Pelanggan() {
     const [activeTab, setActiveTab] = useState('data');
-    const [customers, setCustomers] = useState([]);
-    const [loading, setLoading] = useState(true);
+    // SWR Data Fetching
+    const { data: customersRaw } = useSWR('/customers', fetcher);
+    const { data: settingsData } = useSWR('/settings', fetcher);
+
+    // Derived state
+    const customers = useMemo(() => {
+        if (!customersRaw) return [];
+        // Handle { data: [], total: ... } vs []
+        if (customersRaw.data && Array.isArray(customersRaw.data)) return customersRaw.data;
+        if (Array.isArray(customersRaw)) return customersRaw;
+        return [];
+    }, [customersRaw]);
+    const loading = !customersRaw;
+
+    // Loyalty settings as local state (editable), synced from SWR
+    const [loyaltySettings, setLoyaltySettings] = useState({
+        enabled: true,
+        pointRatio: 10000,
+        silverThreshold: 500000,
+        goldThreshold: 2000000
+    });
+
+    useEffect(() => {
+        if (settingsData?.loyaltySettings) {
+            const s = settingsData.loyaltySettings;
+            setLoyaltySettings({
+                enabled: s.enableLoyalty !== false,
+                pointRatio: s.pointRatio || 10000,
+                silverThreshold: s.tierThresholds?.silver || 500000,
+                goldThreshold: s.tierThresholds?.gold || 2000000
+            });
+        }
+    }, [settingsData]);
+
     const [search, setSearch] = useState('');
     const [showModal, setShowModal] = useState(false);
 
@@ -187,13 +222,6 @@ function Pelanggan() {
         totalSpending: 0
     });
 
-    const [loyaltySettings, setLoyaltySettings] = useState({
-        enabled: true,
-        pointRatio: 10000,
-        silverThreshold: 500000,
-        goldThreshold: 2000000
-    });
-
     const tabs = [
         { id: 'data', label: '📋 Data Pelanggan' },
         { id: 'leaderboard', label: '🏆 Leaderboard' },
@@ -206,42 +234,6 @@ function Pelanggan() {
         { value: 'silver', label: '🥈 Silver', color: 'text-gray-300' },
         { value: 'gold', label: '🥇 Gold', color: 'text-yellow-400' }
     ];
-
-    useEffect(() => {
-        fetchCustomers();
-        fetchLoyaltySettings();
-    }, []);
-
-    const fetchLoyaltySettings = async () => {
-        try {
-            const res = await settingsAPI.get();
-            const settings = res.data;
-            if (settings?.loyaltySettings) {
-                setLoyaltySettings({
-                    enabled: settings.loyaltySettings.enableLoyalty !== false,
-                    pointRatio: settings.loyaltySettings.pointRatio || 10000,
-                    silverThreshold: settings.loyaltySettings.tierThresholds?.silver || 500000,
-                    goldThreshold: settings.loyaltySettings.tierThresholds?.gold || 2000000
-                });
-            }
-        } catch (err) {
-            console.error('Error fetching loyalty settings:', err);
-        }
-    };
-
-    const fetchCustomers = async () => {
-        try {
-            setLoading(true);
-            const res = await customersAPI.getAll();
-            // Handle { data: [], total: ... } vs []
-            const data = res.data.data && Array.isArray(res.data.data) ? res.data.data : (Array.isArray(res.data) ? res.data : []);
-            setCustomers(data);
-        } catch (err) {
-            console.error('Error fetching customers:', err);
-        } finally {
-            setLoading(false);
-        }
-    };
 
     const formatCurrency = (value) => {
         return new Intl.NumberFormat('id-ID', {
@@ -294,7 +286,7 @@ function Pelanggan() {
                 ...formData,
                 id: `cust_${Date.now()}`
             });
-            await fetchCustomers();
+            mutate('/customers');
             setShowModal(false);
         } catch (err) {
             console.error('Error saving customer:', err);
@@ -312,6 +304,7 @@ function Pelanggan() {
                     gold: Number(loyaltySettings.goldThreshold)
                 }
             });
+            mutate('/settings');
             alert('✅ Pengaturan loyalty berhasil disimpan!');
         } catch (err) {
             console.error('Error saving loyalty settings:', err);

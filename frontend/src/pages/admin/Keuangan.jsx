@@ -1,25 +1,42 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
+import useSWR, { mutate } from 'swr';
 import SmartText from '../../components/SmartText';
 import CustomSelect from '../../components/CustomSelect';
-import { cashTransactionsAPI, cashAnalyticsAPI, debtsAPI, employeesAPI } from '../../services/api';
+import api, { cashTransactionsAPI, cashAnalyticsAPI, debtsAPI, employeesAPI } from '../../services/api';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import toast from 'react-hot-toast';
+
+const fetcher = url => api.get(url).then(res => res.data);
 
 function Keuangan() {
     // State
     const [activeTab, setActiveTab] = useState('ringkasan');
-    const [transactions, setTransactions] = useState([]);
-    const [loading, setLoading] = useState(true);
     const [filter, setFilter] = useState('all');
 
-    // Analytics & Breakdown
-    const [analytics, setAnalytics] = useState({ dailyData: [], totalIncome: 0, totalExpense: 0, netProfit: 0 });
-    const [breakdown, setBreakdown] = useState({ cashBalance: 0, nonCashBalance: 0, totalKasbon: 0, totalPiutang: 0 });
+    // SWR Data Fetching (cached automatically)
+    const { data: transData } = useSWR('/cash-transactions', fetcher);
+    const { data: analyticsData } = useSWR('/cash/analytics', fetcher);
+    const { data: breakdownData } = useSWR('/cash/breakdown', fetcher);
+    const { data: debtsData } = useSWR('/debts', fetcher);
+    const { data: empData } = useSWR('/employees', fetcher);
 
-    // Debts
-    const [debts, setDebts] = useState([]);
-    const [employees, setEmployees] = useState([]);
+    // Derived state from SWR
+    const transactions = useMemo(() => Array.isArray(transData) ? transData : [], [transData]);
+    const analytics = useMemo(() => analyticsData || { dailyData: [], totalIncome: 0, totalExpense: 0, netProfit: 0 }, [analyticsData]);
+    const breakdown = useMemo(() => breakdownData || { cashBalance: 0, nonCashBalance: 0, totalKasbon: 0, totalPiutang: 0 }, [breakdownData]);
+    const debts = useMemo(() => Array.isArray(debtsData) ? debtsData : [], [debtsData]);
+    const employees = useMemo(() => Array.isArray(empData) ? empData : [], [empData]);
+    const loading = !transData && !analyticsData;
+
+    // Revalidate all SWR keys after mutations
+    const mutateAll = () => {
+        mutate('/cash-transactions');
+        mutate('/cash/analytics');
+        mutate('/cash/breakdown');
+        mutate('/debts');
+        mutate('/employees');
+    };
 
     // Modal states
     const [showModal, setShowModal] = useState(false);
@@ -36,35 +53,6 @@ function Keuangan() {
     const categories = {
         in: ['Penjualan', 'Modal', 'Lainnya'],
         out: ['Belanja Bahan', 'Gaji Pegawai', 'Operasional', 'Marketing', 'Listrik/Air', 'Lainnya']
-    };
-
-    // Fetch data
-    useEffect(() => {
-        fetchAllData();
-    }, []);
-
-    const fetchAllData = async () => {
-        try {
-            setLoading(true);
-            const [transRes, analyticsRes, breakdownRes, debtsRes, empRes] = await Promise.all([
-                cashTransactionsAPI.getAll(),
-                cashAnalyticsAPI.getAnalytics(),
-                cashAnalyticsAPI.getBreakdown(),
-                debtsAPI.getAll(),
-                employeesAPI.getAll()
-            ]);
-
-            setTransactions(Array.isArray(transRes.data) ? transRes.data : []);
-            setAnalytics(analyticsRes.data || { dailyData: [], totalIncome: 0, totalExpense: 0, netProfit: 0 });
-            setBreakdown(breakdownRes.data || { cashBalance: 0, nonCashBalance: 0, totalKasbon: 0, totalPiutang: 0 });
-            setDebts(Array.isArray(debtsRes.data) ? debtsRes.data : []);
-            setEmployees(Array.isArray(empRes.data) ? empRes.data : []);
-        } catch (err) {
-            console.error('Error fetching data:', err);
-            toast.error('Gagal memuat data keuangan');
-        } finally {
-            setLoading(false);
-        }
     };
 
     // Filter transactions
@@ -133,7 +121,7 @@ function Keuangan() {
                 toast.success(`${modalType === 'kasbon' ? 'Kasbon' : 'Piutang'} berhasil dicatat`);
             }
 
-            await fetchAllData();
+            mutateAll();
             setShowModal(false);
         } catch (err) {
             console.error('Error saving:', err);
@@ -147,7 +135,7 @@ function Keuangan() {
         try {
             await cashTransactionsAPI.delete(id);
             toast.success('Transaksi dihapus');
-            await fetchAllData();
+            mutateAll();
         } catch (err) {
             toast.error('Gagal menghapus');
         }
@@ -159,7 +147,7 @@ function Keuangan() {
         try {
             await debtsAPI.settle(id);
             toast.success('Berhasil dilunasi!');
-            await fetchAllData();
+            mutateAll();
         } catch (err) {
             toast.error('Gagal melunasi');
         }
@@ -171,7 +159,7 @@ function Keuangan() {
         try {
             await debtsAPI.delete(id);
             toast.success('Hutang dihapus');
-            await fetchAllData();
+            mutateAll();
         } catch (err) {
             toast.error('Gagal menghapus');
         }

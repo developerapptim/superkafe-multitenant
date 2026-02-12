@@ -9,34 +9,51 @@ import CartContext from '../../context/CartContext';
 // export const useCart removed (imported)
 
 function CustomerLayout() {
-    const [searchParams] = useSearchParams();
-    const urlTableId = searchParams.get('meja');
+    const [searchParams, setSearchParams] = useSearchParams();
 
-    // Smart Table Detection: Priority = URL param > localStorage
+    // Logic Sticky Session: URL > LocalStorage
+    const getTableFromUrl = () => {
+        return searchParams.get('meja') || searchParams.get('table_number');
+    };
+
     const [tableId, setTableId] = useState(() => {
-        // If URL has meja param, use it and save to localStorage
-        if (urlTableId) {
-            localStorage.setItem('scannedTable', urlTableId);
-            return urlTableId;
+        const urlParam = getTableFromUrl();
+        const savedParam = localStorage.getItem('table_number');
+
+        // CONDITION 1: Ada URL Parameter (User baru scan QR)
+        // WAJIB: Set state aplikasi ke Meja X.
+        // WAJIB: Simpan/Timpa localStorage.setItem('table_number', X).
+        if (urlParam) {
+            localStorage.setItem('table_number', urlParam);
+            return urlParam;
         }
-        // Otherwise check localStorage
-        return localStorage.getItem('scannedTable') || null;
+
+        // CONDITION 2: URL Kosong (User refresh halaman)
+        // Baru boleh ambil dari localStorage.getItem('table_number').
+        return savedParam || null;
     });
 
     // Is table locked (came from QR scan)?
-    const isTableLocked = !!urlTableId || !!localStorage.getItem('scannedTable');
+    const isTableLocked = !!tableId;
 
-    // Update localStorage when URL changes
+    // Sync URL -> State & LocalStorage (Effect for navigation changes)
     useEffect(() => {
-        if (urlTableId) {
-            localStorage.setItem('scannedTable', urlTableId);
-            setTableId(urlTableId);
+        const urlParam = getTableFromUrl();
+
+        if (urlParam) {
+            // Jika ada parameter di URL, paksa update state & storage (Priority 1)
+            if (urlParam !== tableId) {
+                setTableId(urlParam);
+                localStorage.setItem('table_number', urlParam);
+            }
         }
-    }, [urlTableId]);
+        // JIka URL kosong, kita biarkan state apa adanya (Sticky)
+        // Tidak ada logic 'else' di sini agar tidak menghapus state saat url bersih
+    }, [searchParams, tableId]);
 
     // Function to clear scanned table (for take away switch)
     const clearScannedTable = () => {
-        localStorage.removeItem('scannedTable');
+        localStorage.removeItem('table_number');
         setTableId(null);
     };
 

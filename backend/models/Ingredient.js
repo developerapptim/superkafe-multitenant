@@ -33,4 +33,6 @@ const IngredientSchema = new mongoose.Schema({
     last_updated: { type: Date, default: Date.now }
 });
 
+IngredientSchema.index({ nama: 1, stok: 1 });
+
 module.exports = mongoose.model('Ingredient', IngredientSchema);

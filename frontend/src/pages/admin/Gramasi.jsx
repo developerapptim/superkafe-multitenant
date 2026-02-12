@@ -20,15 +20,19 @@ function Gramasi() {
 
     // SWR Data Fetching
     const { data: menuData } = useSWR('/menu', fetcher);
-    const { data: ingredientsData } = useSWR('/inventory', fetcher);
+    const { data: inventoryResponse } = useSWR('/inventory?limit=9999', fetcher);
     const { data: recipesData } = useSWR('/recipes', fetcher);
 
-    // Derived State
+    // Derived State - inventory endpoint returns {data, pagination}
     const menuItems = useMemo(() => Array.isArray(menuData) ? menuData : [], [menuData]);
-    const ingredients = useMemo(() => Array.isArray(ingredientsData) ? ingredientsData : [], [ingredientsData]);
+    const ingredients = useMemo(() => {
+        if (inventoryResponse?.data && Array.isArray(inventoryResponse.data)) return inventoryResponse.data;
+        if (Array.isArray(inventoryResponse)) return inventoryResponse; // fallback for old format
+        return [];
+    }, [inventoryResponse]);
     const recipes = useMemo(() => Array.isArray(recipesData) ? recipesData : [], [recipesData]);
 
-    const isLoading = !menuData && !ingredientsData && !recipesData;
+    const isLoading = !menuData && !inventoryResponse && !recipesData;
 
     // Modal states
     const [showModal, setShowModal] = useState(false);

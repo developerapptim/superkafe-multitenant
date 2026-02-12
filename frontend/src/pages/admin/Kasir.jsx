@@ -105,7 +105,7 @@ function Kasir() {
 
     // Process Active Orders
     const today = new Date().toISOString().split('T')[0];
-    const orders = (ordersData || []).filter(o =>
+    const orders = (Array.isArray(ordersData) ? ordersData : []).filter(o =>
         !o.is_archived_from_pos &&
         (o.date === today || (o.timestamp && new Date(o.timestamp).toISOString().split('T')[0] === today))
     );
@@ -281,7 +281,8 @@ function Kasir() {
         if (!ordersData) return;
 
         // Count specifically NEW orders
-        const currentNewOrdersCount = ordersData.filter(o => o.status === 'new').length;
+        // Count specifically NEW orders
+        const currentNewOrdersCount = (Array.isArray(ordersData) ? ordersData : []).filter(o => o.status === 'new').length;
 
         // SKIP sound on first load (Page Navigation)
         if (isFirstLoad.current) {

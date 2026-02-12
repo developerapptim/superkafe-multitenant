@@ -12,4 +12,6 @@ const CashTransactionSchema = new mongoose.Schema({
     createdAt: { type: Date, default: Date.now }
 });
 
+CashTransactionSchema.index({ type: 1, createdAt: -1 });
+
 module.exports = mongoose.models.CashTransaction || mongoose.model('CashTransaction', CashTransactionSchema);

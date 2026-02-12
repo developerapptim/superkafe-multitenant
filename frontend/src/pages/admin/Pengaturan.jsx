@@ -128,7 +128,7 @@ function Pengaturan() {
             // If URL is relative (starts with /), prepend API base URL (minus /api)
             if (soundUrl.startsWith('/')) {
                 // Get API URL from env or default
-                const apiUrl = import.meta.env.VITE_API_URL || 'https://superkafe-production.up.railway.app/api';
+                const apiUrl = import.meta.env.VITE_API_URL || '';
                 // Remove '/api' from the end to get base URL
                 const baseUrl = apiUrl.replace(/\/api$/, '');
                 soundUrl = `${baseUrl}${soundUrl}`;

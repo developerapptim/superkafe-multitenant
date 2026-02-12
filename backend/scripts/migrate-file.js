@@ -5,12 +5,12 @@ const path = require('path');
 async function main() {
   const argv = process.argv.slice(2);
   if (argv.length === 0) {
-    console.error('Usage: node migrate-file.js <path-to-json> [--url=https://superkafe-production.up.railway.app/api] [--key=APIKEY]');
+    console.error('Usage: node migrate-file.js <path-to-json> [--url=${import.meta.env.VITE_API_URL}] [--key=APIKEY]');
     process.exit(1);
   }
 
   let file = argv[0];
-  let url = 'https://superkafe-production.up.railway.app/api';
+  let url = '${import.meta.env.VITE_API_URL}';
   let apiKey = process.env.API_KEY || '';
 
   argv.slice(1).forEach(arg => {

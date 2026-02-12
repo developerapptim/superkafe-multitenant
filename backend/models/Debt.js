@@ -12,4 +12,6 @@ const DebtSchema = new mongoose.Schema({
     createdAt: { type: Date, default: Date.now }
 });
 
+DebtSchema.index({ status: 1, type: 1 });
+
 module.exports = mongoose.models.Debt || mongoose.model('Debt', DebtSchema);

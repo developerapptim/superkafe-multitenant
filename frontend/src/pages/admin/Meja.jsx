@@ -1,16 +1,25 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
+import useSWR, { mutate } from 'swr';
 import CustomSelect from '../../components/CustomSelect';
 import { useNavigate } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
-import { tablesAPI } from '../../services/api';
+import api, { tablesAPI } from '../../services/api';
 import toast from 'react-hot-toast';
+
+const fetcher = url => api.get(url).then(res => res.data);
 
 function Meja() {
     const navigate = useNavigate();
-    const [tables, setTables] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
+    // SWR Data Fetching with auto-refresh every 30s
+    const { data: tablesData, error: swrError } = useSWR('/tables', fetcher, { refreshInterval: 30000 });
+    const tables = useMemo(() => {
+        const data = Array.isArray(tablesData) ? tablesData : [];
+        return [...data].sort((a, b) => (Number(a.number) || 0) - (Number(b.number) || 0));
+    }, [tablesData]);
+    const loading = !tablesData && !swrError;
+    const error = swrError ? 'Gagal memuat data meja' : null;
+
     const [showModal, setShowModal] = useState(false);
 
     // QR Code Modal State
@@ -44,29 +53,6 @@ function Meja() {
     ];
 
     const getBaseUrl = () => window.location.origin;
-
-    useEffect(() => {
-        fetchTables();
-        // Refresh every 30 seconds for timer updates
-        const interval = setInterval(fetchTables, 30000);
-        return () => clearInterval(interval);
-    }, []);
-
-    const fetchTables = async () => {
-        try {
-            setLoading(true);
-            const res = await tablesAPI.getAll();
-            const data = Array.isArray(res.data) ? res.data : [];
-            data.sort((a, b) => (Number(a.number) || 0) - (Number(b.number) || 0));
-            setTables(data);
-            setError(null);
-        } catch (err) {
-            console.error('Error fetching tables:', err);
-            setError('Gagal memuat data meja');
-        } finally {
-            setLoading(false);
-        }
-    };
 
     // Calculate occupied duration
     const getOccupiedDuration = (occupiedSince) => {
@@ -107,7 +93,7 @@ function Meja() {
     const handleStatusChange = async (tableId, newStatus) => {
         try {
             await tablesAPI.updateStatus(tableId, newStatus);
-            await fetchTables();
+            mutate('/tables');
             toast.success('Status meja diperbarui');
         } catch (err) {
             console.error('Error updating table status:', err);
@@ -119,7 +105,7 @@ function Meja() {
     const handleMarkClean = async (tableId) => {
         try {
             await tablesAPI.markClean(tableId);
-            await fetchTables();
+            mutate('/tables');
             toast.success('Meja sudah bersih!');
         } catch (err) {
             console.error('Error marking clean:', err);
@@ -145,7 +131,7 @@ function Meja() {
             toast.success(`${res.data.movedOrders} pesanan dipindahkan!`);
             setShowMoveModal(false);
             setShowOrderPreview(false);
-            await fetchTables();
+            mutate('/tables');
         } catch (err) {
             console.error('Error moving table:', err);
             toast.error(err.response?.data?.error || 'Gagal pindah meja');
@@ -168,7 +154,7 @@ function Meja() {
             });
             toast.success('Meja berhasil ditambahkan!');
             setShowModal(false);
-            await fetchTables();
+            mutate('/tables');
         } catch (err) {
             console.error('Error adding table:', err);
             toast.error('Gagal menambahkan meja');

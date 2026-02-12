@@ -34,4 +34,9 @@ const OrderSchema = new mongoose.Schema({
     mergedInto: String // ID of the new merged order (for original orders)
 });
 
+// Indexes for Analytics Performance
+OrderSchema.index({ status: 1, timestamp: -1 }); // Most critical for report filtering
+OrderSchema.index({ paymentMethod: 1 }); // For payment stats
+OrderSchema.index({ customerPhone: 1 }); // For retention analysis
+
 module.exports = mongoose.model('Order', OrderSchema);

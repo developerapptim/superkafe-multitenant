@@ -30,4 +30,6 @@ const ShiftSchema = new mongoose.Schema({
     openingCash: Number // Alias or same as startCash
 });
 
+ShiftSchema.index({ status: 1, endTime: -1, startTime: -1 });
+
 module.exports = mongoose.model('Shift', ShiftSchema);

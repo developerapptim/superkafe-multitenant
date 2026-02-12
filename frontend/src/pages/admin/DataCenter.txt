@@ -1,14 +1,12 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import useSWR from 'swr';
-import api from '../../services/api';
+import axios from 'axios';
 import { toast } from 'react-hot-toast';
-
-const fetcher = url => api.get(url).then(res => res.data);
 
 export default function DataCenter() {
     const navigate = useNavigate();
     const [activeTab, setActiveTab] = useState('export'); // export, import, audit, backup, danger
+    const [auditLogs, setAuditLogs] = useState([]);
     const [startDate, setStartDate] = useState('');
     const [endDate, setEndDate] = useState('');
     const [importFile, setImportFile] = useState(null);
@@ -19,22 +17,43 @@ export default function DataCenter() {
     const [modalAction, setModalAction] = useState(null); // 'transactions', 'factory'
     const [modalInput, setModalInput] = useState('');
 
-    // SWR conditional fetch - only fetches when audit tab is active
-    const { data: auditLogs = [] } = useSWR(
-        activeTab === 'audit' ? '/admin/audit-logs' : null,
-        fetcher
-    );
+    // Fetch Audit Logs when tab changes
+    useEffect(() => {
+        if (activeTab === 'audit') {
+            fetchAuditLogs();
+        }
+    }, [activeTab]);
+
+    const fetchAuditLogs = async () => {
+        try {
+            const token = localStorage.getItem('token');
+            const res = await axios.get(`${import.meta.env.VITE_API_URL}/admin/audit-logs`, {
+                headers: { Authorization: `Bearer ${token} ` }
+            });
+            setAuditLogs(res.data);
+        } catch (err) {
+            if (err.response && err.response.status === 401) {
+                toast.error('Sesi berakhir, silakan login kembali');
+                localStorage.removeItem('token');
+                localStorage.removeItem('user');
+                navigate('/login');
+            } else {
+                toast.error('Gagal mengambil audit logs');
+            }
+        }
+    };
 
     const handleExport = async (type) => {
         try {
             setIsLoading(true);
             const token = localStorage.getItem('token');
-            let url = `/admin/export/${type}`;
+            let url = `${import.meta.env.VITE_API_URL} /admin/export / ${type} `;
             if (type === 'sales' && startDate && endDate) {
-                url += `?startDate=${startDate}&endDate=${endDate}`;
+                url += `? startDate = ${startDate}& endDate=${endDate} `;
             }
 
-            const response = await api.get(url, {
+            const response = await axios.get(url, {
+                headers: { Authorization: `Bearer ${token} ` },
                 responseType: 'blob', // Important for file download
             });
 
@@ -65,8 +84,9 @@ export default function DataCenter() {
         try {
             setIsLoading(true);
             const token = localStorage.getItem('token');
-            const res = await api.post(`/admin/import/${type}`, formData, {
+            const res = await axios.post(`${import.meta.env.VITE_API_URL} /admin/import / ${type} `, formData, {
                 headers: {
+                    Authorization: `Bearer ${token} `,
                     'Content-Type': 'multipart/form-data'
                 }
             });
@@ -86,7 +106,8 @@ export default function DataCenter() {
         try {
             setIsLoading(true);
             const token = localStorage.getItem('token');
-            const response = await api.get('/data', {
+            const response = await axios.get('${import.meta.env.VITE_API_URL}/admin/backup', {
+                headers: { Authorization: `Bearer ${token} ` },
                 responseType: 'blob'
             });
             const url = window.URL.createObjectURL(new Blob([response.data]));
@@ -119,7 +140,9 @@ export default function DataCenter() {
             }
             // For factory reset, input acts as password
 
-            const res = await api.post(`/admin/reset/${modalAction}`, payload);
+            const res = await axios.post(`${import.meta.env.VITE_API_URL} /admin/reset / ${modalAction} `, payload, {
+                headers: { Authorization: `Bearer ${token} ` }
+            });
 
             toast.success(res.data.message);
             setShowModal(false);

@@ -7,6 +7,7 @@ const { checkApiKey, checkJwt } = require('../middleware/auth');
 router.use(checkJwt);
 
 router.get('/', InventoryController.getInventory);
+router.get('/stats', InventoryController.getInventoryStats);
 router.post('/', InventoryController.addInventory);
 router.put('/:id', InventoryController.updateInventory);
 router.delete('/:id', InventoryController.deleteInventory);

@@ -1,14 +1,22 @@
 /**
  * Analytics Controller
  * Handles report data aggregation for Laporan & Analitik page
+ * Optimized using MongoDB Aggregation Pipelines
  */
 const mongoose = require('mongoose');
-
 const Order = require('../models/Order');
+
+// --- Simple In-Memory Cache ---
+const reportCache = new Map();
+const CACHE_TTL = {
+    daily: 60 * 1000,        // 1 minute (Real-time)
+    weekly: 5 * 60 * 1000,   // 5 minutes
+    monthly: 10 * 60 * 1000, // 10 minutes
+    yearly: 30 * 60 * 1000   // 30 minutes
+};
 
 // Removed dependency injection
 const setOrderModel = (orderModel) => { };
-
 
 /**
  * GET /api/analytics/report
@@ -16,24 +24,46 @@ const setOrderModel = (orderModel) => { };
  */
 const getReportData = async (req, res) => {
     try {
-        const { period = 'daily', timezone = '+08:00' } = req.query;
+        const { period = 'daily', timezone = '+07:00' } = req.query;
+        const cacheKey = `analytics_${period}_${timezone}`;
+        const now = Date.now();
 
-        // 1. Determine Date Range
-        const now = new Date();
+        // Safety: Prevent memory leak
+        if (reportCache.size > 100) {
+            reportCache.clear();
+            console.log('[Analytics] Cache cleared (Size Limit Reached)');
+        }
+
+        // 1. Check Cache
+        if (reportCache.has(cacheKey)) {
+            const cached = reportCache.get(cacheKey);
+            if (now - cached.timestamp < CACHE_TTL[period]) {
+                console.log(`[Analytics]Serving merged cache for ${period}`);
+                return res.json(cached.data);
+            }
+        }
+
+        // 2. Determine Date Range
+        const dateNow = new Date();
         let startDate = new Date();
+        let endDate = new Date();
         let prevStartDate = new Date();
         let prevEndDate = new Date();
 
         if (period === 'daily') {
             startDate.setHours(0, 0, 0, 0);
+            endDate.setHours(23, 59, 59, 999);
+
             prevStartDate.setDate(startDate.getDate() - 1);
             prevStartDate.setHours(0, 0, 0, 0);
             prevEndDate.setDate(startDate.getDate() - 1);
             prevEndDate.setHours(23, 59, 59, 999);
         } else if (period === 'weekly') {
-            const day = now.getDay() || 7;
+            const day = now.getDay() || 7; // 1 (Mon) - 7 (Sun)
             startDate.setHours(0, 0, 0, 0);
             startDate.setDate(now.getDate() - day + 1); // Monday
+            endDate = new Date(); // Until now
+
             prevStartDate = new Date(startDate);
             prevStartDate.setDate(startDate.getDate() - 7);
             prevEndDate = new Date(startDate);
@@ -41,6 +71,8 @@ const getReportData = async (req, res) => {
         } else if (period === 'monthly') {
             startDate.setDate(1);
             startDate.setHours(0, 0, 0, 0);
+            endDate = new Date();
+
             prevStartDate = new Date(startDate);
             prevStartDate.setMonth(startDate.getMonth() - 1);
             prevEndDate = new Date(startDate);
@@ -48,144 +80,184 @@ const getReportData = async (req, res) => {
         } else if (period === 'yearly') {
             startDate.setMonth(0, 1);
             startDate.setHours(0, 0, 0, 0);
+            endDate = new Date();
+
             prevStartDate = new Date(startDate);
             prevStartDate.setFullYear(startDate.getFullYear() - 1);
             prevEndDate = new Date(startDate);
             prevEndDate.setDate(0);
         }
 
-        // 2. Fetch Current Period Data (use timestamp field)
-        const currentOrders = await Order.find({
-            status: 'done',
-            timestamp: { $gte: startDate.getTime() }
-        }).lean();
+        const startTs = startDate.getTime();
+        const endTs = endDate.getTime();
+        const prevStartTs = prevStartDate.getTime();
+        const prevEndTs = prevEndDate.getTime();
 
-        // 3. Fetch Previous Period Data (For Growth Rate)
-        const prevOrders = await Order.find({
-            status: 'done',
-            timestamp: { $gte: prevStartDate.getTime(), $lte: prevEndDate.getTime() }
-        }).lean();
+        // --- PIPELINES ---
 
-        // 4. Calculate Basic Stats
-        const totalRevenue = currentOrders.reduce((sum, o) => sum + (o.total || 0), 0);
-        const prevRevenue = prevOrders.reduce((sum, o) => sum + (o.total || 0), 0);
-        const growthRate = prevRevenue > 0 ? ((totalRevenue - prevRevenue) / prevRevenue) * 100 : 0;
-
-        const totalOrders = currentOrders.length;
-        const avgOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
-
-        // 5. Payment Stats
-        let cashCount = 0;
-        let nonCashCount = 0;
-        currentOrders.forEach(o => {
-            const method = (o.paymentMethod || 'cash').toLowerCase();
-            if (method === 'cash') cashCount++;
-            else nonCashCount++;
-        });
-        const totalPayments = cashCount + nonCashCount;
-        const paymentStats = {
-            cashCount,
-            nonCashCount,
-            cashPercent: totalPayments > 0 ? Math.round((cashCount / totalPayments) * 100) : 0,
-            nonCashPercent: totalPayments > 0 ? 100 - Math.round((cashCount / totalPayments) * 100) : 0
-        };
-
-        // 6. Menu Analysis (Top & Bottom)
-        const menuCount = {};
-        currentOrders.forEach(o => {
-            (o.items || []).forEach(item => {
-                const name = item.name || item.menuName || 'Unknown';
-                menuCount[name] = (menuCount[name] || 0) + (item.qty || item.quantity || 1);
-            });
-        });
-
-        let sortedMenu = Object.entries(menuCount)
-            .map(([name, count]) => ({ name, count }))
-            .sort((a, b) => b.count - a.count); // Descending
-
-        const topMenu = sortedMenu.slice(0, 5);
-        const topNames = new Set(topMenu.map(m => m.name));
-
-        // Bottom menu excludes Top 5
-        const bottomCandidates = sortedMenu.filter(m => !topNames.has(m.name));
-        const bottomMenu = bottomCandidates.sort((a, b) => a.count - b.count).slice(0, 5);
-
-        // 7. Peak Hours (Timezone Adjusted)
-        const hourCount = new Array(24).fill(0);
-        const tzOffset = parseInt(timezone) || 7;
-
-        currentOrders.forEach(o => {
-            const date = new Date(o.timestamp);
-            let hour = date.getUTCHours() + tzOffset;
-            if (hour >= 24) hour -= 24;
-            if (hour < 0) hour += 24;
-            hourCount[hour]++;
-        });
-
-        const peakHours = [];
-        for (let h = 8; h <= 22; h++) {
-            peakHours.push({ hour: h, count: hourCount[h] });
-        }
-
-        // 8. Customer Retention Analysis (New vs Returning)
-        const currentPhones = new Set();
-        currentOrders.forEach(o => {
-            const phone = o.customerPhone || o.customer_phone;
-            if (phone && phone.length >= 8) currentPhones.add(phone);
-        });
-
-        // Find historical orders (before this period) to check if customer is returning
-        const historicalOrders = await Order.find({
-            status: 'done',
-            timestamp: { $lt: startDate.getTime() }
-        }).lean();
-
-        const historicalPhones = new Set();
-        historicalOrders.forEach(o => {
-            const phone = o.customerPhone || o.customer_phone;
-            if (phone && phone.length >= 8) historicalPhones.add(phone);
-        });
-
-        let newCustomers = 0;
-        let returningCustomers = 0;
-        currentPhones.forEach(phone => {
-            if (historicalPhones.has(phone)) {
-                returningCustomers++;
-            } else {
-                newCustomers++;
-            }
-        });
-
-        const retention = {
-            new: newCustomers,
-            returning: returningCustomers
-        };
-
-        // 9. Market Basket Analysis (Menu Pairing)
-        const combinationCount = {};
-        currentOrders.forEach(o => {
-            const items = o.items || [];
-            if (items.length > 1) {
-                // Get unique item names from this order
-                const itemNames = [...new Set(items.map(i => i.name || i.menuName || 'Unknown'))];
-                // Sort to ensure consistent combination keys
-                itemNames.sort();
-                // Generate pairs (2-item combinations)
-                for (let i = 0; i < itemNames.length; i++) {
-                    for (let j = i + 1; j < itemNames.length; j++) {
-                        const combo = `${itemNames[i]} + ${itemNames[j]}`;
-                        combinationCount[combo] = (combinationCount[combo] || 0) + 1;
+        // 1. Main Stats & Payment Analysis (Single Pipeline)
+        const mainStatsPromise = Order.aggregate([
+            {
+                $match: {
+                    status: { $in: ['done', 'paid'] },
+                    timestamp: { $gte: startTs, $lte: endTs }
+                }
+            },
+            {
+                $group: {
+                    _id: null,
+                    totalRevenue: { $sum: '$total' },
+                    totalOrders: { $count: {} },
+                    avgTransaction: { $avg: '$total' },
+                    cashOrders: {
+                        $sum: { $cond: [{ $eq: ['$paymentMethod', 'cash'] }, 1, 0] }
+                    },
+                    nonCashOrders: {
+                        $sum: { $cond: [{ $ne: ['$paymentMethod', 'cash'] }, 1, 0] }
                     }
                 }
             }
-        });
+        ]);
 
-        const topCombinations = Object.entries(combinationCount)
-            .map(([name, count]) => ({ name, count }))
-            .sort((a, b) => b.count - a.count)
-            .slice(0, 5);
+        // 2. Previous Period Revenue (for Growth Rate)
+        const prevStatsPromise = Order.aggregate([
+            {
+                $match: {
+                    status: { $in: ['done', 'paid'] },
+                    timestamp: { $gte: prevStartTs, $lte: prevEndTs }
+                }
+            },
+            {
+                $group: {
+                    _id: null,
+                    totalRevenue: { $sum: '$total' }
+                }
+            }
+        ]);
 
-        res.json({
+        // 3. Top Products (Menu Terlaris)
+        const topProductsPromise = Order.aggregate([
+            {
+                $match: {
+                    status: { $in: ['done', 'paid'] },
+                    timestamp: { $gte: startTs, $lte: endTs }
+                }
+            },
+            { $unwind: '$items' },
+            {
+                $group: {
+                    _id: '$items.name',
+                    count: { $sum: '$items.qty' }
+                }
+            },
+            { $sort: { count: -1 } },
+            { $limit: 5 }
+        ]);
+
+        // 4. Peak Hours (Timezone Aware)
+        // User requested: timezone: 'Asia/Makassar' OR +08:00
+        const peakHoursPromise = Order.aggregate([
+            {
+                $match: {
+                    status: { $in: ['done', 'paid'] },
+                    timestamp: { $gte: startTs, $lte: endTs }
+                }
+            },
+            {
+                $project: {
+                    hour: {
+                        $hour: {
+                            date: { $add: [new Date(0), '$timestamp'] },
+                            timezone: timezone // e.g., "+08:00"
+                        }
+                    }
+                }
+            },
+            {
+                $group: {
+                    _id: '$hour',
+                    count: { $count: {} }
+                }
+            },
+            { $sort: { _id: 1 } }
+        ]);
+
+        // 5. Unique Customers (Retention/Active)
+        const uniqueCustomersPromise = Order.aggregate([
+            {
+                $match: {
+                    status: { $in: ['done', 'paid'] },
+                    timestamp: { $gte: startTs, $lte: endTs },
+                    customerPhone: { $exists: true, $ne: null }
+                }
+            },
+            {
+                $group: {
+                    _id: '$customerPhone'
+                }
+            },
+            {
+                $count: 'unique_customers'
+            }
+        ]);
+
+        // --- EXECUTE ALL ---
+        const [
+            mainStatsResult,
+            prevStatsResult,
+            topProductsResult,
+            peakHoursResult,
+            uniqueCustomersResult
+        ] = await Promise.all([
+            mainStatsPromise,
+            prevStatsPromise,
+            topProductsPromise,
+            peakHoursPromise,
+            uniqueCustomersPromise
+        ]);
+
+        // --- FORMAT RESULT ---
+        const currentStats = mainStatsResult[0] || { totalRevenue: 0, totalOrders: 0, cashOrders: 0, nonCashOrders: 0, avgTransaction: 0 };
+        const prevStats = prevStatsResult[0] || { totalRevenue: 0 };
+        const uniqueCount = uniqueCustomersResult[0] ? uniqueCustomersResult[0].unique_customers : 0;
+
+        // Basic calculations
+        const { totalRevenue, totalOrders, avgTransaction, cashOrders, nonCashOrders } = currentStats;
+        const prevRevenue = prevStats.totalRevenue;
+        const growthRate = prevRevenue > 0 ? ((totalRevenue - prevRevenue) / prevRevenue) * 100 : 0;
+
+        // Note: avgOrderValue in response should be avgTransaction from pipeline
+        const avgOrderValue = avgTransaction || 0;
+
+        // Payment Stats Object (Frontend compatibility)
+        const totalPayments = cashOrders + nonCashOrders;
+        const paymentStats = {
+            cashCount: cashOrders,
+            nonCashCount: nonCashOrders,
+            cashPercent: totalPayments > 0 ? Math.round((cashOrders / totalPayments) * 100) : 0,
+            nonCashPercent: totalPayments > 0 ? 100 - Math.round((cashOrders / totalPayments) * 100) : 0
+        };
+
+        // Menu Objects (Top 5 only)
+        const topMenu = topProductsResult.map(m => ({ name: m._id, count: m.count }));
+
+        // Peak Hours map
+        const peakHoursMap = {};
+        peakHoursResult.forEach(ph => peakHoursMap[ph._id] = ph.count);
+        const peakHours = [];
+        for (let h = 8; h <= 22; h++) {
+            peakHours.push({ hour: h, count: peakHoursMap[h] || 0 });
+        }
+
+        // Frontend expects "retention" object. Mapping "Unique Customers" to it.
+        const retention = {
+            new: uniqueCount, // Total active unique customers
+            returning: 0,     // Not calculated in this optimized pipeline
+            totalUnique: uniqueCount // Extra field if needed
+        };
+
+        // Construct Response
+        const responseData = {
             stats: {
                 revenue: totalRevenue,
                 orders: totalOrders,
@@ -195,15 +267,23 @@ const getReportData = async (req, res) => {
             },
             paymentStats,
             topMenu,
-            bottomMenu,
+            bottomMenu: [], // Not requested in optimized pipeline
             peakHours,
             retention,
-            topCombinations
+            topCombinations: [] // Not requested in optimized pipeline
+        };
+
+        // Cache the result
+        reportCache.set(cacheKey, {
+            timestamp: Date.now(),
+            data: responseData
         });
+
+        res.json(responseData);
 
     } catch (err) {
         console.error('Analytics Report Error:', err);
-        res.status(500).json({ error: 'Server error' });
+        res.status(500).json({ error: 'Server error', details: err.message });
     }
 };
 

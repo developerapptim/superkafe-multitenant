@@ -1,8 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import useSWR, { mutate } from 'swr';
 import toast from 'react-hot-toast';
-import { voucherAPI, bannerAPI } from '../../services/api';
+import api, { voucherAPI, bannerAPI } from '../../services/api';
+
+const fetcher = url => api.get(url).then(res => res.data);
 
 // Helper format currency
 const formatCurrency = (value) => {
@@ -27,45 +30,26 @@ const INITIAL_FORM = {
 function Marketing() {
     const [activeTab, setActiveTab] = useState('voucher');
 
+    // SWR Data Fetching
+    const { data: vouchersData } = useSWR('/vouchers', fetcher);
+    const { data: bannersData } = useSWR('/banners', fetcher);
+
+    // Derived state
+    const vouchers = useMemo(() => Array.isArray(vouchersData) ? vouchersData : [], [vouchersData]);
+    const banners = useMemo(() => Array.isArray(bannersData) ? bannersData : [], [bannersData]);
+    const loadingVouchers = !vouchersData;
+    const loadingBanners = !bannersData;
+
     // ========== VOUCHER STATE ==========
-    const [vouchers, setVouchers] = useState([]);
-    const [loadingVouchers, setLoadingVouchers] = useState(true);
     const [showVoucherModal, setShowVoucherModal] = useState(false);
     const [editingVoucher, setEditingVoucher] = useState(null);
     const [voucherForm, setVoucherForm] = useState(INITIAL_FORM);
 
     // ========== BANNER STATE ==========
-    const [banners, setBanners] = useState([]);
-    const [loadingBanners, setLoadingBanners] = useState(true);
     const [bannerTitle, setBannerTitle] = useState('');
     const [bannerFile, setBannerFile] = useState(null);
     const [bannerPreview, setBannerPreview] = useState(null);
     const [uploadingBanner, setUploadingBanner] = useState(false);
-
-    // ========== FETCH DATA ==========
-    useEffect(() => { fetchVouchers(); fetchBanners(); }, []);
-
-    const fetchVouchers = async () => {
-        try {
-            setLoadingVouchers(true);
-            const res = await voucherAPI.getAll();
-            setVouchers(res.data);
-        } catch (err) {
-            console.error(err);
-            toast.error('Gagal memuat voucher');
-        } finally { setLoadingVouchers(false); }
-    };
-
-    const fetchBanners = async () => {
-        try {
-            setLoadingBanners(true);
-            const res = await bannerAPI.getAll();
-            setBanners(res.data);
-        } catch (err) {
-            console.error(err);
-            toast.error('Gagal memuat banner');
-        } finally { setLoadingBanners(false); }
-    };
 
     // ========== VOUCHER HANDLERS ==========
     const openCreateVoucher = () => {
@@ -108,7 +92,7 @@ function Marketing() {
                 toast.success('Voucher berhasil dibuat!', { id: toastId });
             }
             setShowVoucherModal(false);
-            fetchVouchers();
+            mutate('/vouchers');
         } catch (err) {
             toast.error(err.response?.data?.error || 'Gagal menyimpan voucher', { id: toastId });
         }
@@ -117,7 +101,7 @@ function Marketing() {
     const handleToggleVoucher = async (id) => {
         try {
             await voucherAPI.toggle(id);
-            fetchVouchers();
+            mutate('/vouchers');
         } catch (err) {
             toast.error('Gagal mengubah status voucher');
         }
@@ -128,7 +112,7 @@ function Marketing() {
         try {
             await voucherAPI.delete(id);
             toast.success('Voucher dihapus');
-            fetchVouchers();
+            mutate('/vouchers');
         } catch (err) {
             toast.error('Gagal menghapus voucher');
         }
@@ -161,7 +145,7 @@ function Marketing() {
             setBannerFile(null);
             setBannerPreview(null);
             setBannerTitle('');
-            fetchBanners();
+            mutate('/banners');
         } catch (err) {
             toast.error(err.response?.data?.error || 'Gagal upload banner', { id: toastId });
         } finally { setUploadingBanner(false); }
@@ -172,7 +156,7 @@ function Marketing() {
         try {
             await bannerAPI.delete(id);
             toast.success('Banner dihapus');
-            fetchBanners();
+            mutate('/banners');
         } catch (err) {
             toast.error('Gagal menghapus banner');
         }

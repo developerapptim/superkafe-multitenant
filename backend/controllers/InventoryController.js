@@ -7,8 +7,88 @@ const logActivity = require('../utils/activityLogger'); // NEW: Activity Logger
 
 exports.getInventory = async (req, res) => {
     try {
-        const items = await Ingredient.find().sort({ nama: 1 });
-        res.json(items);
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 20;
+        const skip = (page - 1) * limit;
+        const search = req.query.search || '';
+        const status = req.query.status || 'all';
+
+        let query = {};
+
+        if (search) {
+            query.nama = { $regex: search, $options: 'i' };
+        }
+
+        if (status !== 'all') {
+            if (status === 'Habis') {
+                query.stok = { $lte: 0 };
+            } else if (status === 'Rendah') {
+                // Low stock but not empty (since 'Habis' covers <= 0)
+                // Actually, strict mongo query:
+                // We need to compare stok vs stok_min. 
+                // MongoDB doesn't support direct field comparison in simple query w/o $expr
+                query.$expr = {
+                    $and: [
+                        { $gt: ["$stok", 0] },
+                        { $lte: ["$stok", "$stok_min"] }
+                    ]
+                };
+            } else if (status === 'Aman') {
+                query.$expr = {
+                    $gt: ["$stok", "$stok_min"]
+                };
+            }
+        }
+
+        const totalItems = await Ingredient.countDocuments(query);
+        const items = await Ingredient.find(query)
+            .sort({ nama: 1 })
+            .skip(skip)
+            .limit(limit);
+
+        res.json({
+            data: items,
+            pagination: {
+                currentPage: page,
+                totalPages: Math.ceil(totalItems / limit),
+                totalItems,
+                hasMore: (page * limit) < totalItems
+            }
+        });
+    } catch (err) {
+        res.status(500).json({ error: 'Server error' });
+    }
+};
+
+exports.getInventoryStats = async (req, res) => {
+    try {
+        const stats = await Ingredient.aggregate([
+            {
+                $group: {
+                    _id: null,
+                    totalItems: { $sum: 1 },
+                    lowStock: {
+                        $sum: {
+                            $cond: [{ $lte: ["$stok", "$stok_min"] }, 1, 0]
+                        }
+                    },
+                    assetValue: {
+                        $sum: {
+                            $multiply: ["$stok", "$harga_modal"] // Use harga_modal (Moving Average)
+                        }
+                    }
+                }
+            }
+        ]);
+
+        const result = stats[0] || { totalItems: 0, lowStock: 0, assetValue: 0 };
+
+        res.json({
+            totalItems: result.totalItems,
+            lowStock: result.lowStock,
+            assetValue: result.assetValue,
+            assetWithPPN: result.assetValue * 1.11
+        });
     } catch (err) {
         res.status(500).json({ error: 'Server error' });
     }

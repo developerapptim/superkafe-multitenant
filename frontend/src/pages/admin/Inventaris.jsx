@@ -145,7 +145,9 @@ function Inventaris() {
     const [error, setError] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
     const [activeTab, setActiveTab] = useState('bahan');
-    const [visibleIngredients, setVisibleIngredients] = useState(20); // Pagination state
+    const [currentPage, setCurrentPage] = useState(1);
+    const [paginationInfo, setPaginationInfo] = useState(null);
+    const ITEMS_PER_PAGE = 20;
 
     // Stats
     const [stats, setStats] = useState({
@@ -206,33 +208,49 @@ function Inventaris() {
     // Fetch data
     useEffect(() => {
         fetchData();
+    }, [currentPage, filterStatus]);
+
+    // Debounced search
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setCurrentPage(1);
+            fetchData();
+        }, 400);
+        return () => clearTimeout(timer);
+    }, [searchTerm]);
+
+    // Fetch stats separately (lightweight, once on mount)
+    useEffect(() => {
+        fetchStats();
     }, []);
 
-
+    const fetchStats = async () => {
+        try {
+            const res = await inventoryAPI.getStats();
+            setStats(res.data);
+        } catch (err) {
+            console.error('Error fetching stats:', err);
+        }
+    };
 
     const fetchData = async () => {
         try {
             setLoading(true);
-            const res = await inventoryAPI.getAll();
-            const items = res.data;
-            setIngredients(items);
-
-            // Calculate stats
-            const lowStockItems = items.filter(i => i.stok <= i.stok_min);
-            const totalValue = items.reduce((sum, i) => {
-                const modalPerUnit = i.use_konversi && i.isi_prod > 0
-                    ? i.harga_beli / i.isi_prod
-                    : i.harga_beli;
-                return sum + (i.stok * modalPerUnit);
-            }, 0);
-
-            setStats({
-                totalItems: items.length,
-                lowStock: lowStockItems.length,
-                assetValue: totalValue,
-                assetWithPPN: totalValue * 1.11
+            const res = await inventoryAPI.getAll({
+                page: currentPage,
+                limit: ITEMS_PER_PAGE,
+                search: searchTerm,
+                status: filterStatus
             });
 
+            const responseData = res.data;
+
+            // Handle both paginated and legacy (flat array) responses
+            const items = responseData.data || responseData;
+            const pagination = responseData.pagination || null;
+
+            setIngredients(items);
+            setPaginationInfo(pagination);
 
             // Fetch custom units
             try {
@@ -242,7 +260,6 @@ function Inventaris() {
                 }
             } catch (err) {
                 console.error('Error fetching units:', err);
-                // Fallback handled by combining defaults
             }
 
             // Prepare opname data
@@ -301,7 +318,8 @@ function Inventaris() {
         try {
             await inventoryAPI.delete(id);
             toast.success('Bahan berhasil dihapus', { duration: 3000 });
-            fetchData(); // Refresh data
+            fetchData();
+            fetchStats();
 
         } catch (err) {
             console.error('Error deleting:', err);
@@ -317,20 +335,9 @@ function Inventaris() {
         return { color: 'green', text: 'Aman' };
     };
 
-    // Filter ingredients
-    const filteredItems = ingredients.filter(item => {
-        const matchesSearch = item.nama.toLowerCase().includes(searchTerm.toLowerCase());
-        const status = getStockStatus(item);
-        const matchesStatus = filterStatus === 'all' || status.text === filterStatus;
-        return matchesSearch && matchesStatus;
-    });
-
-    const displayedItems = filteredItems.slice(0, visibleIngredients);
-    const hasMoreItems = visibleIngredients < filteredItems.length;
-
-    const loadMoreIngredients = () => {
-        setVisibleIngredients(prev => prev + 20);
-    };
+    // Server-side filtering & pagination: items are already filtered/paginated by the backend
+    const displayedItems = ingredients;
+    const hasMoreItems = paginationInfo?.hasMore || false;
 
     // Format currency
     const formatCurrency = (value) => {
@@ -462,6 +469,7 @@ function Inventaris() {
                 conversionRate: Number(restockData.conversionRate)
             });
             await fetchData();
+            fetchStats();
             setShowRestockModal(false);
             toast.success('Restock berhasil! HPP diperbarui.', { id: toastId });
         } catch (err) {
@@ -569,6 +577,7 @@ function Inventaris() {
             }
 
             await fetchData();
+            fetchStats();
             setShowModal(false);
 
             if (!isAdmin) {
@@ -627,6 +636,7 @@ function Inventaris() {
                 });
             }
             await fetchData();
+            fetchStats();
             toast.success(`Opname berhasil disimpan untuk ${itemsWithDiff.length} bahan`, { id: toastId });
         } catch (err) {
             console.error('Error saving opname:', err);
@@ -796,7 +806,6 @@ function Inventaris() {
                                 value={searchTerm}
                                 onChange={(e) => {
                                     setSearchTerm(e.target.value);
-                                    setVisibleIngredients(20); // Reset pagination on search
                                 }}
                                 className="w-full px-4 py-2 pl-10 rounded-lg bg-white/5 border border-purple-500/30 text-white placeholder-gray-400 focus:outline-none focus:border-purple-500"
                                 placeholder="🔍 Cari bahan..."
@@ -809,7 +818,7 @@ function Inventaris() {
                         {/* Status Filter Dropdown */}
                         <StatusFilterDropdown
                             currentFilter={filterStatus}
-                            onFilterChange={setFilterStatus}
+                            onFilterChange={(val) => { setFilterStatus(val); setCurrentPage(1); }}
                         />
                     </div>
 
@@ -1133,15 +1142,26 @@ function Inventaris() {
                         )}
                     </div>
 
-                    {/* Load More Button - Shared */}
-                    {hasMoreItems && (
-                        <div className="flex justify-center mt-6">
+                    {/* Pagination Controls */}
+                    {paginationInfo && paginationInfo.totalPages > 1 && (
+                        <div className="flex items-center justify-center gap-3 mt-6">
                             <button
-                                onClick={loadMoreIngredients}
-                                className="px-6 py-2 bg-white/5 hover:bg-white/10 text-white rounded-full border border-purple-500/30 transition-all flex items-center gap-2 group"
+                                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                                disabled={currentPage <= 1}
+                                className="px-4 py-2 rounded-lg bg-white/5 hover:bg-white/10 text-white border border-purple-500/30 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
                             >
-                                <span>Muat Lebih Banyak</span>
-                                <svg className="w-4 h-4 group-hover:translate-y-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+                                ← Prev
+                            </button>
+                            <span className="text-sm text-gray-400">
+                                Halaman <span className="text-white font-bold">{paginationInfo.currentPage}</span> dari <span className="text-white font-bold">{paginationInfo.totalPages}</span>
+                                <span className="ml-2 text-gray-500">({paginationInfo.totalItems} bahan)</span>
+                            </span>
+                            <button
+                                onClick={() => setCurrentPage(prev => prev + 1)}
+                                disabled={!paginationInfo.hasMore}
+                                className="px-4 py-2 rounded-lg bg-white/5 hover:bg-white/10 text-white border border-purple-500/30 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                            >
+                                Next →
                             </button>
                         </div>
                     )}

@@ -13,7 +13,7 @@ This is a small Express + MongoDB backend for Warkop Management System.
 If you have a `warkopData.json` exported from localStorage (or the file created by you), you can run:
 
 ```bash
-npm run migrate-file -- ./warkopData.json --url=https://superkafe-production.up.railway.app/api --key=YOUR_API_KEY
+npm run migrate-file -- ./warkopData.json --url=${import.meta.env.VITE_API_URL} --key=YOUR_API_KEY
 ```
 
 If `API_KEY` is set in `.env`, you can omit `--key` and the script will use the env var.
