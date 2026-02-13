@@ -15,7 +15,10 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             cd /root/superkafe
-            git pull origin main
-            cd frontend && npm install && npm run build
-            pm2 restart superkafe-web
-            pm2 restart superkafe-server
+            git fetch --all
+            git reset --hard origin/main
+            cd frontend
+            /root/.nvm/versions/node/v24.13.1/bin/npm install
+            /root/.nvm/versions/node/v24.13.1/bin/npm run build
+            /root/.nvm/versions/node/v24.13.1/bin/pm2 restart superkafe-web
+            /root/.nvm/versions/node/v24.13.1/bin/pm2 restart superkafe-server
