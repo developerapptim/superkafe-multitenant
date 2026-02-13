@@ -48,3 +48,5 @@ Aturan:
 - Gunakan komentar bahasa Indonesia yang singkat.
 - Selalu buat fungsi yang modular (satu fungsi = satu tugas).
 - Utamakan performa, hindari re-render UI yang berlebihan pada file HTML besar.
+
+// test deploy manual
