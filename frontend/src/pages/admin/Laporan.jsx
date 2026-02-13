@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import useSWR from 'swr';
 import SmartText from '../../components/SmartText';
+import ConfirmationModal from '../../components/ConfirmationModal';
 import api from '../../services/api';
 import { toast } from 'react-hot-toast';
 
@@ -72,6 +73,11 @@ function Laporan() {
     const [endDate, setEndDate] = useState('');
     const [statusFilter, setStatusFilter] = useState('all');
 
+    // Delete Modal State
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [orderToDelete, setOrderToDelete] = useState(null);
+    const [isDeleting, setIsDeleting] = useState(false);
+
     const [isLoadingTransactions, setIsLoadingTransactions] = useState(false);
     const [page, setPage] = useState(1);
     const [hasMore, setHasMore] = useState(true);
@@ -127,18 +133,26 @@ function Laporan() {
         }
     };
 
-    const handleDeleteOrder = async (orderId) => {
-        if (!confirm('Yakin ingin menghapus pesanan ini? Tindakan ini tidak dapat dibatalkan.')) return;
+    const handleDeleteClick = (orderId) => {
+        setOrderToDelete(orderId);
+        setShowDeleteModal(true);
+    };
+
+    const confirmDelete = async () => {
+        if (!orderToDelete) return;
 
         try {
-            await api.delete(`/orders/${orderId}`);
-            toast.success('Pesanan berhasil dihapus');
-            await api.delete(`/orders/${orderId}`);
+            setIsDeleting(true);
+            await api.delete(`/orders/${orderToDelete}`);
             toast.success('Pesanan berhasil dihapus');
             // Refresh current list (simplified: just reload page 1)
             fetchTransactions(1, true);
         } catch (err) {
             toast.error(err.response?.data?.error || 'Gagal menghapus pesanan');
+        } finally {
+            setIsDeleting(false);
+            setShowDeleteModal(false);
+            setOrderToDelete(null);
         }
     };
 
@@ -515,7 +529,7 @@ function Laporan() {
                                             <td className="p-3 text-center">
                                                 {(order.status !== 'done' && order.paymentStatus !== 'paid') && (
                                                     <button
-                                                        onClick={() => handleDeleteOrder(order.id)}
+                                                        onClick={() => handleDeleteClick(order.id)}
                                                         className="text-red-500 hover:text-red-400 hover:bg-red-500/10 p-2 rounded transition-colors"
                                                         title="Hapus Pesanan Sampah"
                                                     >
@@ -544,6 +558,19 @@ function Laporan() {
                     </div>
                 )}
             </div>
+
+            {/* Confirmation Modal */}
+            <ConfirmationModal
+                isOpen={showDeleteModal}
+                onClose={() => setShowDeleteModal(false)}
+                onConfirm={confirmDelete}
+                title="Hapus Pesanan?"
+                message="Apakah Anda yakin ingin menghapus riwayat pesanan ini? Tindakan ini tidak dapat dibatalkan dan data akan hilang permanen."
+                confirmText="Hapus Permanen"
+                cancelText="Batal"
+                isDanger={true}
+                isLoading={isDeleting}
+            />
         </section>
     );
 }
