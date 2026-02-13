@@ -107,27 +107,60 @@ export default function DataCenter() {
     const handleDangerAction = async () => {
         try {
             setIsLoading(true);
-            const token = localStorage.getItem('token');
-            const payload = { confirmation: modalInput, password: modalInput };
 
-            // Adjust payload based on action
+            // HANDLE RESTORE (File Upload)
+            if (modalAction === 'restore') {
+                if (!importFile) {
+                    setIsLoading(false);
+                    return toast.error('File backup belum dipilih');
+                }
+
+                const reader = new FileReader();
+                reader.onload = async (e) => {
+                    try {
+                        const jsonData = JSON.parse(e.target.result);
+                        await api.post('/data/restore', jsonData);
+                        toast.success('✅ Database berhasil direstore!');
+                        setShowModal(false);
+                        setModalInput('');
+                    } catch (err) {
+                        console.error(err);
+                        toast.error('Gagal parsing file backup atau format salah');
+                    } finally {
+                        setIsLoading(false);
+                    }
+                };
+                reader.readAsText(importFile);
+                return; // Exit function, reader callback handles the rest
+            }
+
+            // HANDLE DANGER ACTIONS
+            let endpoint = '';
+            let payload = {};
+
             if (modalAction === 'transactions') {
                 if (modalInput !== 'HAPUS TRANSAKSI') {
                     setIsLoading(false);
                     return toast.error('Konfirmasi teks salah');
                 }
+                endpoint = '/data/admin/delete-transactions';
+                payload = { confirmText: modalInput };
             }
-            // For factory reset, input acts as password
+            else if (modalAction === 'factory') {
+                endpoint = '/data/admin/reset';
+                payload = { masterPin: modalInput, confirmText: 'HAPUS SEMUA DATA' };
+            }
 
-            const res = await api.post(`/admin/reset/${modalAction}`, payload);
-
-            toast.success(res.data.message);
-            setShowModal(false);
-            setModalInput('');
+            if (endpoint) {
+                const res = await api.post(endpoint, payload);
+                toast.success(res.data.message);
+                setShowModal(false);
+                setModalInput('');
+            }
         } catch (err) {
             toast.error(err.response?.data?.error || 'Gagal melakukan aksi');
         } finally {
-            setIsLoading(false);
+            if (modalAction !== 'restore') setIsLoading(false);
         }
     };
 
@@ -456,7 +489,9 @@ export default function DataCenter() {
                         <p className="text-gray-300 mb-6">
                             {modalAction === 'transactions'
                                 ? 'Anda akan menghapus SELURUH data transaksi. Ketik "HAPUS TRANSAKSI" untuk konfirmasi.'
-                                : 'Anda akan melakukan FACTORY RESET. Masukkan Password Admin untuk konfirmasi.'
+                                : modalAction === 'restore'
+                                    ? 'Anda akan menimpa database saat ini dengan file backup. Masukkan Password Admin untuk konfirmasi (Opsional).'
+                                    : 'Anda akan melakukan FACTORY RESET. Masukkan Password Admin untuk konfirmasi.'
                             }
                         </p>
 

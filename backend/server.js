@@ -12,7 +12,8 @@ app.use(cors({
   origin: true,
   credentials: true
 }));
-app.use(express.json({ limit: '50mb' }));
+app.use(express.json({ limit: '200mb' }));
+app.use(express.urlencoded({ limit: '200mb', extended: true }));
 
 // ===== STATIC FILES =====
 app.use('/uploads', express.static(path.join(__dirname, 'public', 'uploads')));
@@ -41,7 +42,7 @@ app.use('/api/tables', require('./routes/tableRoutes'));
 app.use('/api/employees', require('./routes/employeeRoutes'));
 app.use('/api/settings', require('./routes/settingsRoutes'));
 app.use('/api/analytics', require('./routes/analyticsRoutes'));
-app.use('/api/admin/audit-logs', require('./routes/auditLogRoutes'));
+// app.use('/api/admin/audit-logs', require('./routes/auditLogRoutes'));
 
 // New Routes (Refactored)
 app.use('/api', require('./routes/authRoutes')); // Mounts /login -> /api/login

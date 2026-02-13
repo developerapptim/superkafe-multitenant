@@ -130,53 +130,116 @@ exports.getAllData = async (req, res) => {
 };
 
 // Restore Data (Post)
+// Restore Data (Post)
 exports.restoreData = async (req, res) => {
     try {
         const data = req.body;
+        console.log('📥 Receiving Restore Data...');
 
-        // Helper for upsert
-        const upsertMany = async (Model, items) => {
-            if (!items || !items.length) return;
-            for (const item of items) {
-                await Model.findOneAndUpdate({ id: item.id }, item, { upsert: true });
+        // Helper to insert
+        const insert = async (Model, items, name) => {
+            if (!items || items.length === 0) return;
+            try {
+                // Use ordered: false to continue even if some docs duplicate
+                await Model.insertMany(items, { ordered: false });
+                console.log(`✅ Sukses import ${name} (${items.length} items)`);
+            } catch (err) {
+                if (err.code === 11000) {
+                    console.log(`⚠️ Partial import ${name}: Some items skipped (Duplicates)`);
+                    console.log(`✅ Sukses import ${name} (Remaining items)`);
+                } else {
+                    console.error(`❌ Failed import ${name}:`, err.message);
+                }
             }
         };
 
-        await upsertMany(MenuItem, data.menuItems);
+        // 1. Menu Items
+        await insert(MenuItem, data.menuItems, 'MenuItem');
 
-        if (data.categories) {
-            for (const c of data.categories) {
-                const cat = typeof c === 'string' ? { id: c, name: c } : c;
-                await Category.findOneAndUpdate({ id: cat.id || cat.name }, cat, { upsert: true });
-            }
+        // 2. Categories (Handle String vs Object)
+        if (data.categories && data.categories.length > 0) {
+            const formattedCats = data.categories.map(c =>
+                typeof c === 'string' ? { id: c, name: c } : c
+            );
+            await insert(Category, formattedCats, 'Category');
         }
 
-        await upsertMany(Order, data.orders);
-        await upsertMany(Table, data.tables);
-        await upsertMany(Employee, data.employees);
-        await upsertMany(CashTransaction, data.cashTransactions);
-        await upsertMany(Customer, data.customers);
-        await upsertMany(Ingredient, data.ingredients);
-        await upsertMany(Gramasi, data.gramasiData);
-        await upsertMany(StockHistory, data.stockHistory);
-        await upsertMany(Shift, data.shifts); // Assuming 'shifts' might be in backup
+        // 3. Orders
+        await insert(Order, data.orders, 'Order');
 
+        // 4. Tables
+        await insert(Table, data.tables, 'Table');
+
+        // 5. Employees
+        await insert(Employee, data.employees, 'Employee');
+
+        // 6. Cash Transactions
+        await insert(CashTransaction, data.cashTransactions, 'CashTransaction');
+
+        // 7. Customers
+        await insert(Customer, data.customers, 'Customer');
+
+        // 8. Ingredients
+        await insert(Ingredient, data.ingredients, 'Ingredient');
+
+        // 9. Gramasi
+        await insert(Gramasi, data.gramasiData, 'Gramasi');
+
+        // 10. Stock History
+        await insert(StockHistory, data.stockHistory, 'StockHistory');
+
+        // 11. Recipes (Transform Object -> Array)
         if (data.recipes) {
-            for (const [menuId, ingredients] of Object.entries(data.recipes)) {
-                await Recipe.findOneAndUpdate({ menuId }, { menuId, ingredients }, { upsert: true });
+            const recipeDocs = Object.entries(data.recipes).map(([menuId, ingredients]) => ({
+                menuId,
+                ingredients
+            }));
+            await insert(Recipe, recipeDocs, 'Recipe');
+        }
+
+        // 12. Shifts
+        await insert(Shift, data.shifts, 'Shift');
+
+        // 13. Settings
+        if (data.businessSettings) {
+            try {
+                await Settings.findOneAndUpdate({ key: 'businessSettings' }, data.businessSettings, { upsert: true });
+                console.log('✅ Sukses import Settings');
+            } catch (err) {
+                console.error('❌ Failed settings:', err.message);
             }
         }
 
-        if (data.businessSettings || data.customUnits) {
-            const settingsUpdate = { ...(data.businessSettings || {}), updatedAt: new Date() };
-            if (data.customUnits) settingsUpdate.customUnits = data.customUnits;
-            await Settings.findOneAndUpdate({ key: 'businessSettings' }, settingsUpdate, { upsert: true });
-        }
+        console.log('🎉 RESTORE COMPLETED via Dashboard');
 
-        // Return updated data
+        // Return updated data to refresh frontend
         exports.getAllData(req, res);
+
     } catch (err) {
         console.error(err);
-        res.status(500).json({ error: 'Server error' });
+        res.status(500).json({ error: 'Server error saat restore: ' + err.message });
+    }
+};
+// Delete Transactions Only
+exports.deleteTransactions = async (req, res) => {
+    try {
+        const { confirmText } = req.body;
+
+        if (confirmText !== 'HAPUS TRANSAKSI') {
+            return res.status(400).json({ error: 'Konfirmasi teks salah!' });
+        }
+
+        await Promise.all([
+            Order.deleteMany({}),
+            StockHistory.deleteMany({}),
+            CashTransaction.deleteMany({}),
+            Shift.deleteMany({}) // Also clear shifts as they are transactional
+        ]);
+
+        console.log('⚠️ TRANSACTIONS DELETED by admin');
+        res.json({ success: true, message: 'Data transaksi berhasil dihapus!' });
+    } catch (err) {
+        console.error('Delete transactions error:', err);
+        res.status(500).json({ error: 'Gagal menghapus transaksi: ' + err.message });
     }
 };
