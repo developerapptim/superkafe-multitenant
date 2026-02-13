@@ -1,0 +1,21 @@
+name: Deploy to VPS
+on:
+  push:
+    branches: [ main ] # Setiap kali push ke branch main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@master
+        with:
+          host: 76.13.196.116
+          username: root
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            cd /root/superkafe
+            git pull origin main
+            cd frontend && npm install && npm run build
+            pm2 restart superkafe-web
+            pm2 restart superkafe-server

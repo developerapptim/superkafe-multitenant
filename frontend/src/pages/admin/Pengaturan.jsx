@@ -1,15 +1,62 @@
 import { useState, useEffect } from 'react';
 import useSWR, { mutate } from 'swr';
 import toast from 'react-hot-toast';
+import { motion, AnimatePresence } from 'framer-motion';
+import { FaChevronDown, FaChevronUp, FaCircle } from 'react-icons/fa';
 import api, { settingsAPI, userAPI } from '../../services/api';
 
 // Fetcher
 const fetcher = url => api.get(url).then(res => res.data);
 
+// Accordion Component
+const AccordionSection = ({ id, title, icon, isOpen, onToggle, isDirty, children }) => {
+    return (
+        <div className="glass rounded-xl overflow-hidden border border-white/5 transition-all duration-300">
+            <button
+                onClick={onToggle}
+                className={`w-full p-4 flex items-center justify-between transition-colors ${isOpen ? 'bg-white/10' : 'hover:bg-white/5'}`}
+            >
+                <div className="flex items-center gap-3">
+                    <span className="text-xl">{icon}</span>
+                    <h3 className="font-bold text-lg flex items-center gap-2">
+                        {title}
+                        {isDirty && (
+                            <span className="text-red-500 text-xs animate-pulse" title="Perubahan belum disimpan">
+                                <FaCircle />
+                            </span>
+                        )}
+                    </h3>
+                </div>
+                <div className={`transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`}>
+                    <FaChevronDown />
+                </div>
+            </button>
+            <AnimatePresence>
+                {isOpen && (
+                    <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.3, ease: 'easeInOut' }}
+                    >
+                        <div className="p-4 border-t border-white/5">
+                            {children}
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+        </div>
+    );
+};
+
 function Pengaturan() {
     const { data: settingsData, error } = useSWR('/settings', fetcher);
     const isLoading = !settingsData && !error;
     const [saving, setSaving] = useState(false);
+
+    // State to track open accordion section
+    // Default open: 'profile'
+    const [openSection, setOpenSection] = useState('profile');
 
     const [settings, setSettings] = useState({
         businessName: 'Warkop Santai',
@@ -48,6 +95,8 @@ function Pengaturan() {
         showNonCashToStaff: true
     });
 
+    const [initialSettings, setInitialSettings] = useState(null);
+
     const [passwordForm, setPasswordForm] = useState({
         currentPassword: '',
         newPassword: '',
@@ -58,9 +107,17 @@ function Pengaturan() {
     // Sync SWR data to local state
     useEffect(() => {
         if (settingsData) {
-            setSettings(prev => ({ ...prev, ...settingsData }));
+            const data = { ...settings, ...settingsData };
+            setSettings(data);
+            setInitialSettings(data);
         }
     }, [settingsData]);
+
+    // Check if section is dirty
+    const checkDirty = (keys) => {
+        if (!initialSettings) return false;
+        return keys.some(key => settings[key] !== initialSettings[key]);
+    };
 
     const handleSave = async () => {
         const toastId = toast.loading('Menyimpan pengaturan...');
@@ -68,6 +125,7 @@ function Pengaturan() {
             setSaving(true);
             await settingsAPI.update(settings);
             mutate('/settings'); // Refresh settings cache
+            setInitialSettings(settings); // Update initial settings to current
             toast.success('Pengaturan berhasil disimpan!', { id: toastId });
         } catch (err) {
             console.error('Error saving settings:', err);
@@ -112,7 +170,19 @@ function Pengaturan() {
 
             // Backend returns full URL or relative path depending on env.
             // We store it as is.
-            setSettings({ ...settings, notificationSoundUrl: res.data.soundUrl });
+            const newUrl = res.data.soundUrl;
+            setSettings(prev => {
+                const updated = { ...prev, notificationSoundUrl: newUrl };
+                // Also update initial settings for this field to avoid dirty flag unless we want to allow saving it ?
+                // Usually upload saves immediately, so let's update initial too
+                // But wait, user might want to Save All to confirm? 
+                // The API uploadSound saves the file but doesn't necessarily update the settings document unless we save the URL.
+                // However the previous code didn't save the URL to settings until handleSave? 
+                // Ah, previous code: setSettings({...}, notificationSoundUrl: res.data.soundUrl)
+                // And then handleSave sends settings.
+                // So yes, it counts as a change until saved.
+                return updated;
+            });
 
             toast.success('Suara berhasil diupload!', { id: toastId });
         } catch (err) {
@@ -179,10 +249,13 @@ function Pengaturan() {
         }
     };
 
+    const toggleSection = (id) => {
+        setOpenSection(openSection === id ? null : id);
+    };
+
     if (isLoading) {
         return (
             <section className="p-4 md:p-6 space-y-6">
-
                 <div className="flex items-center justify-center h-64">
                     <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500"></div>
                 </div>
@@ -191,12 +264,17 @@ function Pengaturan() {
     }
 
     return (
-        <section className="p-4 md:p-6 space-y-6">
-
+        <section className="p-4 md:p-6 space-y-6 pb-24">
 
             {/* Business Profile */}
-            <div className="glass rounded-xl p-4">
-                <h3 className="font-bold mb-4">🏪 Profil Usaha</h3>
+            <AccordionSection
+                id="profile"
+                title="Profil Usaha"
+                icon="🏪"
+                isOpen={openSection === 'profile'}
+                onToggle={() => toggleSection('profile')}
+                isDirty={checkDirty(['businessName', 'tagline', 'phone', 'address', 'logo'])}
+            >
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {/* Logo */}
                     <div className="md:col-span-2">
@@ -263,11 +341,17 @@ function Pengaturan() {
                         />
                     </div>
                 </div>
-            </div>
+            </AccordionSection>
 
             {/* Wi-Fi Settings */}
-            <div className="glass rounded-xl p-4">
-                <h3 className="font-bold mb-4">📶 Informasi Wi-Fi</h3>
+            <AccordionSection
+                id="wifi"
+                title="Informasi Wi-Fi"
+                icon="📶"
+                isOpen={openSection === 'wifi'}
+                onToggle={() => toggleSection('wifi')}
+                isDirty={checkDirty(['wifiName', 'wifiPassword'])}
+            >
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                         <label className="block text-sm text-gray-400 mb-1">Nama Wi-Fi (SSID)</label>
@@ -290,11 +374,17 @@ function Pengaturan() {
                         />
                     </div>
                 </div>
-            </div>
+            </AccordionSection>
 
             {/* Notification Settings */}
-            <div className="glass rounded-xl p-4">
-                <h3 className="font-bold mb-4">🔔 Pengaturan Notifikasi</h3>
+            <AccordionSection
+                id="notification"
+                title="Pengaturan Notifikasi"
+                icon="🔔"
+                isOpen={openSection === 'notification'}
+                onToggle={() => toggleSection('notification')}
+                isDirty={checkDirty(['notificationSoundUrl'])}
+            >
                 <div className="space-y-4">
                     <div className="p-4 bg-white/5 rounded-xl">
                         <label className="block text-sm text-gray-400 mb-2">Suara Notifikasi Pesanan Baru</label>
@@ -322,15 +412,21 @@ function Pengaturan() {
                             )}
                         </div>
                         <p className="text-xs text-gray-500 mt-2">
-                            {settings.notificationSoundUrl ? '✅ File kustom aktif (Disimpan di Database)' : 'ℹ️ Menggunakan suara default'}
+                            {settings.notificationSoundUrl ? '✅ File kustom aktif' : 'ℹ️ Menggunakan suara default'}
                         </p>
                     </div>
                 </div>
-            </div>
+            </AccordionSection>
 
             {/* Receipt Settings */}
-            <div className="glass rounded-xl p-4">
-                <h3 className="font-bold mb-4">🧾 Pengaturan Struk</h3>
+            <AccordionSection
+                id="receipt"
+                title="Pengaturan Struk"
+                icon="🧾"
+                isOpen={openSection === 'receipt'}
+                onToggle={() => toggleSection('receipt')}
+                isDirty={checkDirty(['receiptHeader', 'receiptFooter', 'showLogo', 'autoPrint'])}
+            >
                 <div className="space-y-4">
                     <div>
                         <label className="block text-sm text-gray-400 mb-1">Header Struk (Tambahan)</label>
@@ -376,11 +472,21 @@ function Pengaturan() {
                         </button>
                     </div>
                 </div>
-            </div>
+            </AccordionSection>
 
-            {/* Payment Settings */}
-            <div className="glass rounded-xl p-4">
-                <h3 className="font-bold mb-4">💳 Pengaturan Pembayaran</h3>
+            {/* Payment & Cashier Settings (Combined) */}
+            <AccordionSection
+                id="payment"
+                title="Pengaturan Pembayaran & Kasir"
+                icon="💳"
+                isOpen={openSection === 'payment'}
+                onToggle={() => toggleSection('payment')}
+                isDirty={checkDirty([
+                    'enableQris', 'qrisImage', 'bankName', 'bankAccount', 'bankAccountName',
+                    'ewalletType', 'ewalletNumber', 'ewalletName',
+                    'isCashPrepaymentRequired', 'allowStaffEditInventory', 'showCashToStaff', 'showNonCashToStaff'
+                ])}
+            >
                 <div className="space-y-4">
                     {/* QRIS */}
                     <div className="flex items-center justify-between p-4 bg-white/5 rounded-xl">
@@ -495,64 +601,68 @@ function Pengaturan() {
                             <div className={`w-5 h-5 rounded-full bg-white transition-all ${settings.isCashPrepaymentRequired ? 'ml-6' : 'ml-0.5'}`}></div>
                         </button>
                     </div>
-                </div>
 
-                {/* Staff Permission Toggle */}
-                <div className="flex items-center justify-between p-4 bg-white/5 rounded-xl border border-blue-500/20 mt-4">
-                    <div>
-                        <p className="font-medium text-blue-100">Izinkan Staff Menambahkan Bahan & Resep</p>
-                        <p className="text-sm text-gray-400">Staff bisa menambah/edit bahan dan resep (Aktivitas akan direkam)</p>
-                    </div>
-                    <button
-                        onClick={() => setSettings({ ...settings, allowStaffEditInventory: !settings.allowStaffEditInventory })}
-                        className={`w-12 h-6 rounded-full transition-all ${settings.allowStaffEditInventory ? 'bg-blue-600' : 'bg-gray-600'}`}
-                    >
-                        <div className={`w-5 h-5 rounded-full bg-white transition-all ${settings.allowStaffEditInventory ? 'ml-6' : 'ml-0.5'}`}></div>
-                    </button>
-                </div>
-
-                {/* Cash Drawer Visibility Settings */}
-                <div className="mt-8 border-t border-white/10 pt-6">
-                    <h3 className="font-bold mb-4 flex items-center gap-2">
-                        <span>💰</span> Pengaturan Kas Digital Kasir
-                    </h3>
-                    <div className="space-y-4">
-                        {/* Show Cash Toggle */}
-                        <div className="flex items-center justify-between p-4 bg-white/5 rounded-xl border border-green-500/20">
-                            <div>
-                                <p className="font-medium text-green-100">Tampilkan Saldo Tunai ke Staff</p>
-                                <p className="text-sm text-gray-400">Jika dimatikan, staff tidak bisa melihat total uang tunai di laci</p>
-                            </div>
-                            <button
-                                onClick={() => setSettings({ ...settings, showCashToStaff: !settings.showCashToStaff })}
-                                className={`w-12 h-6 rounded-full transition-all ${settings.showCashToStaff ? 'bg-green-600' : 'bg-gray-600'}`}
-                            >
-                                <div className={`w-5 h-5 rounded-full bg-white transition-all ${settings.showCashToStaff ? 'ml-6' : 'ml-0.5'}`}></div>
-                            </button>
+                    {/* Staff Permission Toggle */}
+                    <div className="flex items-center justify-between p-4 bg-white/5 rounded-xl border border-blue-500/20 mt-4">
+                        <div>
+                            <p className="font-medium text-blue-100">Izinkan Staff Menambahkan Bahan & Resep</p>
+                            <p className="text-sm text-gray-400">Staff bisa menambah/edit bahan dan resep (Aktivitas akan direkam)</p>
                         </div>
+                        <button
+                            onClick={() => setSettings({ ...settings, allowStaffEditInventory: !settings.allowStaffEditInventory })}
+                            className={`w-12 h-6 rounded-full transition-all ${settings.allowStaffEditInventory ? 'bg-blue-600' : 'bg-gray-600'}`}
+                        >
+                            <div className={`w-5 h-5 rounded-full bg-white transition-all ${settings.allowStaffEditInventory ? 'ml-6' : 'ml-0.5'}`}></div>
+                        </button>
+                    </div>
 
-                        {/* Show Non-Cash Toggle */}
-                        <div className="flex items-center justify-between p-4 bg-white/5 rounded-xl border border-purple-500/20">
-                            <div>
-                                <p className="font-medium text-purple-100">Tampilkan Saldo Non-Tunai ke Staff</p>
-                                <p className="text-sm text-gray-400">Jika dimatikan, staff tidak bisa melihat total pendapatan non-tunai (QRIS/Transfer)</p>
+                    {/* Cash Drawer Visibility Settings */}
+                    <div className="mt-8 border-t border-white/10 pt-6">
+                        <h3 className="font-bold mb-4 flex items-center gap-2">
+                            <span>💰</span> Pengaturan Kas Digital Kasir
+                        </h3>
+                        <div className="space-y-4">
+                            {/* Show Cash Toggle */}
+                            <div className="flex items-center justify-between p-4 bg-white/5 rounded-xl border border-green-500/20">
+                                <div>
+                                    <p className="font-medium text-green-100">Tampilkan Saldo Tunai ke Staff</p>
+                                    <p className="text-sm text-gray-400">Jika dimatikan, staff tidak bisa melihat total uang tunai di laci</p>
+                                </div>
+                                <button
+                                    onClick={() => setSettings({ ...settings, showCashToStaff: !settings.showCashToStaff })}
+                                    className={`w-12 h-6 rounded-full transition-all ${settings.showCashToStaff ? 'bg-green-600' : 'bg-gray-600'}`}
+                                >
+                                    <div className={`w-5 h-5 rounded-full bg-white transition-all ${settings.showCashToStaff ? 'ml-6' : 'ml-0.5'}`}></div>
+                                </button>
                             </div>
-                            <button
-                                onClick={() => setSettings({ ...settings, showNonCashToStaff: !settings.showNonCashToStaff })}
-                                className={`w-12 h-6 rounded-full transition-all ${settings.showNonCashToStaff ? 'bg-purple-600' : 'bg-gray-600'}`}
-                            >
-                                <div className={`w-5 h-5 rounded-full bg-white transition-all ${settings.showNonCashToStaff ? 'ml-6' : 'ml-0.5'}`}></div>
-                            </button>
+
+                            {/* Show Non-Cash Toggle */}
+                            <div className="flex items-center justify-between p-4 bg-white/5 rounded-xl border border-purple-500/20">
+                                <div>
+                                    <p className="font-medium text-purple-100">Tampilkan Saldo Non-Tunai ke Staff</p>
+                                    <p className="text-sm text-gray-400">Jika dimatikan, staff tidak bisa melihat total pendapatan non-tunai (QRIS/Transfer)</p>
+                                </div>
+                                <button
+                                    onClick={() => setSettings({ ...settings, showNonCashToStaff: !settings.showNonCashToStaff })}
+                                    className={`w-12 h-6 rounded-full transition-all ${settings.showNonCashToStaff ? 'bg-purple-600' : 'bg-gray-600'}`}
+                                >
+                                    <div className={`w-5 h-5 rounded-full bg-white transition-all ${settings.showNonCashToStaff ? 'ml-6' : 'ml-0.5'}`}></div>
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
-
+            </AccordionSection>
 
             {/* Tax Settings */}
-            {/* Tax Settings */}
-            <div className="glass rounded-xl p-4">
-                <h3 className="font-bold mb-4">📊 Pengaturan Pajak</h3>
+            <AccordionSection
+                id="tax"
+                title="Pengaturan Pajak"
+                icon="📊"
+                isOpen={openSection === 'tax'}
+                onToggle={() => toggleSection('tax')}
+                isDirty={checkDirty(['enableTax', 'taxPercent'])}
+            >
                 <div className="flex items-center justify-between p-4 bg-white/5 rounded-xl">
                     <div>
                         <p className="font-medium">Aktifkan PPN</p>
@@ -578,11 +688,17 @@ function Pengaturan() {
                         </button>
                     </div>
                 </div>
-            </div>
+            </AccordionSection>
 
             {/* Account Security (Change Password) */}
-            <div className="glass rounded-xl p-4 border border-red-500/20">
-                <h3 className="font-bold mb-4 text-red-100">🔒 Keamanan Akun</h3>
+            <AccordionSection
+                id="security"
+                title="Keamanan Akun"
+                icon="🔒"
+                isOpen={openSection === 'security'}
+                onToggle={() => toggleSection('security')}
+                isDirty={false} // Password form has its own state but isn't part of 'settings' object tracking
+            >
                 <form onSubmit={handleChangePassword} className="space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div>
@@ -630,15 +746,21 @@ function Pengaturan() {
                         </button>
                     </div>
                 </form>
+            </AccordionSection>
+
+            {/* Save Button Floating or Bottom - Keeping it static at bottom for now, or maybe fixed?
+                User asked for accordion. Let's keep it simple at the bottom of the section.
+            */}
+            <div className="fixed bottom-0 left-0 right-0 p-4 bg-gray-900/80 backdrop-blur-lg border-t border-white/10 md:static md:bg-transparent md:border-t-0 md:p-0 z-10">
+                <button
+                    onClick={handleSave}
+                    disabled={saving}
+                    className="w-full py-4 rounded-xl bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 font-bold text-lg disabled:opacity-50 shadow-lg shadow-purple-500/20 transition-all hover:scale-[1.02] active:scale-[0.98]"
+                >
+                    {saving ? '⏳ Menyimpan...' : '💾 Simpan Semua Pengaturan'}
+                </button>
             </div>
-            {/* Save Button */}
-            <button
-                onClick={handleSave}
-                disabled={saving}
-                className="w-full py-4 rounded-xl bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 font-bold text-lg disabled:opacity-50"
-            >
-                {saving ? '⏳ Menyimpan...' : '💾 Simpan Semua Pengaturan'}
-            </button>
+
         </section>
     );
 }
