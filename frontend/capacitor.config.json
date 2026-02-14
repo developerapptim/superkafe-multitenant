@@ -1,5 +1,12 @@
 {
   "appId": "com.superkafe.app",
   "appName": "SuperKafe",
-  "webDir": "dist"
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "http",
+    "cleartext": true,
+    "allowNavigation": [
+      "76.13.196.116"
+    ]
+  }
 }
