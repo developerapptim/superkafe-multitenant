@@ -634,7 +634,7 @@ function Kasir() {
                     if (tableOrders.length === 0) {
                         // Last order at table, mark as dirty
                         try {
-                            await tablesAPI.updateStatus(order.tableNumber, 'dirty');
+                            await tablesAPI.updateStatus(order.tableNumber, 'occupied');
                             mutate('/tables');
                         } catch (tableErr) {
                             console.warn('Table status update failed (non-critical):', tableErr);

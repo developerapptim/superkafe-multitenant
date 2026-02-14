@@ -45,11 +45,9 @@ function Meja() {
         status: 'available'
     });
 
-    const statusOptions = [
-        { value: 'available', label: 'Tersedia', color: 'bg-green-500', icon: '✅' },
-        { value: 'occupied', label: 'Terisi', color: 'bg-red-500', icon: '🍽️' },
-        { value: 'reserved', label: 'Dipesan', color: 'bg-blue-500', icon: '📅' },
-        { value: 'dirty', label: 'Kotor', color: 'bg-yellow-500', icon: '🧹' }
+    { value: 'available', label: 'Tersedia', color: 'bg-green-500', icon: '✅' },
+    { value: 'occupied', label: 'Terisi', color: 'bg-red-500', icon: '🍽️' },
+    { value: 'reserved', label: 'Dipesan', color: 'bg-blue-500', icon: '📅' }
     ];
 
     const getBaseUrl = () => window.location.origin;
@@ -250,7 +248,6 @@ function Meja() {
     // Stats
     const availableCount = tables.filter(t => t.status === 'available').length;
     const occupiedCount = tables.filter(t => t.status === 'occupied').length;
-    const dirtyCount = tables.filter(t => t.status === 'dirty').length;
     const reservedCount = tables.filter(t => t.status === 'reserved').length;
 
     // Available tables for move target
@@ -317,11 +314,7 @@ function Meja() {
                     <p className="text-2xl font-bold text-red-400">{occupiedCount}</p>
                     <p className="text-xs text-gray-400">Terisi</p>
                 </div>
-                <div className="glass rounded-xl p-4 text-center border border-yellow-500/30">
-                    <div className="text-3xl mb-1">🧹</div>
-                    <p className="text-2xl font-bold text-yellow-400">{dirtyCount}</p>
-                    <p className="text-xs text-gray-400">Kotor</p>
-                </div>
+
                 <div className="glass rounded-xl p-4 text-center border border-blue-500/30">
                     <div className="text-3xl mb-1">📅</div>
                     <p className="text-2xl font-bold text-blue-400">{reservedCount}</p>
@@ -362,43 +355,31 @@ function Meja() {
                                     )}
 
                                     <div className="flex gap-1 w-full mt-3">
-                                        {table.status === 'dirty' ? (
-                                            <button
-                                                onClick={(e) => { e.stopPropagation(); handleMarkClean(tableId); }}
-                                                className="flex-1 py-1.5 rounded-lg bg-green-600 hover:bg-green-700 text-xs font-medium"
-                                            >
-                                                ✅ Bersih
-                                            </button>
-                                        ) : (
-                                            <>
-                                                <button
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        const next = table.status === 'available' ? 'occupied' :
-                                                            table.status === 'occupied' ? 'dirty' : 'available';
-                                                        handleStatusChange(tableId, next);
-                                                    }}
-                                                    className="flex-1 py-1.5 rounded-lg bg-black/20 hover:bg-black/30 text-xs"
-                                                    title="Ubah Status"
-                                                >
-                                                    🔄
-                                                </button>
-                                                <button
-                                                    onClick={(e) => { e.stopPropagation(); openQRModal(table); }}
-                                                    className="flex-1 py-1.5 rounded-lg bg-black/20 hover:bg-black/30 text-xs"
-                                                    title="Lihat QR"
-                                                >
-                                                    📱
-                                                </button>
-                                                <button
-                                                    onClick={(e) => { e.stopPropagation(); handleDeleteTable(tableId); }}
-                                                    className="flex-1 py-1.5 rounded-lg bg-red-500/20 hover:bg-red-500/30 text-red-400 text-xs"
-                                                    title="Hapus Meja"
-                                                >
-                                                    🗑️
-                                                </button>
-                                            </>
-                                        )}
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                const next = table.status === 'available' ? 'occupied' : 'available';
+                                                handleStatusChange(tableId, next);
+                                            }}
+                                            className="flex-1 py-1.5 rounded-lg bg-black/20 hover:bg-black/30 text-xs"
+                                            title="Ubah Status"
+                                        >
+                                            🔄
+                                        </button>
+                                        <button
+                                            onClick={(e) => { e.stopPropagation(); openQRModal(table); }}
+                                            className="flex-1 py-1.5 rounded-lg bg-black/20 hover:bg-black/30 text-xs"
+                                            title="Lihat QR"
+                                        >
+                                            📱
+                                        </button>
+                                        <button
+                                            onClick={(e) => { e.stopPropagation(); handleDeleteTable(tableId); }}
+                                            className="flex-1 py-1.5 rounded-lg bg-red-500/20 hover:bg-red-500/30 text-red-400 text-xs"
+                                            title="Hapus Meja"
+                                        >
+                                            🗑️
+                                        </button>
                                     </div>
                                 </div>
                             );

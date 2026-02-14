@@ -51,7 +51,8 @@ exports.updateStatus = async (req, res) => {
                 if (!table.currentOrderIds) table.currentOrderIds = [];
                 if (!table.currentOrderIds.includes(currentOrderId)) table.currentOrderIds.push(currentOrderId);
             }
-        } else if (status === 'available') {
+        } else {
+            // Available or Reserved
             table.occupiedSince = null;
             table.currentOrderIds = [];
         }
@@ -98,7 +99,7 @@ exports.moveTable = async (req, res) => {
         );
 
         // Update table statuses
-        fromTable.status = 'dirty';
+        fromTable.status = 'available';
         fromTable.occupiedSince = null;
         fromTable.currentOrderIds = [];
         await fromTable.save();
@@ -128,11 +129,7 @@ exports.cleanTable = async (req, res) => {
         }
         if (!table) return res.status(404).json({ error: 'Table not found' });
 
-        if (table.status !== 'dirty') {
-            // Allow force clean even if not dirty? Ideally yes for UX.
-            // But logic says:
-            // return res.status(400).json({ error: 'Meja tidak dalam status kotor' });
-        }
+        // if (table.status !== 'dirty') { ... } // Removed check as 'dirty' status is deprecated
 
         table.status = 'available';
         table.occupiedSince = null;
