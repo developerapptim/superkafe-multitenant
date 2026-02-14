@@ -37,7 +37,11 @@ exports.updateStatus = async (req, res) => {
         const { id } = req.params;
         const { status, currentOrderId } = req.body; // status: 'available', 'occupied', 'reserved', 'dirty'
 
-        const table = await Table.findOne({ id });
+        // Try finding by custom id first, then by table number
+        let table = await Table.findOne({ id });
+        if (!table) {
+            table = await Table.findOne({ number: id });
+        }
         if (!table) return res.status(404).json({ error: 'Table not found' });
 
         table.status = status;
@@ -118,7 +122,10 @@ exports.moveTable = async (req, res) => {
 
 exports.cleanTable = async (req, res) => {
     try {
-        const table = await Table.findOne({ id: req.params.id });
+        let table = await Table.findOne({ id: req.params.id });
+        if (!table) {
+            table = await Table.findOne({ number: req.params.id });
+        }
         if (!table) return res.status(404).json({ error: 'Table not found' });
 
         if (table.status !== 'dirty') {

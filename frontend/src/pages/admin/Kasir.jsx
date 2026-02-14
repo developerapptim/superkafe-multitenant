@@ -633,8 +633,12 @@ function Kasir() {
                     const tableOrders = orders.filter(o => o.tableNumber === order.tableNumber && o.id !== orderId && o.status !== 'done' && o.status !== 'cancel');
                     if (tableOrders.length === 0) {
                         // Last order at table, mark as dirty
-                        await tablesAPI.updateStatus(order.tableNumber, 'dirty');
-                        mutate('/tables');
+                        try {
+                            await tablesAPI.updateStatus(order.tableNumber, 'dirty');
+                            mutate('/tables');
+                        } catch (tableErr) {
+                            console.warn('Table status update failed (non-critical):', tableErr);
+                        }
                     }
                 }
             }
