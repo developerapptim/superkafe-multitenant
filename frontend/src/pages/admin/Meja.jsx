@@ -73,7 +73,8 @@ function Meja() {
     const [showStaffReservationModal, setShowStaffReservationModal] = useState(false);
     const [showApproveModal, setShowApproveModal] = useState(false);
     const [approveTarget, setApproveTarget] = useState(null);
-    const [approveTableId, setApproveTableId] = useState('');
+    const [approveTableId, setApproveTableId] = useState(''); // Keep for legacy or safety
+    const [approveTableIds, setApproveTableIds] = useState([]); // New multi-select state
     const [staffResvForm, setStaffResvForm] = useState({
         customerName: '', customerPhone: '', pax: 2, eventType: 'Nongkrong', notes: '',
         reservationDate: '', reservationTime: '', tableId: ''
@@ -793,41 +794,43 @@ function Meja() {
             {/* Approve Reservation Modal */}
             {showApproveModal && approveTarget && createPortal(
                 <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setShowApproveModal(false)}>
-                    <div className="bg-gradient-to-br from-[#1a1a2e] to-[#16213e] rounded-xl p-6 w-full max-w-sm border border-blue-500/30 shadow-xl" onClick={e => e.stopPropagation()}>
-                        <h3 className="text-lg font-bold mb-1">✅ Terima Reservasi</h3>
-                        <p className="text-sm text-gray-400 mb-4">{approveTarget.customerName} • {approveTarget.pax} orang</p>
-                        <label className="block text-sm text-gray-400 mb-1">Pilih Meja Tersedia</label>
-                        <select
-                            value={approveTableId}
-                            onChange={e => setApproveTableId(e.target.value)}
-                            className="w-full px-4 py-2.5 rounded-lg bg-white/5 border border-purple-500/30 text-white mb-4 outline-none"
-                        >
-                            <option value="" className="bg-gray-800">-- Pilih Meja --</option>
-                            {availableTables.map(t => (
-                                <option key={t.id || t._id} value={t.id || t._id} className="bg-gray-800">
-                                    Meja {t.number} (Kap: {t.capacity})
-                                </option>
-                            ))}
-                        </select>
-                        <div className="flex gap-2">
-                            <button onClick={() => setShowApproveModal(false)} className="flex-1 py-2.5 rounded-lg bg-white/10 hover:bg-white/20 transition-colors">Batal</button>
-                            <button
-                                onClick={async () => {
-                                    if (!approveTableId) { toast.error('Pilih meja terlebih dahulu'); return; }
-                                    try {
-                                        await reservationsAPI.approve(approveTarget.id || approveTarget._id, { tableId: approveTableId });
-                                        toast.success('Reservasi diterima! Meja sudah di-reserved.');
-                                        setShowApproveModal(false);
-                                        mutateReservations();
-                                        mutate('/tables');
-                                    } catch (err) {
-                                        toast.error(err.response?.data?.error || 'Gagal menerima reservasi');
-                                    }
-                                }}
-                                className="flex-1 py-2.5 rounded-lg bg-gradient-to-r from-blue-500 to-purple-500 font-bold hover:from-blue-600 hover:to-purple-600 transition-all"
-                            >
-                                Terima & Assign
-                            </button>
+                    <div className="glass rounded-2xl p-6 w-full max-w-sm animate-scale-up">
+                        <h3 className="text-xl font-bold mb-2">✅ Terima Reservasi</h3>
+                        <p className="text-gray-400 text-sm mb-4">
+                            {approveTarget.customerName} • {approveTarget.pax} orang
+                        </p>
+
+                        <div className="space-y-4">
+                            <div className="relative z-50">
+                                <label className="block text-sm text-gray-400 mb-1">Pilih Meja Tersedia</label>
+                                <CustomSelect
+                                    value={approveTableIds}
+                                    onChange={setApproveTableIds}
+                                    options={availableTables.map(t => ({ value: t.id || t._id, label: `Meja ${t.number} (Kap: ${t.capacity})` }))}
+                                    placeholder="-- Pilih Meja --"
+                                    isMulti={true}
+                                />
+                            </div>
+                            <div className="flex gap-2 pt-20"> {/* Added padding top for dropdown space */}
+                                <button onClick={() => setShowApproveModal(false)} className="flex-1 py-2.5 rounded-lg bg-white/10 hover:bg-white/20 transition-colors">Batal</button>
+                                <button
+                                    onClick={async () => {
+                                        if (approveTableIds.length === 0) { toast.error('Pilih minimal satu meja'); return; }
+                                        try {
+                                            await reservationsAPI.approve(approveTarget.id || approveTarget._id, { tableIds: approveTableIds });
+                                            toast.success('Reservasi diterima! Meja sudah di-reserved.');
+                                            setShowApproveModal(false);
+                                            mutateReservations();
+                                            mutate('/tables');
+                                        } catch (err) {
+                                            toast.error(err.response?.data?.error || 'Gagal menerima reservasi');
+                                        }
+                                    }}
+                                    className="flex-1 py-2.5 rounded-lg bg-gradient-to-r from-blue-500 to-purple-500 font-bold hover:from-blue-600 hover:to-purple-600 transition-all"
+                                >
+                                    Terima
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>

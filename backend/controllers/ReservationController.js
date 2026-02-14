@@ -4,7 +4,7 @@ const Table = require('../models/Table');
 // POST /api/reservations — Buat reservasi baru
 exports.createReservation = async (req, res) => {
     try {
-        const { customerName, customerPhone, pax, eventType, notes, reservationTime, createdBy, tableId } = req.body;
+        const { customerName, customerPhone, pax, eventType, notes, reservationTime, createdBy, tableId, tableIds } = req.body;
 
         // Validasi field wajib
         if (!customerName || !customerPhone || !pax || !reservationTime) {
@@ -20,22 +20,40 @@ exports.createReservation = async (req, res) => {
             notes: notes || '',
             reservationTime: new Date(reservationTime),
             createdBy: createdBy || 'customer',
-            status: 'pending'
+            status: 'pending',
+            tableIds: [],
+            tableNumbers: []
         };
 
         // Jika staf langsung assign meja → status approved
-        if (createdBy === 'staff' && tableId) {
-            const table = await Table.findOne({ id: tableId });
-            if (!table) return res.status(404).json({ error: 'Meja tidak ditemukan' });
-            if (table.status !== 'available') return res.status(400).json({ error: 'Meja tidak tersedia' });
+        // Support both single tableId and array tableIds
+        const targetTableIds = tableIds || (tableId ? [tableId] : []);
 
-            // Update meja jadi reserved
-            table.status = 'reserved';
-            await table.save();
+        if (createdBy === 'staff' && targetTableIds.length > 0) {
+            const tables = await Table.find({ id: { $in: targetTableIds } });
+
+            if (tables.length !== targetTableIds.length) {
+                return res.status(404).json({ error: 'Salah satu meja tidak ditemukan' });
+            }
+
+            // Check availability
+            const unavailable = tables.filter(t => t.status !== 'available');
+            if (unavailable.length > 0) {
+                return res.status(400).json({ error: `Meja ${unavailable.map(t => t.number).join(', ')} tidak tersedia` });
+            }
+
+            // Update status meja jadi reserved
+            await Table.updateMany(
+                { id: { $in: targetTableIds } },
+                { $set: { status: 'reserved' } }
+            );
 
             reservationData.status = 'approved';
-            reservationData.tableId = table.id;
-            reservationData.tableNumber = table.number;
+            reservationData.tableIds = tables.map(t => t.id);
+            reservationData.tableNumbers = tables.map(t => t.number);
+            // Legacy support
+            reservationData.tableId = tables[0].id;
+            reservationData.tableNumber = tables[0].number;
         }
 
         const newReservation = new Reservation(reservationData);
@@ -69,32 +87,55 @@ exports.getReservations = async (req, res) => {
     }
 };
 
-// PUT /api/reservations/:id/approve — Approve + assign meja
+// PUT /api/reservations/:id/approve — Approve + assign meja (Single or Multiple)
 exports.approveReservation = async (req, res) => {
     try {
         const { id } = req.params;
-        const { tableId } = req.body;
+        const { tableId, tableIds } = req.body;
 
-        if (!tableId) return res.status(400).json({ error: 'Pilih meja untuk reservasi' });
+        // Support both single tableId and array tableIds
+        // If neither is provided, error
+        const targetTableIds = tableIds || (tableId ? [tableId] : []);
+
+        if (targetTableIds.length === 0) {
+            return res.status(400).json({ error: 'Pilih minimal satu meja untuk reservasi' });
+        }
 
         // Cari reservasi
         const reservation = await Reservation.findOne({ id });
         if (!reservation) return res.status(404).json({ error: 'Reservasi tidak ditemukan' });
         if (reservation.status !== 'pending') return res.status(400).json({ error: 'Reservasi sudah diproses' });
 
-        // Cari meja
-        const table = await Table.findOne({ id: tableId });
-        if (!table) return res.status(404).json({ error: 'Meja tidak ditemukan' });
-        if (table.status !== 'available') return res.status(400).json({ error: 'Meja tidak tersedia' });
+        // Cari semua meja
+        const tables = await Table.find({ id: { $in: targetTableIds } });
 
-        // Update meja jadi reserved
-        table.status = 'reserved';
-        await table.save();
+        if (tables.length !== targetTableIds.length) {
+            return res.status(404).json({ error: 'Salah satu meja tidak ditemukan' });
+        }
+
+        // Check availability
+        const unavailable = tables.filter(t => t.status !== 'available');
+        if (unavailable.length > 0) {
+            return res.status(400).json({
+                error: `Meja ${unavailable.map(t => t.number).join(', ')} tidak tersedia`
+            });
+        }
+
+        // Update status meja jadi reserved
+        await Table.updateMany(
+            { id: { $in: targetTableIds } },
+            { $set: { status: 'reserved' } }
+        );
 
         // Update reservasi
         reservation.status = 'approved';
-        reservation.tableId = table.id;
-        reservation.tableNumber = table.number;
+        reservation.tableIds = tables.map(t => t.id);
+        reservation.tableNumbers = tables.map(t => t.number);
+
+        // Legacy fields (use first table)
+        reservation.tableId = tables[0].id;
+        reservation.tableNumber = tables[0].number;
+
         await reservation.save();
 
         res.json(reservation);

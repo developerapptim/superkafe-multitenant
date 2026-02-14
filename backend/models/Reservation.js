@@ -9,8 +9,10 @@ const ReservationSchema = new mongoose.Schema({
     notes: { type: String, default: '' },
     reservationTime: { type: Date, required: true },
     status: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' },
-    tableId: { type: String, default: null }, // Custom table id (tbl_xxx)
-    tableNumber: { type: String, default: null },
+    tableId: { type: String, default: null }, // Deprecated, use tableIds
+    tableNumber: { type: String, default: null }, // Deprecated, use tableNumbers
+    tableIds: [{ type: String }], // Array of table IDs
+    tableNumbers: [{ type: String }], // Array of table numbers
     createdBy: { type: String, enum: ['customer', 'staff'], default: 'customer' }
 }, { timestamps: true });
 

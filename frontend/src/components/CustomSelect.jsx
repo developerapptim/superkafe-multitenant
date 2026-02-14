@@ -1,9 +1,10 @@
 
 
+
 import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 
-export default function CustomSelect({ label, value, onChange, options = [], placeholder = "Pilih...", required = false, disabled = false, optionAlign = "left", textSize = "text-sm" }) {
+export default function CustomSelect({ label, value, onChange, options = [], placeholder = "Pilih...", required = false, disabled = false, optionAlign = "left", textSize = "text-sm", isMulti = false }) {
     const [isOpen, setIsOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const containerRef = useRef(null);
@@ -112,9 +113,39 @@ export default function CustomSelect({ label, value, onChange, options = [], pla
     }, [isOpen]);
 
 
-    // Find selected label
-    const selectedOption = options.find(opt => opt.value === value);
-    const displayValue = selectedOption ? selectedOption.label : placeholder;
+    // Helper for Multi Select
+    const handleMultiSelect = (optionValue) => {
+        let newValue;
+        if (value.includes(optionValue)) {
+            newValue = value.filter(v => v !== optionValue);
+        } else {
+            newValue = [...value, optionValue];
+        }
+        onChange(newValue);
+        // Do not close on multi select
+    };
+
+    const handleSingleSelect = (optionValue) => {
+        onChange(optionValue);
+        setIsOpen(false);
+    };
+
+    // Display Logic
+    let displayValue = placeholder;
+    if (isMulti) {
+        if (value && value.length > 0) {
+            if (value.length === 1) {
+                const found = options.find(opt => opt.value === value[0]);
+                displayValue = found ? found.label : placeholder;
+            } else {
+                displayValue = `${value.length} opsi dipilih`;
+            }
+        }
+    } else {
+        const selectedOption = options.find(opt => opt.value === value);
+        if (selectedOption) displayValue = selectedOption.label;
+    }
+
 
     // Filter and Sort options
     const filteredOptions = options
@@ -138,7 +169,7 @@ export default function CustomSelect({ label, value, onChange, options = [], pla
                     ${optionAlign === 'center' ? 'text-center' : 'text-left'}
                 `}
             >
-                <div className={`flex-1 truncate ${!selectedOption ? 'text-gray-500' : 'text-white'} ${optionAlign === 'center' ? 'text-center' : 'text-left'}`}>
+                <div className={`flex-1 truncate ${(!isMulti && !value) || (isMulti && value.length === 0) ? 'text-gray-500' : 'text-white'} ${optionAlign === 'center' ? 'text-center' : 'text-left'}`}>
                     {displayValue}
                 </div>
                 <svg
@@ -176,25 +207,25 @@ export default function CustomSelect({ label, value, onChange, options = [], pla
                                 {searchTerm ? 'Tidak ditemukan' : 'Tidak ada opsi'}
                             </div>
                         ) : (
-                            filteredOptions.map((opt) => (
-                                <button
-                                    key={opt.value}
-                                    type="button"
-                                    onClick={() => {
-                                        onChange(opt.value);
-                                        setIsOpen(false);
-                                    }}
-                                    className={`w-full px-4 py-2 ${textSize} transition-colors flex items-center 
-                                    ${optionAlign === 'center' ? 'justify-center' : 'justify-between text-left'}
-                                    ${value === opt.value ? 'bg-purple-500/20 text-purple-300' : 'text-gray-300 hover:bg-white/5 hover:text-white'}
-                                `}
-                                >
-                                    <span className="flex-1">{opt.label}</span>
-                                    {value === opt.value && optionAlign !== 'center' && (
-                                        <span className="ml-2">✓</span>
-                                    )}
-                                </button>
-                            ))
+                            filteredOptions.map((opt) => {
+                                const isSelected = isMulti ? value.includes(opt.value) : value === opt.value;
+                                return (
+                                    <button
+                                        key={opt.value}
+                                        type="button"
+                                        onClick={() => isMulti ? handleMultiSelect(opt.value) : handleSingleSelect(opt.value)}
+                                        className={`w-full px-4 py-2 ${textSize} transition-colors flex items-center 
+                                        ${optionAlign === 'center' ? 'justify-center' : 'justify-between text-left'}
+                                        ${isSelected ? 'bg-purple-500/20 text-purple-300' : 'text-gray-300 hover:bg-white/5 hover:text-white'}
+                                    `}
+                                    >
+                                        <span className="flex-1">{opt.label}</span>
+                                        {isSelected && optionAlign !== 'center' && (
+                                            <span className="ml-2">✓</span>
+                                        )}
+                                    </button>
+                                );
+                            })
                         )}
                     </div>
                 </div>,
