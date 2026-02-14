@@ -2,9 +2,10 @@ import { useState, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import useSWR, { mutate } from 'swr';
 import CustomSelect from '../../components/CustomSelect';
+import CalendarInput from '../../components/CalendarInput';
 import { useNavigate } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
-import api, { tablesAPI } from '../../services/api';
+import api, { tablesAPI, reservationsAPI } from '../../services/api';
 import toast from 'react-hot-toast';
 
 const fetcher = url => api.get(url).then(res => res.data);
@@ -38,6 +39,21 @@ function Meja() {
     const [moveFromTable, setMoveFromTable] = useState(null);
     const [moveToTableId, setMoveToTableId] = useState('');
 
+    // Reservation State
+    const { data: reservationsData, mutate: mutateReservations } = useSWR('/reservations?status=pending', fetcher, { refreshInterval: 15000 });
+    const pendingReservations = Array.isArray(reservationsData) ? reservationsData : [];
+    const { data: settingsData } = useSWR('/settings', fetcher);
+    const shopName = settingsData?.name || 'Warkop';
+
+    const [showStaffReservationModal, setShowStaffReservationModal] = useState(false);
+    const [showApproveModal, setShowApproveModal] = useState(false);
+    const [approveTarget, setApproveTarget] = useState(null);
+    const [approveTableId, setApproveTableId] = useState('');
+    const [staffResvForm, setStaffResvForm] = useState({
+        customerName: '', customerPhone: '', pax: 2, eventType: 'Nongkrong', notes: '',
+        reservationDate: '', reservationTime: '', tableId: ''
+    });
+
     // Add Table Form
     const [formData, setFormData] = useState({
         number: '',
@@ -45,6 +61,40 @@ function Meja() {
         status: 'available'
     });
 
+    // Generate Options
+    const eventOptions = [
+        { label: 'Nongkrong (Hangout)', value: 'Nongkrong' },
+        { label: 'Rapat (Meeting)', value: 'Rapat' },
+        { label: 'Ulang Tahun (Birthday)', value: 'Ulang Tahun' },
+        { label: 'Arisan', value: 'Arisan' },
+        { label: 'Lainnya', value: 'Lainnya' }
+    ];
+
+    const timeOptions = useMemo(() => {
+        const options = [];
+        for (let h = 10; h <= 22; h++) {
+            const hour = h.toString().padStart(2, '0');
+            options.push({ value: `${hour}:00`, label: `${hour}:00` });
+            if (h !== 22) options.push({ value: `${hour}:30`, label: `${hour}:30` });
+        }
+        return options;
+    }, []);
+
+
+
+
+
+    const tableOptions = useMemo(() => {
+        return [
+            { value: '', label: '-- Pilih Meja --' },
+            ...availableTables.map(t => ({
+                value: t.id || t._id,
+                label: `Meja ${t.number} (Kap: ${t.capacity})`
+            }))
+        ];
+    }, [availableTables]);
+
+    // Add Table Form
     const statusOptions = [
         { value: 'available', label: 'Tersedia', color: 'bg-green-500', icon: '✅' },
         { value: 'occupied', label: 'Terisi', color: 'bg-red-500', icon: '🍽️' },
@@ -300,6 +350,12 @@ function Meja() {
                     >
                         ➕ Tambah Meja
                     </button>
+                    <button
+                        onClick={() => setShowStaffReservationModal(true)}
+                        className="bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2"
+                    >
+                        📅 Buat Reservasi
+                    </button>
                 </div>
             </div>
 
@@ -322,6 +378,74 @@ function Meja() {
                     <p className="text-xs text-gray-400">Dipesan</p>
                 </div>
             </div>
+
+            {/* Pending Reservations */}
+            {pendingReservations.length > 0 && (
+                <div className="glass rounded-xl p-4">
+                    <h3 className="font-bold mb-4 flex items-center gap-2">
+                        🔔 Reservasi Pending <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">{pendingReservations.length}</span>
+                    </h3>
+                    <div className="space-y-3">
+                        {pendingReservations.map(rsv => {
+                            const rsvTime = new Date(rsv.reservationTime);
+                            const timeStr = rsvTime.toLocaleString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+                            const phone = (rsv.customerPhone || '').replace(/^0/, '62');
+                            const waMsg = encodeURIComponent(`Halo Kak ${rsv.customerName}, kami menerima permintaan reservasi di ${shopName} untuk ${rsv.pax} orang pada ${timeStr}. Untuk konfirmasi meja dan Down Payment (DP)/uang muka, silakan balas pesan ini ya Kak.`);
+                            const waLink = `https://wa.me/${phone}?text=${waMsg}`;
+
+                            return (
+                                <div key={rsv.id || rsv._id} className="bg-white/5 border border-white/10 rounded-xl p-4">
+                                    <div className="flex justify-between items-start mb-2">
+                                        <div>
+                                            <p className="font-bold text-white">{rsv.customerName}</p>
+                                            <p className="text-sm text-gray-400">{rsv.customerPhone}</p>
+                                        </div>
+                                        <div className="text-right">
+                                            <p className="text-sm text-purple-300">📅 {timeStr}</p>
+                                            <p className="text-xs text-gray-400">{rsv.pax} orang • {rsv.eventType}</p>
+                                        </div>
+                                    </div>
+                                    {rsv.notes && <p className="text-xs text-gray-400 mb-3 bg-white/5 rounded-lg p-2">📝 {rsv.notes}</p>}
+                                    <div className="flex gap-2">
+                                        <a
+                                            href={waLink}
+                                            target="_blank" rel="noopener noreferrer"
+                                            className="flex-1 py-2 rounded-lg bg-green-600 hover:bg-green-700 text-center text-sm font-medium flex items-center justify-center gap-1.5 transition-colors"
+                                        >
+                                            📱 Hubungi WA
+                                        </a>
+                                        <button
+                                            onClick={() => {
+                                                setApproveTarget(rsv);
+                                                setApproveTableId('');
+                                                setShowApproveModal(true);
+                                            }}
+                                            className="flex-1 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-center text-sm font-medium flex items-center justify-center gap-1.5 transition-colors"
+                                        >
+                                            ✅ Terima
+                                        </button>
+                                        <button
+                                            onClick={async () => {
+                                                if (!window.confirm(`Tolak reservasi dari ${rsv.customerName}?`)) return;
+                                                try {
+                                                    await reservationsAPI.reject(rsv.id || rsv._id);
+                                                    toast.success('Reservasi ditolak');
+                                                    mutateReservations();
+                                                } catch (err) {
+                                                    toast.error('Gagal menolak reservasi');
+                                                }
+                                            }}
+                                            className="py-2 px-3 rounded-lg bg-red-500/20 hover:bg-red-500/30 text-red-400 text-sm font-medium transition-colors"
+                                        >
+                                            ✕
+                                        </button>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+            )}
 
             {/* Table Grid */}
             <div className="glass rounded-xl p-4">
@@ -612,6 +736,174 @@ function Meja() {
                                 className="w-full py-3 rounded-lg bg-gradient-to-r from-purple-500 to-blue-500 font-bold"
                             >
                                 Tambah Meja
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                , document.body)}
+
+            {/* Approve Reservation Modal */}
+            {showApproveModal && approveTarget && createPortal(
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setShowApproveModal(false)}>
+                    <div className="bg-gradient-to-br from-[#1a1a2e] to-[#16213e] rounded-xl p-6 w-full max-w-sm border border-blue-500/30 shadow-xl" onClick={e => e.stopPropagation()}>
+                        <h3 className="text-lg font-bold mb-1">✅ Terima Reservasi</h3>
+                        <p className="text-sm text-gray-400 mb-4">{approveTarget.customerName} • {approveTarget.pax} orang</p>
+                        <label className="block text-sm text-gray-400 mb-1">Pilih Meja Tersedia</label>
+                        <select
+                            value={approveTableId}
+                            onChange={e => setApproveTableId(e.target.value)}
+                            className="w-full px-4 py-2.5 rounded-lg bg-white/5 border border-purple-500/30 text-white mb-4 outline-none"
+                        >
+                            <option value="" className="bg-gray-800">-- Pilih Meja --</option>
+                            {availableTables.map(t => (
+                                <option key={t.id || t._id} value={t.id || t._id} className="bg-gray-800">
+                                    Meja {t.number} (Kap: {t.capacity})
+                                </option>
+                            ))}
+                        </select>
+                        <div className="flex gap-2">
+                            <button onClick={() => setShowApproveModal(false)} className="flex-1 py-2.5 rounded-lg bg-white/10 hover:bg-white/20 transition-colors">Batal</button>
+                            <button
+                                onClick={async () => {
+                                    if (!approveTableId) { toast.error('Pilih meja terlebih dahulu'); return; }
+                                    try {
+                                        await reservationsAPI.approve(approveTarget.id || approveTarget._id, { tableId: approveTableId });
+                                        toast.success('Reservasi diterima! Meja sudah di-reserved.');
+                                        setShowApproveModal(false);
+                                        mutateReservations();
+                                        mutate('/tables');
+                                    } catch (err) {
+                                        toast.error(err.response?.data?.error || 'Gagal menerima reservasi');
+                                    }
+                                }}
+                                className="flex-1 py-2.5 rounded-lg bg-gradient-to-r from-blue-500 to-purple-500 font-bold hover:from-blue-600 hover:to-purple-600 transition-all"
+                            >
+                                Terima & Assign
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                , document.body)}
+
+            {/* Staff Create Reservation Modal */}
+            {showStaffReservationModal && createPortal(
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setShowStaffReservationModal(false)}>
+                    <div className="bg-gradient-to-br from-[#1a1a2e] to-[#16213e] rounded-2xl w-[95%] max-w-md max-h-[90vh] flex flex-col border border-blue-500/30 shadow-2xl" onClick={e => e.stopPropagation()}>
+                        <div className="p-4 border-b border-white/10 flex items-center justify-between sticky top-0 bg-[#1a1a2e] z-10 rounded-t-2xl">
+                            <h3 className="text-lg font-bold">📅 Buat Reservasi (Staf)</h3>
+                            <button onClick={() => setShowStaffReservationModal(false)} className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20">✕</button>
+                        </div>
+
+                        <div className="p-4 space-y-4 overflow-y-auto custom-scrollbar flex-1 pb-32">
+                            <div>
+                                <label className="block text-sm text-gray-400 mb-1">Nama Lengkap *</label>
+                                <input type="text" placeholder="Nama pelanggan"
+                                    value={staffResvForm.customerName}
+                                    onChange={e => setStaffResvForm(f => ({ ...f, customerName: e.target.value }))}
+                                    className="w-full px-4 py-2.5 rounded-lg bg-white/5 border border-purple-500/30 text-white placeholder-gray-500 outline-none" />
+                            </div>
+                            <div>
+                                <label className="block text-sm text-gray-400 mb-1">No. WhatsApp *</label>
+                                <input type="tel" placeholder="08xxxxxxxxxx"
+                                    value={staffResvForm.customerPhone}
+                                    onChange={e => setStaffResvForm(f => ({ ...f, customerPhone: e.target.value }))}
+                                    className="w-full px-4 py-2.5 rounded-lg bg-white/5 border border-purple-500/30 text-white placeholder-gray-500 outline-none" />
+                            </div>
+                            <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label className="block text-sm text-gray-400 mb-1">Jumlah Orang</label>
+                                    <input type="number" min="1" max="50" value={staffResvForm.pax}
+                                        onChange={e => setStaffResvForm(f => ({ ...f, pax: e.target.value }))}
+                                        className="w-full px-4 py-2.5 rounded-lg bg-white/5 border border-purple-500/30 text-white outline-none" />
+                                </div>
+                                <div className="relative z-30">
+                                    <label className="block text-sm text-gray-400 mb-1">Tujuan</label>
+                                    <CustomSelect
+                                        value={staffResvForm.eventType}
+                                        onChange={val => setStaffResvForm(f => ({ ...f, eventType: val }))}
+                                        options={eventOptions}
+                                        placeholder="Pilih Tujuan"
+                                    />
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-3">
+                                <div className="relative z-20">
+                                    <label className="block text-sm text-gray-400 mb-1">Tanggal *</label>
+                                    <CalendarInput
+                                        value={staffResvForm.reservationDate}
+                                        onChange={val => setStaffResvForm(f => ({ ...f, reservationDate: val }))}
+                                        minDate={(() => {
+                                            const d = new Date();
+                                            return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                                        })()}
+                                        placeholder="Pilih Tanggal"
+                                    />
+                                </div>
+                                <div className="relative z-20">
+                                    <label className="block text-sm text-gray-400 mb-1">Jam *</label>
+                                    <CustomSelect
+                                        value={staffResvForm.reservationTime}
+                                        onChange={val => setStaffResvForm(f => ({ ...f, reservationTime: val }))}
+                                        options={timeOptions}
+                                        placeholder="Pilih Jam"
+                                        optionAlign="center"
+                                        textSize="text-lg"
+                                    />
+                                </div>
+                            </div>
+                            <div className="relative z-10">
+                                <label className="block text-sm text-gray-400 mb-1">Assign Meja (Langsung Approved)</label>
+                                <CustomSelect
+                                    value={staffResvForm.tableId}
+                                    onChange={val => setStaffResvForm(f => ({ ...f, tableId: val }))}
+                                    options={tableOptions}
+                                    placeholder="-- Pilih Meja --"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm text-gray-400 mb-1">Catatan</label>
+                                <textarea placeholder="Catatan khusus" value={staffResvForm.notes}
+                                    onChange={e => setStaffResvForm(f => ({ ...f, notes: e.target.value }))}
+                                    rows={2}
+                                    className="w-full px-4 py-2.5 rounded-lg bg-white/5 border border-purple-500/30 text-white placeholder-gray-500 outline-none resize-none" />
+                            </div>
+                        </div>
+
+                        <div className="p-4 border-t border-white/10 bg-[#16213e] sticky bottom-0 z-10 rounded-b-2xl">
+                            <button
+                                onClick={async () => {
+                                    const { customerName, customerPhone, pax, eventType, notes, reservationDate, reservationTime: rTime, tableId: tId } = staffResvForm;
+
+                                    const missing = [];
+                                    if (!customerName) missing.push('Nama');
+                                    if (!customerPhone) missing.push('No. HP');
+                                    if (!reservationDate) missing.push('Tanggal');
+                                    if (!rTime) missing.push('Jam');
+
+                                    if (missing.length > 0) {
+                                        toast.error(`${missing.join(', ')} wajib diisi`);
+                                        return;
+                                    }
+                                    try {
+                                        const reservationTime = new Date(`${reservationDate}T${rTime}:00`);
+                                        await reservationsAPI.create({
+                                            customerName, customerPhone, pax: parseInt(pax) || 2,
+                                            eventType, notes, reservationTime,
+                                            createdBy: 'staff',
+                                            tableId: tId || undefined
+                                        });
+                                        toast.success(tId ? 'Reservasi dibuat & meja di-reserved!' : 'Reservasi dibuat (pending).');
+                                        setShowStaffReservationModal(false);
+                                        setStaffResvForm({ customerName: '', customerPhone: '', pax: 2, eventType: 'Nongkrong', notes: '', reservationDate: '', reservationTime: '', tableId: '' });
+                                        mutateReservations();
+                                        mutate('/tables');
+                                    } catch (err) {
+                                        toast.error(err.response?.data?.error || 'Gagal membuat reservasi');
+                                    }
+                                }}
+                                className="w-full py-3 rounded-xl bg-gradient-to-r from-blue-500 to-purple-500 font-bold hover:from-blue-600 hover:to-purple-600 transition-all shadow-lg"
+                            >
+                                📅 Buat Reservasi
                             </button>
                         </div>
                     </div>

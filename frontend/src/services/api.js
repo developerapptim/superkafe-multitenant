@@ -88,6 +88,14 @@ export const tablesAPI = {
     delete: (id) => api.delete(`/tables/${id}`),
 };
 
+// ========== RESERVATIONS API ==========
+export const reservationsAPI = {
+    create: (data) => api.post('/reservations', data),
+    getAll: (params) => api.get('/reservations', { params }),
+    approve: (id, data) => api.put(`/reservations/${id}/approve`, data),
+    reject: (id) => api.put(`/reservations/${id}/reject`),
+};
+
 // ========== SHIFT API ==========
 export const shiftAPI = {
     getCurrent: () => api.get('/shifts/current'),

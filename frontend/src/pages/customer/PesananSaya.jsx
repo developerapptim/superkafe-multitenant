@@ -1,9 +1,12 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { createPortal } from 'react-dom';
 import { QRCodeSVG } from 'qrcode.react';
-import { ordersAPI } from '../../services/api';
+import { ordersAPI, reservationsAPI } from '../../services/api';
 import PointsQuickCard from '../../components/PointsQuickCard';
+import CustomSelect from '../../components/CustomSelect';
+import CalendarInput from '../../components/CalendarInput';
+import toast from 'react-hot-toast';
 
 function PesananSaya() {
     const { tableId, settings } = useOutletContext();
@@ -15,6 +18,41 @@ function PesananSaya() {
     const [showDetailModal, setShowDetailModal] = useState(false);
     const [showTicketModal, setShowTicketModal] = useState(false);
     const [showCancelModal, setShowCancelModal] = useState(false);
+    const [showReservationModal, setShowReservationModal] = useState(false);
+    const [reservationLoading, setReservationLoading] = useState(false);
+    const [reservationForm, setReservationForm] = useState({
+        customerName: '',
+        customerPhone: '',
+        pax: 2,
+        eventType: 'Nongkrong',
+        notes: '',
+        reservationDate: '',
+        reservationTime: ''
+    });
+
+
+    // Generate Options
+    const eventOptions = [
+        { label: 'Nongkrong (Hangout)', value: 'Nongkrong' },
+        { label: 'Rapat (Meeting)', value: 'Rapat' },
+        { label: 'Ulang Tahun (Birthday)', value: 'Ulang Tahun' },
+        { label: 'Arisan', value: 'Arisan' },
+        { label: 'Lainnya', value: 'Lainnya' }
+    ];
+
+    const timeOptions = useMemo(() => {
+        const options = [];
+        for (let h = 10; h <= 22; h++) {
+            const hour = h.toString().padStart(2, '0');
+            options.push({ value: `${hour}:00`, label: `${hour}:00` });
+            if (h !== 22) options.push({ value: `${hour}:30`, label: `${hour}:30` });
+        }
+        return options;
+    }, []);
+
+
+
+
 
     useEffect(() => {
         // Initial Load & Cleanup
@@ -543,11 +581,168 @@ function PesananSaya() {
         );
     }
 
+    // Handle Reservation Submit
+    const handleReservationSubmit = async () => {
+        const { customerName, customerPhone, pax, eventType, notes, reservationDate, reservationTime: rTime } = reservationForm;
+
+        const missing = [];
+        if (!customerName) missing.push('Nama');
+        if (!customerPhone) missing.push('No. HP');
+        if (!reservationDate) missing.push('Tanggal');
+        if (!rTime) missing.push('Jam');
+
+        if (missing.length > 0) {
+            toast.error(`${missing.join(', ')} wajib diisi`);
+            return;
+        }
+        setReservationLoading(true);
+        try {
+            const reservationTime = new Date(`${reservationDate}T${rTime}:00`);
+            await reservationsAPI.create({
+                customerName,
+                customerPhone,
+                pax: parseInt(pax) || 2,
+                eventType,
+                notes,
+                reservationTime,
+                createdBy: 'customer'
+            });
+            toast.success('Reservasi berhasil dikirim! Tunggu konfirmasi dari staf.');
+            setShowReservationModal(false);
+            setReservationForm({ customerName: '', customerPhone: '', pax: 2, eventType: 'Nongkrong', notes: '', reservationDate: '', reservationTime: '' });
+        } catch (err) {
+            console.error('Reservation error:', err);
+            toast.error(err.response?.data?.error || 'Gagal mengirim reservasi');
+        } finally {
+            setReservationLoading(false);
+        }
+    };
+
+
+
+    // Reservation Modal
+    const renderReservationModal = () => {
+        if (!showReservationModal) return null;
+        return createPortal(
+            <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setShowReservationModal(false)}>
+                <div
+                    className="bg-gradient-to-br from-[#1a1a2e] to-[#16213e] rounded-2xl w-[95%] max-w-md max-h-[85vh] overflow-y-auto border border-purple-500/30 shadow-2xl animate-scale-up flex flex-col"
+                    onClick={(e) => e.stopPropagation()}
+                >
+                    {/* Header */}
+                    <div className="p-4 border-b border-white/10 flex items-center justify-between sticky top-0 bg-[#1a1a2e]/95 backdrop-blur-sm z-10">
+                        <h3 className="text-lg font-bold">📅 Buat Reservasi</h3>
+                        <button onClick={() => setShowReservationModal(false)} className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors">✕</button>
+                    </div>
+
+                    {/* Form */}
+                    <div className="p-4 space-y-4 overflow-y-auto custom-scrollbar pb-32">
+                        <div>
+                            <label className="block text-sm text-gray-400 mb-1">Nama Lengkap *</label>
+                            <input
+                                type="text" placeholder="Masukkan nama"
+                                value={reservationForm.customerName}
+                                onChange={e => setReservationForm(f => ({ ...f, customerName: e.target.value }))}
+                                className="w-full px-4 py-3 rounded-xl bg-white/5 border border-purple-500/30 text-white placeholder-gray-500 focus:border-purple-400 outline-none"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm text-gray-400 mb-1">No. WhatsApp *</label>
+                            <input
+                                type="tel" placeholder="08xxxxxxxxxx"
+                                value={reservationForm.customerPhone}
+                                onChange={e => setReservationForm(f => ({ ...f, customerPhone: e.target.value }))}
+                                className="w-full px-4 py-3 rounded-xl bg-white/5 border border-purple-500/30 text-white placeholder-gray-500 focus:border-purple-400 outline-none"
+                            />
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                            <div>
+                                <label className="block text-sm text-gray-400 mb-1">Jumlah Orang *</label>
+                                <input
+                                    type="number" min="1" max="50"
+                                    value={reservationForm.pax}
+                                    onChange={e => setReservationForm(f => ({ ...f, pax: e.target.value }))}
+                                    className="w-full px-4 py-3 rounded-xl bg-white/5 border border-purple-500/30 text-white focus:border-purple-400 outline-none"
+                                />
+                            </div>
+                            <div className="relative z-30">
+                                <label className="block text-sm text-gray-400 mb-1">Tujuan</label>
+                                <CustomSelect
+                                    value={reservationForm.eventType}
+                                    onChange={val => setReservationForm(f => ({ ...f, eventType: val }))}
+                                    options={eventOptions}
+                                    placeholder="Pilih Tujuan"
+                                />
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                            <div className="relative z-20">
+                                <label className="block text-sm text-gray-400 mb-1">Tanggal *</label>
+                                <CalendarInput
+                                    value={reservationForm.reservationDate}
+                                    onChange={val => setReservationForm(f => ({ ...f, reservationDate: val }))}
+                                    minDate={(() => {
+                                        const d = new Date();
+                                        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                                    })()}
+                                    placeholder="Pilih Tanggal"
+                                />
+                            </div>
+                            <div className="relative z-20">
+                                <label className="block text-sm text-gray-400 mb-1">Jam *</label>
+                                <CustomSelect
+                                    value={reservationForm.reservationTime}
+                                    onChange={val => setReservationForm(f => ({ ...f, reservationTime: val }))}
+                                    options={timeOptions}
+                                    placeholder="Pilih Jam"
+                                    optionAlign="center"
+                                    textSize="text-lg"
+                                />
+                            </div>
+                        </div>
+                        <div>
+                            <label className="block text-sm text-gray-400 mb-1">Catatan Khusus</label>
+                            <textarea
+                                placeholder="Contoh: Minta dekat colokan, dll"
+                                value={reservationForm.notes}
+                                onChange={e => setReservationForm(f => ({ ...f, notes: e.target.value }))}
+                                rows={3}
+                                className="w-full px-4 py-3 rounded-xl bg-white/5 border border-purple-500/30 text-white placeholder-gray-500 focus:border-purple-400 outline-none resize-none"
+                            />
+                        </div>
+                    </div>
+
+                    {/* Footer / Submit Button */}
+                    <div className="p-4 border-t border-white/10 bg-[#16213e] sticky bottom-0 z-10">
+                        <button
+                            onClick={handleReservationSubmit}
+                            disabled={reservationLoading}
+                            className="w-full py-3.5 rounded-xl bg-gradient-to-r from-purple-500 to-blue-500 font-bold text-white hover:from-purple-600 hover:to-blue-600 transition-all disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg"
+                        >
+                            {reservationLoading ? (
+                                <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-white"></div>
+                            ) : (
+                                <>📅 Kirim Reservasi</>
+                            )}
+                        </button>
+                    </div>
+                </div>
+            </div>,
+            document.body
+        );
+    };
+
     return (
         <div className="px-4 py-4 space-y-4">
             {/* Header */}
             <div className="flex items-center justify-between mb-2">
                 <h2 className="text-xl font-bold">📋 Pesanan Saya</h2>
+                <button
+                    onClick={() => setShowReservationModal(true)}
+                    className="px-4 py-2 rounded-lg bg-gradient-to-r from-blue-500 to-purple-500 text-sm font-medium flex items-center gap-1.5 hover:from-blue-600 hover:to-purple-600 transition-all"
+                >
+                    📅 Reservasi
+                </button>
             </div>
 
             {/* Active Order */}
@@ -559,9 +754,10 @@ function PesananSaya() {
                 settings={settings}
             />
 
-            {/* Modals - relying on activeOrder state */}
+            {/* Modals */}
             {renderDetailModal()}
             {renderTicketModal()}
+            {renderReservationModal()}
 
             {/* Cancel Confirmation Modal - for 'Active' specific cancel button if used, 
                 but our new handleGenericCancel uses window.confirm or could use this modal. 

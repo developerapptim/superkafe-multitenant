@@ -60,6 +60,7 @@ app.use('/api/users', require('./routes/userRoutes'));
 // ===== START SERVER =====
 app.use('/api/feedback', require('./routes/feedbackRoutes'));
 app.use('/api/service-request', require('./routes/serviceRequestRoutes'));
+app.use('/api/reservations', require('./routes/reservationRoutes'));
 app.use('/api', require('./routes/marketingRoutes')); // Marketing: vouchers, banners, apply-voucher
 
 const PORT = process.env.PORT || 3000;
