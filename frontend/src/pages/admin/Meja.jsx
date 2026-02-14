@@ -508,25 +508,20 @@ function Meja() {
                             const waLink = `https://wa.me/${phone}?text=${waMsg}`;
 
                             return (
-                                <div key={rsv.id || rsv._id} className="bg-gradient-to-br from-purple-900/40 to-black/40 border border-purple-500/30 rounded-xl p-4 shadow-lg hover:shadow-purple-500/20 transition-all">
-                                    <div className="flex justify-between items-start mb-3">
+                                <div key={rsv.id || rsv._id} className="bg-gradient-to-br from-purple-900/40 to-black/40 border border-purple-500/30 rounded-xl p-4 shadow-lg hover:shadow-purple-500/20 transition-all flex flex-col h-full">
+                                    {/* Top: Name, Phone, Date */}
+                                    <div className="flex justify-between items-start mb-4">
                                         <div>
-                                            <p className="font-bold text-white text-lg">{rsv.customerName}</p>
-                                            <p className="text-sm text-purple-300 font-mono">{rsv.customerPhone}</p>
+                                            <p className="font-bold text-white text-lg leading-tight">{rsv.customerName}</p>
+                                            <p className="text-sm text-purple-300 font-mono mt-0.5">{rsv.customerPhone}</p>
                                         </div>
-                                        <div className="text-right bg-black/30 px-2 py-1 rounded-lg">
-                                            <p className="text-sm text-orange-400 font-bold">📅 {timeStr}</p>
-                                            <p className="text-xs text-gray-400 mt-0.5">{rsv.pax} org • {rsv.eventType}</p>
+                                        <div className="text-right bg-black/30 px-3 py-1.5 rounded-lg border border-purple-500/20">
+                                            <p className="text-sm text-orange-400 font-bold whitespace-nowrap">📅 {timeStr}</p>
                                         </div>
                                     </div>
 
-                                    {rsv.notes && (
-                                        <div className="mb-4 bg-black/20 rounded-lg p-2 border border-white/5">
-                                            <p className="text-xs text-gray-300 italic">" {rsv.notes} "</p>
-                                        </div>
-                                    )}
-
-                                    <div className="grid grid-cols-3 gap-2 mt-auto">
+                                    {/* Middle: Action Buttons */}
+                                    <div className="grid grid-cols-3 gap-2 mb-4">
                                         <a
                                             href={waLink}
                                             target="_blank" rel="noopener noreferrer"
@@ -539,7 +534,8 @@ function Meja() {
                                         <button
                                             onClick={() => {
                                                 setApproveTarget(rsv);
-                                                setApproveTableId('');
+                                                setApproveTableIds([]); // Reset multi-select
+                                                setApproveTableId(''); // Safe reset
                                                 setShowApproveModal(true);
                                             }}
                                             className="col-span-1 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 text-center text-xs font-bold flex flex-col items-center justify-center gap-1 shadow-lg shadow-blue-600/30 transition-all"
@@ -565,6 +561,26 @@ function Meja() {
                                             <span className="text-lg">✕</span>
                                             <span>Tolak</span>
                                         </button>
+                                    </div>
+
+                                    {/* Bottom: Details (Pax, Type, Notes) */}
+                                    <div className="mt-auto bg-black/20 rounded-xl p-3 border border-white/5 text-sm space-y-2">
+                                        <div className="flex justify-between items-center border-b border-white/5 pb-2">
+                                            <span className="text-gray-400 text-xs">Jumlah Tamu</span>
+                                            <span className="font-bold text-white">{rsv.pax} Orang</span>
+                                        </div>
+                                        <div className="flex justify-between items-center border-b border-white/5 pb-2">
+                                            <span className="text-gray-400 text-xs">Tujuan</span>
+                                            <span className="font-bold text-purple-300 px-2 py-0.5 rounded bg-purple-500/10 border border-purple-500/20 text-xs uppercase tracking-wide">
+                                                {rsv.eventType}
+                                            </span>
+                                        </div>
+                                        {rsv.notes && (
+                                            <div className="pt-1">
+                                                <span className="text-gray-500 block mb-1 text-[10px] uppercase tracking-wider">Catatan Tambahan</span>
+                                                <p className="text-gray-300 italic bg-white/5 p-2 rounded text-xs border border-white/5">"{rsv.notes}"</p>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             );
