@@ -26,7 +26,7 @@ const getReportData = async (req, res) => {
     try {
         const { period = 'daily', timezone = '+07:00' } = req.query;
         const cacheKey = `analytics_${period}_${timezone}`;
-        const now = Date.now();
+        const cacheNow = Date.now();
 
         // Safety: Prevent memory leak
         if (reportCache.size > 100) {
@@ -37,14 +37,14 @@ const getReportData = async (req, res) => {
         // 1. Check Cache
         if (reportCache.has(cacheKey)) {
             const cached = reportCache.get(cacheKey);
-            if (now - cached.timestamp < CACHE_TTL[period]) {
+            if (cacheNow - cached.timestamp < CACHE_TTL[period]) {
                 console.log(`[Analytics]Serving merged cache for ${period}`);
                 return res.json(cached.data);
             }
         }
 
         // 2. Determine Date Range
-        const dateNow = new Date();
+        const now = new Date();
         let startDate = new Date();
         let endDate = new Date();
         let prevStartDate = new Date();
@@ -59,9 +59,9 @@ const getReportData = async (req, res) => {
             prevEndDate.setDate(startDate.getDate() - 1);
             prevEndDate.setHours(23, 59, 59, 999);
         } else if (period === 'weekly') {
-            const day = dateNow.getDay() || 7; // 1 (Mon) - 7 (Sun)
+            const day = now.getDay() || 7; // 1 (Mon) - 7 (Sun)
             startDate.setHours(0, 0, 0, 0);
-            startDate.setDate(dateNow.getDate() - day + 1); // Monday
+            startDate.setDate(now.getDate() - day + 1); // Monday
             endDate = new Date(); // Until now
 
             prevStartDate = new Date(startDate);
