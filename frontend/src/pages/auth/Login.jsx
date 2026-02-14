@@ -70,14 +70,22 @@ function Login() {
 
             const { token, user } = response.data;
 
-            // Save to localStorage
-            localStorage.setItem('token', token);
-            localStorage.setItem('user', JSON.stringify(user));
+            if (token && user) {
+                // Save to localStorage
+                localStorage.setItem('token', token);
+                localStorage.setItem('user', JSON.stringify(user));
 
-            toast.success(`Selamat datang, ${user.name}!`, { id: toastId });
+                if (user?.name) {
+                    toast.success(`Selamat datang, ${user.name}!`, { id: toastId });
+                } else {
+                    toast.success(`Selamat datang!`, { id: toastId });
+                }
 
-            // Redirect based on role? Or just to dashboard
-            navigate('/admin/dashboard');
+                // Redirect based on role? Or just to dashboard
+                navigate('/admin/dashboard');
+            } else {
+                throw new Error('Respon login tidak valid');
+            }
 
         } catch (err) {
             console.error('Login error:', err);
