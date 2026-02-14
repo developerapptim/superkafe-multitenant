@@ -1,4 +1,4 @@
-import { useState, useRef, useMemo } from 'react';
+import { useState, useRef, useMemo, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import useSWR, { mutate } from 'swr';
 import CustomSelect from '../../components/CustomSelect';
@@ -21,6 +21,18 @@ function Meja() {
     const loading = !tablesData && !swrError;
     const error = swrError ? 'Gagal memuat data meja' : null;
 
+    // Stats Calculations (moved up to avoid TDZ)
+    const availableTables = tables.filter(t => t.status === 'available');
+    const availableCount = availableTables.length;
+    const occupiedCount = tables.filter(t => t.status === 'occupied').length;
+    const reservedCount = tables.filter(t => t.status === 'reserved').length;
+
+    // Reservation State (Moved up to avoid TDZ)
+    const { data: reservationsData, mutate: mutateReservations } = useSWR('/reservations?status=pending', fetcher, { refreshInterval: 15000 });
+    const pendingReservations = Array.isArray(reservationsData) ? reservationsData : [];
+    const { data: settingsData } = useSWR('/settings', fetcher);
+    const shopName = settingsData?.name || 'Warkop';
+
     const [showModal, setShowModal] = useState(false);
 
     // QR Code Modal State
@@ -28,6 +40,22 @@ function Meja() {
     const [selectedQRTable, setSelectedQRTable] = useState(null);
     const [showGeneralQR, setShowGeneralQR] = useState(false);
     const qrRef = useRef(null);
+
+    // Sound Alert for New Reservations
+    const prevPendingCountRef = useRef(0);
+    useEffect(() => {
+        const count = pendingReservations.length;
+        if (count > prevPendingCountRef.current) {
+            const audio = new Audio('/notif.mp3');
+            audio.play().catch(err => console.log('Audio play failed:', err));
+            toast('🔔 Permintaan Reservasi Baru!', {
+                icon: '📅',
+                duration: 5000,
+                style: { borderRadius: '10px', background: '#333', color: '#fff' },
+            });
+        }
+        prevPendingCountRef.current = count;
+    }, [pendingReservations.length]);
 
     // Live Order Preview Modal
     const [showOrderPreview, setShowOrderPreview] = useState(false);
@@ -40,10 +68,7 @@ function Meja() {
     const [moveToTableId, setMoveToTableId] = useState('');
 
     // Reservation State
-    const { data: reservationsData, mutate: mutateReservations } = useSWR('/reservations?status=pending', fetcher, { refreshInterval: 15000 });
-    const pendingReservations = Array.isArray(reservationsData) ? reservationsData : [];
-    const { data: settingsData } = useSWR('/settings', fetcher);
-    const shopName = settingsData?.name || 'Warkop';
+
 
     const [showStaffReservationModal, setShowStaffReservationModal] = useState(false);
     const [showApproveModal, setShowApproveModal] = useState(false);
@@ -296,13 +321,7 @@ function Meja() {
 
     const formatCurrency = (val) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(val || 0);
 
-    // Stats
-    const availableCount = tables.filter(t => t.status === 'available').length;
-    const occupiedCount = tables.filter(t => t.status === 'occupied').length;
-    const reservedCount = tables.filter(t => t.status === 'reserved').length;
 
-    // Available tables for move target
-    const availableTables = tables.filter(t => t.status === 'available');
 
     if (loading && tables.length === 0) {
         return (
@@ -379,73 +398,10 @@ function Meja() {
                 </div>
             </div>
 
-            {/* Pending Reservations */}
-            {pendingReservations.length > 0 && (
-                <div className="glass rounded-xl p-4">
-                    <h3 className="font-bold mb-4 flex items-center gap-2">
-                        🔔 Reservasi Pending <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">{pendingReservations.length}</span>
-                    </h3>
-                    <div className="space-y-3">
-                        {pendingReservations.map(rsv => {
-                            const rsvTime = new Date(rsv.reservationTime);
-                            const timeStr = rsvTime.toLocaleString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
-                            const phone = (rsv.customerPhone || '').replace(/^0/, '62');
-                            const waMsg = encodeURIComponent(`Halo Kak ${rsv.customerName}, kami menerima permintaan reservasi di ${shopName} untuk ${rsv.pax} orang pada ${timeStr}. Untuk konfirmasi meja dan Down Payment (DP)/uang muka, silakan balas pesan ini ya Kak.`);
-                            const waLink = `https://wa.me/${phone}?text=${waMsg}`;
 
-                            return (
-                                <div key={rsv.id || rsv._id} className="bg-white/5 border border-white/10 rounded-xl p-4">
-                                    <div className="flex justify-between items-start mb-2">
-                                        <div>
-                                            <p className="font-bold text-white">{rsv.customerName}</p>
-                                            <p className="text-sm text-gray-400">{rsv.customerPhone}</p>
-                                        </div>
-                                        <div className="text-right">
-                                            <p className="text-sm text-purple-300">📅 {timeStr}</p>
-                                            <p className="text-xs text-gray-400">{rsv.pax} orang • {rsv.eventType}</p>
-                                        </div>
-                                    </div>
-                                    {rsv.notes && <p className="text-xs text-gray-400 mb-3 bg-white/5 rounded-lg p-2">📝 {rsv.notes}</p>}
-                                    <div className="flex gap-2">
-                                        <a
-                                            href={waLink}
-                                            target="_blank" rel="noopener noreferrer"
-                                            className="flex-1 py-2 rounded-lg bg-green-600 hover:bg-green-700 text-center text-sm font-medium flex items-center justify-center gap-1.5 transition-colors"
-                                        >
-                                            📱 Hubungi WA
-                                        </a>
-                                        <button
-                                            onClick={() => {
-                                                setApproveTarget(rsv);
-                                                setApproveTableId('');
-                                                setShowApproveModal(true);
-                                            }}
-                                            className="flex-1 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-center text-sm font-medium flex items-center justify-center gap-1.5 transition-colors"
-                                        >
-                                            ✅ Terima
-                                        </button>
-                                        <button
-                                            onClick={async () => {
-                                                if (!window.confirm(`Tolak reservasi dari ${rsv.customerName}?`)) return;
-                                                try {
-                                                    await reservationsAPI.reject(rsv.id || rsv._id);
-                                                    toast.success('Reservasi ditolak');
-                                                    mutateReservations();
-                                                } catch (err) {
-                                                    toast.error('Gagal menolak reservasi');
-                                                }
-                                            }}
-                                            className="py-2 px-3 rounded-lg bg-red-500/20 hover:bg-red-500/30 text-red-400 text-sm font-medium transition-colors"
-                                        >
-                                            ✕
-                                        </button>
-                                    </div>
-                                </div>
-                            );
-                        })}
-                    </div>
-                </div>
-            )}
+
+
+
 
             {/* Table Grid */}
             <div className="glass rounded-xl p-4">
@@ -522,6 +478,97 @@ function Meja() {
                         </div>
                     ))}
                 </div>
+            </div>
+
+            {/* Pending Reservations Section - Always Visible */}
+            <div className="glass rounded-xl p-4 border border-purple-500/20">
+                <h3 className="font-bold mb-4 flex items-center gap-2 text-lg">
+                    🔔 Reservasi Pending
+                    {pendingReservations.length > 0 && (
+                        <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full animate-bounce shadow-lg shadow-red-500/50">
+                            {pendingReservations.length}
+                        </span>
+                    )}
+                </h3>
+
+                {pendingReservations.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-8 text-gray-500 bg-white/5 rounded-xl border border-dashed border-gray-600/50">
+                        <div className="text-4xl mb-2 opacity-50">📭</div>
+                        <p className="text-sm">Belum ada permintaan reservasi baru</p>
+                    </div>
+                ) : (
+                    <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+                        {pendingReservations.map(rsv => {
+                            const rsvTime = new Date(rsv.reservationTime);
+                            const timeStr = rsvTime.toLocaleString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+                            const phone = (rsv.customerPhone || '').replace(/^0/, '62').replace(/\D/g, ''); // Ensure numeric only
+                            const waMsg = encodeURIComponent(`Halo Kak ${rsv.customerName}, kami menerima permintaan reservasi di ${shopName} untuk ${rsv.pax} orang pada ${timeStr}. Untuk konfirmasi meja dan Down Payment (DP)/uang muka, silakan balas pesan ini ya Kak.`);
+                            const waLink = `https://wa.me/${phone}?text=${waMsg}`;
+
+                            return (
+                                <div key={rsv.id || rsv._id} className="bg-gradient-to-br from-purple-900/40 to-black/40 border border-purple-500/30 rounded-xl p-4 shadow-lg hover:shadow-purple-500/20 transition-all">
+                                    <div className="flex justify-between items-start mb-3">
+                                        <div>
+                                            <p className="font-bold text-white text-lg">{rsv.customerName}</p>
+                                            <p className="text-sm text-purple-300 font-mono">{rsv.customerPhone}</p>
+                                        </div>
+                                        <div className="text-right bg-black/30 px-2 py-1 rounded-lg">
+                                            <p className="text-sm text-orange-400 font-bold">📅 {timeStr}</p>
+                                            <p className="text-xs text-gray-400 mt-0.5">{rsv.pax} org • {rsv.eventType}</p>
+                                        </div>
+                                    </div>
+
+                                    {rsv.notes && (
+                                        <div className="mb-4 bg-black/20 rounded-lg p-2 border border-white/5">
+                                            <p className="text-xs text-gray-300 italic">" {rsv.notes} "</p>
+                                        </div>
+                                    )}
+
+                                    <div className="grid grid-cols-3 gap-2 mt-auto">
+                                        <a
+                                            href={waLink}
+                                            target="_blank" rel="noopener noreferrer"
+                                            className="col-span-1 py-2 rounded-lg bg-green-600/20 text-green-400 hover:bg-green-600/30 text-center text-xs font-bold flex flex-col items-center justify-center gap-1 border border-green-600/30 transition-all"
+                                            title="Hubungi via WhatsApp"
+                                        >
+                                            <span className="text-lg">💬</span>
+                                            <span>WA</span>
+                                        </a>
+                                        <button
+                                            onClick={() => {
+                                                setApproveTarget(rsv);
+                                                setApproveTableId('');
+                                                setShowApproveModal(true);
+                                            }}
+                                            className="col-span-1 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 text-center text-xs font-bold flex flex-col items-center justify-center gap-1 shadow-lg shadow-blue-600/30 transition-all"
+                                            title="Terima Reservasi"
+                                        >
+                                            <span className="text-lg">✅</span>
+                                            <span>Terima</span>
+                                        </button>
+                                        <button
+                                            onClick={async () => {
+                                                if (!window.confirm(`Tolak reservasi dari ${rsv.customerName}?`)) return;
+                                                try {
+                                                    await reservationsAPI.reject(rsv.id || rsv._id);
+                                                    toast.success('Reservasi ditolak');
+                                                    mutateReservations();
+                                                } catch (err) {
+                                                    toast.error('Gagal menolak reservasi');
+                                                }
+                                            }}
+                                            className="col-span-1 py-2 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20 text-center text-xs font-bold flex flex-col items-center justify-center gap-1 border border-red-500/20 transition-all"
+                                            title="Tolak Reservasi"
+                                        >
+                                            <span className="text-lg">✕</span>
+                                            <span>Tolak</span>
+                                        </button>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                )}
             </div>
 
             {/* Live Order Preview Modal */}
