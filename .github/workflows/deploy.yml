@@ -19,6 +19,9 @@ jobs:
             git fetch --all
             git reset --hard origin/main
             cd frontend
+            # Inject Environment Variables
+            echo "VITE_API_URL=${{ secrets.VITE_API_URL }}" > .env
+            
             npm install
             npm run build
             pm2 restart superkafe-web

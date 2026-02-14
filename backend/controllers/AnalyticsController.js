@@ -59,6 +59,7 @@ const getReportData = async (req, res) => {
             prevEndDate.setDate(startDate.getDate() - 1);
             prevEndDate.setHours(23, 59, 59, 999);
         } else if (period === 'weekly') {
+            const now = new Date(); // Explicit initialization to prevent TypeError
             const day = now.getDay() || 7; // 1 (Mon) - 7 (Sun)
             startDate.setHours(0, 0, 0, 0);
             startDate.setDate(now.getDate() - day + 1); // Monday
