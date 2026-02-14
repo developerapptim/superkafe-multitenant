@@ -21,10 +21,17 @@ app.use('/admin', express.static(path.join(__dirname, 'public', 'admin')));
 app.use('/', express.static(path.join(__dirname, 'public', 'customer')));
 
 // ===== DATABASE =====
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/warkop';
+const MONGODB_URI = process.env.MONGODB_URI;
+if (!MONGODB_URI) {
+  console.error('❌ FATAL: MONGODB_URI is not defined in .env! Server cannot start.');
+  process.exit(1);
+}
 mongoose.connect(MONGODB_URI, { useNewUrlParser: true, useUnifiedTopology: true })
-  .then(() => console.log('✅ Connected to MongoDB'))
-  .catch(err => console.error('❌ MongoDB connection error:', err));
+  .then(() => console.log(`✅ Connected to MongoDB (${MONGODB_URI.includes('mongodb+srv') ? 'Atlas' : 'Local'})`))
+  .catch(err => {
+    console.error('❌ MongoDB connection error:', err);
+    process.exit(1);
+  });
 
 // ===== ROUTES =====
 app.use('/api/inventory', require('./routes/inventoryRoutes'));
