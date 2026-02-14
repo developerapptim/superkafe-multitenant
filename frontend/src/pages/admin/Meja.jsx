@@ -45,9 +45,10 @@ function Meja() {
         status: 'available'
     });
 
-    { value: 'available', label: 'Tersedia', color: 'bg-green-500', icon: '✅' },
-    { value: 'occupied', label: 'Terisi', color: 'bg-red-500', icon: '🍽️' },
-    { value: 'reserved', label: 'Dipesan', color: 'bg-blue-500', icon: '📅' }
+    const statusOptions = [
+        { value: 'available', label: 'Tersedia', color: 'bg-green-500', icon: '✅' },
+        { value: 'occupied', label: 'Terisi', color: 'bg-red-500', icon: '🍽️' },
+        { value: 'reserved', label: 'Dipesan', color: 'bg-blue-500', icon: '📅' }
     ];
 
     const getBaseUrl = () => window.location.origin;
