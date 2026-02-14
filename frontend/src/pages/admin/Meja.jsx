@@ -351,50 +351,51 @@ function Meja() {
     return (
         <section className="p-4 md:p-6 space-y-6">
             {/* Header */}
-            <div className="flex flex-wrap items-center justify-between gap-3">
-
-                <div className="flex gap-2">
-                    <button
-                        onClick={openGeneralQRModal}
-                        className="bg-gradient-to-r from-orange-500 to-yellow-500 hover:from-orange-600 hover:to-yellow-600 px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2"
-                    >
-                        📱 QR General
-                    </button>
-                    <button
-                        onClick={() => {
-                            setFormData({ number: tables.length + 1, capacity: 4, status: 'available' });
-                            setShowModal(true);
-                        }}
-                        className="bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2"
-                    >
-                        ➕ Tambah Meja
-                    </button>
-                    <button
-                        onClick={() => setShowStaffReservationModal(true)}
-                        className="bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2"
-                    >
-                        📅 Buat Reservasi
-                    </button>
-                </div>
+            {/* Header - Buttons Grid */}
+            <div className="grid grid-cols-3 md:grid-cols-4 gap-2 md:gap-4 mb-2">
+                <button
+                    onClick={openGeneralQRModal}
+                    className="bg-gradient-to-r from-orange-500 to-yellow-500 hover:from-orange-600 hover:to-yellow-600 p-2 md:p-4 rounded-xl text-[10px] md:text-sm font-medium flex flex-col items-center justify-center gap-1 md:gap-2 shadow-lg hover:scale-105 transition-transform h-full"
+                >
+                    <span className="text-xl md:text-2xl">📱</span>
+                    <span className="text-center leading-tight">QR General</span>
+                </button>
+                <button
+                    onClick={() => {
+                        setFormData({ number: tables.length + 1, capacity: 4, status: 'available' });
+                        setShowModal(true);
+                    }}
+                    className="bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 p-2 md:p-4 rounded-xl text-[10px] md:text-sm font-medium flex flex-col items-center justify-center gap-1 md:gap-2 shadow-lg hover:scale-105 transition-transform h-full"
+                >
+                    <span className="text-xl md:text-2xl">➕</span>
+                    <span className="text-center leading-tight">Tambah Meja</span>
+                </button>
+                <button
+                    onClick={() => setShowStaffReservationModal(true)}
+                    className="bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 p-2 md:p-4 rounded-xl text-[10px] md:text-sm font-medium flex flex-col items-center justify-center gap-1 md:gap-2 shadow-lg hover:scale-105 transition-transform h-full"
+                >
+                    <span className="text-xl md:text-2xl">📅</span>
+                    <span className="text-center leading-tight">Buat Reservasi</span>
+                </button>
             </div>
 
             {/* Stats */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="glass rounded-xl p-4 text-center border border-green-500/30">
-                    <div className="text-3xl mb-1">✅</div>
-                    <p className="text-2xl font-bold text-green-400">{availableCount}</p>
-                    <p className="text-xs text-gray-400">Tersedia</p>
+            <div className="grid grid-cols-3 md:grid-cols-4 gap-2 md:gap-4">
+                <div className="glass rounded-xl p-2 md:p-4 text-center border border-green-500/30">
+                    <div className="text-xl md:text-3xl mb-1">✅</div>
+                    <p className="text-lg md:text-2xl font-bold text-green-400">{availableCount}</p>
+                    <p className="text-[10px] md:text-xs text-gray-400">Tersedia</p>
                 </div>
-                <div className="glass rounded-xl p-4 text-center border border-red-500/30">
-                    <div className="text-3xl mb-1">🍽️</div>
-                    <p className="text-2xl font-bold text-red-400">{occupiedCount}</p>
-                    <p className="text-xs text-gray-400">Terisi</p>
+                <div className="glass rounded-xl p-2 md:p-4 text-center border border-red-500/30">
+                    <div className="text-xl md:text-3xl mb-1">🍽️</div>
+                    <p className="text-lg md:text-2xl font-bold text-red-400">{occupiedCount}</p>
+                    <p className="text-[10px] md:text-xs text-gray-400">Terisi</p>
                 </div>
 
-                <div className="glass rounded-xl p-4 text-center border border-blue-500/30">
-                    <div className="text-3xl mb-1">📅</div>
-                    <p className="text-2xl font-bold text-blue-400">{reservedCount}</p>
-                    <p className="text-xs text-gray-400">Dipesan</p>
+                <div className="glass rounded-xl p-2 md:p-4 text-center border border-blue-500/30">
+                    <div className="text-xl md:text-3xl mb-1">📅</div>
+                    <p className="text-lg md:text-2xl font-bold text-blue-400">{reservedCount}</p>
+                    <p className="text-[10px] md:text-xs text-gray-400">Dipesan</p>
                 </div>
             </div>
 
