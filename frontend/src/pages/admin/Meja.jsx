@@ -77,7 +77,7 @@ function Meja() {
     const [approveTableIds, setApproveTableIds] = useState([]); // New multi-select state
     const [staffResvForm, setStaffResvForm] = useState({
         customerName: '', customerPhone: '', pax: 2, eventType: 'Nongkrong', notes: '',
-        reservationDate: '', reservationTime: '', tableId: ''
+        reservationDate: '', reservationTime: '', tableIds: []
     });
 
     // Add Table Form
@@ -794,7 +794,7 @@ function Meja() {
             {/* Approve Reservation Modal */}
             {showApproveModal && approveTarget && createPortal(
                 <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setShowApproveModal(false)}>
-                    <div className="glass rounded-2xl p-6 w-full max-w-sm animate-scale-up">
+                    <div className="glass rounded-2xl p-6 w-full max-w-sm animate-scale-up" onClick={e => e.stopPropagation()}>
                         <h3 className="text-xl font-bold mb-2">✅ Terima Reservasi</h3>
                         <p className="text-gray-400 text-sm mb-4">
                             {approveTarget.customerName} • {approveTarget.pax} orang
@@ -905,10 +905,11 @@ function Meja() {
                             <div className="relative z-10">
                                 <label className="block text-sm text-gray-400 mb-1">Assign Meja (Langsung Approved)</label>
                                 <CustomSelect
-                                    value={staffResvForm.tableId}
-                                    onChange={val => setStaffResvForm(f => ({ ...f, tableId: val }))}
+                                    value={staffResvForm.tableIds}
+                                    onChange={val => setStaffResvForm(f => ({ ...f, tableIds: val }))}
                                     options={tableOptions}
                                     placeholder="-- Pilih Meja --"
+                                    isMulti={true}
                                 />
                             </div>
                             <div>
@@ -923,7 +924,7 @@ function Meja() {
                         <div className="p-4 border-t border-white/10 bg-[#16213e] sticky bottom-0 z-10 rounded-b-2xl">
                             <button
                                 onClick={async () => {
-                                    const { customerName, customerPhone, pax, eventType, notes, reservationDate, reservationTime: rTime, tableId: tId } = staffResvForm;
+                                    const { customerName, customerPhone, pax, eventType, notes, reservationDate, reservationTime: rTime, tableIds: tIds } = staffResvForm;
 
                                     const missing = [];
                                     if (!customerName) missing.push('Nama');
@@ -936,16 +937,17 @@ function Meja() {
                                         return;
                                     }
                                     try {
+                                        // Fix Date parsing for IOS/Safari compatibility if needed, but standard YYYY-MM-DDTHH:mm is usually fine
                                         const reservationTime = new Date(`${reservationDate}T${rTime}:00`);
                                         await reservationsAPI.create({
                                             customerName, customerPhone, pax: parseInt(pax) || 2,
                                             eventType, notes, reservationTime,
                                             createdBy: 'staff',
-                                            tableId: tId || undefined
+                                            tableIds: tIds // Send array
                                         });
-                                        toast.success(tId ? 'Reservasi dibuat & meja di-reserved!' : 'Reservasi dibuat (pending).');
+                                        toast.success(tIds && tIds.length > 0 ? 'Reservasi dibuat & meja di-reserved!' : 'Reservasi dibuat (pending).');
                                         setShowStaffReservationModal(false);
-                                        setStaffResvForm({ customerName: '', customerPhone: '', pax: 2, eventType: 'Nongkrong', notes: '', reservationDate: '', reservationTime: '', tableId: '' });
+                                        setStaffResvForm({ customerName: '', customerPhone: '', pax: 2, eventType: 'Nongkrong', notes: '', reservationDate: '', reservationTime: '', tableIds: [] });
                                         mutateReservations();
                                         mutate('/tables');
                                     } catch (err) {
