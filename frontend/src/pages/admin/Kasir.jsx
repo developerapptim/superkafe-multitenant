@@ -93,7 +93,7 @@ function Kasir() {
 
     // SWR Data Fetching
     const { data: menuData } = useSWR('/menu', fetcher, { refreshInterval: 60000 }); // Refresh menu every 1 min
-    const { data: ordersData } = useSWR('/orders', fetcher, { refreshInterval: 5000 }); // Refresh orders every 5s
+    const { data: ordersData } = useSWR('/orders?limit=200', fetcher, { refreshInterval: 5000 }); // Refresh orders every 5s
     const { data: tablesData } = useSWR('/tables', fetcher, { refreshInterval: 10000 });
 
     const { data: shiftData } = useSWR('/shift/current-balance', fetcher);
@@ -105,7 +105,8 @@ function Kasir() {
 
     // Process Active Orders
     const today = new Date().toISOString().split('T')[0];
-    const orders = (Array.isArray(ordersData) ? ordersData : []).filter(o =>
+    const rawOrders = ordersData?.data || (Array.isArray(ordersData) ? ordersData : []);
+    const orders = rawOrders.filter(o =>
         !o.is_archived_from_pos &&
         (o.date === today || (o.timestamp && new Date(o.timestamp).toISOString().split('T')[0] === today))
     );
@@ -160,7 +161,7 @@ function Kasir() {
             await ordersAPI.updateStatus(selectedOrderForDetail.id, 'cancel', { cancellationReason: reason });
 
             // Refresh data
-            mutate('/orders');
+            mutate('/orders?limit=200');
             mutate('/shift/current-balance'); // If money refunded, balance changes? Maybe not cash but system record.
 
             toast.success('Pesanan berhasil dibatalkan', { id: toastId });
@@ -324,7 +325,7 @@ function Kasir() {
         try {
             await Promise.all([
                 mutate('/menu'),
-                mutate('/orders'),
+                mutate('/orders?limit=200'),
                 mutate('/tables'),
                 mutate('/shift/current-balance')
             ]);
@@ -498,7 +499,7 @@ function Kasir() {
             await ordersAPI.create(orderData);
 
             // Mutate SWR cache to update UI
-            mutate('/orders');
+            mutate('/orders?limit=200');
             if (orderType === 'dine-in' && selectedTable) {
                 await tablesAPI.updateStatus(selectedTable, 'occupied');
                 mutate('/tables');
@@ -549,7 +550,7 @@ function Kasir() {
             // If cash and payment input exists, maybe log it? For now just mark paid.
             // In a real app we might want to record the exact cash amount given.
 
-            mutate('/orders'); // Refresh
+            mutate('/orders?limit=200'); // Refresh
             mutate('/shift/current-balance'); // Revalidate (Sync with server to be safe)
             toast.success('Pembayaran berhasil! Silakan selesaikan pesanan.', { id: toastId });
             setSelectedOrderForPayment(null);
@@ -616,7 +617,7 @@ function Kasir() {
         setProcessingOrderId(orderId);
         try {
             await ordersAPI.updateStatus(orderId, newStatus);
-            mutate('/orders'); // Refresh orders
+            mutate('/orders?limit=200'); // Refresh orders
 
             // Refresh saldo when order is completed
             if (newStatus === 'done') {
@@ -693,7 +694,7 @@ function Kasir() {
                 mergedTableNumber: mergeData?.mergedTableNumber,
                 mergedBy: JSON.parse(localStorage.getItem('user') || '{}').name || 'Kasir'
             });
-            mutate('/orders');
+            mutate('/orders?limit=200');
             setSelectedForMerge([]);
             setShowMergeModal(false);
             toast.success('Tagihan berhasil digabungkan!', { id: toastId });
