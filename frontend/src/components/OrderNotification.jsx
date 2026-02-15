@@ -1,83 +1,115 @@
 import { useState, useEffect, useRef } from 'react';
-// import useSWR from 'swr'; // Removed Polling
 import toast from 'react-hot-toast';
-import { useSocket } from '../context/SocketContext'; // New: Import Socket
+import api from '../services/api'; // Import API for settings
+import { useSocket } from '../context/SocketContext';
 
 const OrderNotification = () => {
-    const socket = useSocket(); // New: Get Socket
+    const socket = useSocket();
     const [isMuted, setIsMuted] = useState(() => localStorage.getItem('pos_muted') === 'true');
+    const [soundUrl, setSoundUrl] = useState(null); // Store sound URL
     const audioContextRef = useRef(null);
 
-    // Initialize Audio Context on user interaction
+    // 1. Fetch Settings ONCE on mount
     useEffect(() => {
-        const unlockAudio = () => {
-            if (!audioContextRef.current) {
-                audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
-            }
-            if (audioContextRef.current.state === 'suspended') {
-                audioContextRef.current.resume();
+        const fetchSettings = async () => {
+            try {
+                // Try getting from localStorage first (fast)
+                const cached = localStorage.getItem('appSettings');
+                if (cached) {
+                    const parsed = JSON.parse(cached);
+                    if (parsed.notificationSoundUrl) setSoundUrl(parsed.notificationSoundUrl);
+                }
+
+                // Then fetch fresh data
+                const res = await api.get('/settings');
+                if (res.data?.notificationSoundUrl) {
+                    setSoundUrl(res.data.notificationSoundUrl);
+                    // Update local storage if needed, but AdminLayout handles main sync
+                }
+            } catch (err) {
+                console.error('Failed to fetch sound settings:', err);
             }
         };
+        fetchSettings();
 
-        // Add listeners to unlock audio
-        window.addEventListener('click', unlockAudio);
-        window.addEventListener('touchstart', unlockAudio);
-        window.addEventListener('keydown', unlockAudio);
-
-        return () => {
-            window.removeEventListener('click', unlockAudio);
-            window.removeEventListener('touchstart', unlockAudio);
-            window.removeEventListener('keydown', unlockAudio);
+        // Listen for Mute Toggles from other components
+        const handleStorageChange = (e) => {
+            if (e.key === 'pos_muted') {
+                setIsMuted(e.newValue === 'true');
+            }
         };
+        window.addEventListener('storage', handleStorageChange);
+        return () => window.removeEventListener('storage', handleStorageChange);
     }, []);
 
-    // Play Sound Function
-    const playSound = async () => {
-        if (isMuted) return;
+    // 2. Robust Play Sound Function
+    const playNotificationSound = async () => {
+        // Re-check mute state directly from storage to be 100% sure
+        const currentMuteState = localStorage.getItem('pos_muted') === 'true';
+        if (currentMuteState) return;
 
         try {
+            // Initialize Context if missing
             if (!audioContextRef.current) {
                 audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
             }
             const ctx = audioContextRef.current;
 
-            // Resume if needed
-            if (ctx.state === 'suspended') await ctx.resume();
+            // CRITICAL: Always resume suspended context
+            if (ctx.state === 'suspended') {
+                await ctx.resume();
+            }
 
+            // Strategy A: Play Custom Sound URL
+            if (soundUrl) {
+                try {
+                    const audio = new Audio(soundUrl);
+                    await audio.play();
+                    return; // Success
+                } catch (audioErr) {
+                    console.warn('Custom sound failed, falling back to beep:', audioErr);
+                }
+            }
+
+            // Strategy B: Fallback Oscillator (Ding-Dong)
             const osc = ctx.createOscillator();
             const gain = ctx.createGain();
 
             osc.connect(gain);
             gain.connect(ctx.destination);
 
-            // Notification Sound (Ding-Dong style)
             const now = ctx.currentTime;
 
-            // First note (High)
+            // Ding
             osc.frequency.setValueAtTime(880, now); // A5
             gain.gain.setValueAtTime(0.1, now);
 
-            // Drop volume
-            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+            // Dong
+            osc.frequency.setValueAtTime(659.25, now + 0.4); // E5
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 1.2);
 
             osc.type = 'sine';
             osc.start(now);
-            osc.stop(now + 0.6);
+            osc.stop(now + 1.2);
 
         } catch (e) {
-            console.error('Audio playback failed:', e);
+            console.error('Audio playback completely failed:', e);
+            // Fallback: Visual Toast is already handled below
         }
     };
 
-    // Socket Listener for New Orders
+    // 3. Socket Listener
     useEffect(() => {
         if (!socket) return;
 
         const handleOrderUpdate = (data) => {
-            // Only play sound for NEW orders
             if (data.action === 'create') {
-                console.log('🔔 New Order Socket Event! Playing sound...');
-                playSound();
+                console.log('🔔 New Order Received!');
+
+                // Play Sound
+                playNotificationSound();
+
+                // Show Toast
                 toast('Pesanan Baru Masuk!', {
                     icon: '🔔',
                     duration: 5000,
@@ -96,20 +128,7 @@ const OrderNotification = () => {
         return () => {
             socket.off('orders:update', handleOrderUpdate);
         };
-    }, [socket, isMuted]);
-
-    // Handle mute toggle via custom event or check localStorage periodically
-    // For now, simpler: Just check localStorage every poll or expose a toggle in UI?
-    // Since mute toggle is in Kasir, we should probably listen to storage event
-    useEffect(() => {
-        const handleStorageChange = (e) => {
-            if (e.key === 'pos_muted') {
-                setIsMuted(e.newValue === 'true');
-            }
-        };
-        window.addEventListener('storage', handleStorageChange);
-        return () => window.removeEventListener('storage', handleStorageChange);
-    }, []);
+    }, [socket, soundUrl]);
 
     return null; // Invisible component
 };
