@@ -104,19 +104,22 @@ function Kasir() {
     const tables = tablesData || [];
 
     // Process Active Orders
-    // FIX: Don't filter active orders by date! Only filter history (done/cancel) by date.
-    const today = new Date().toISOString().split('T')[0];
+    // Use LOCAL date (not UTC) to avoid timezone mismatch (WIB = UTC+7)
+    const now = new Date();
+    const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
     const rawOrders = ordersData?.data || (Array.isArray(ordersData) ? ordersData : []);
     const orders = rawOrders.filter(o => {
         if (o.is_archived_from_pos) return false;
 
-        // Active orders: Show ALL (regardless of date)
-        const activeStatuses = ['new', 'process', 'pending', 'pending_payment'];
-        if (activeStatuses.includes(o.status)) return true;
+        // Get order's LOCAL date
+        const getLocalDate = (timestamp) => {
+            const d = new Date(timestamp);
+            return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        };
 
-        // Completed/Cancelled: Show only TODAY'S
-        // Use local date comparison to be safe against UTC shifts
-        const orderDate = o.date || (o.timestamp ? new Date(o.timestamp).toISOString().split('T')[0] : '');
+        // Show only TODAY's orders (local timezone)
+        // Prefer timestamp to determine "Today" accurately (fix UTC mismatches)
+        const orderDate = (o.timestamp ? getLocalDate(o.timestamp) : o.date) || '';
         return orderDate === today;
     });
 
@@ -392,6 +395,7 @@ function Kasir() {
         const toastId = toast.loading('Memproses pesanan...');
         try {
             const now = new Date();
+            const localDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
             const orderData = {
                 id: `ORD-${Date.now()}`,
                 customerName: customerName,
@@ -409,7 +413,7 @@ function Kasir() {
                 total: cartTotal,
                 paymentMethod: paymentMethod,
                 notes: note,
-                date: now.toISOString().split('T')[0],
+                date: localDate, // Use Local Date
                 time: now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
                 timestamp: now.getTime(),
             };
