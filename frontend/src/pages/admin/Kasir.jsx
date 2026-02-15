@@ -5,7 +5,17 @@ import api, { menuAPI, ordersAPI, tablesAPI, shiftAPI } from '../../services/api
 import PrintButton from '../../components/PrintButton';
 import { useSocket } from '../../context/SocketContext'; // New: Import Socket
 
-// ... (Rest of imports/helpers)
+// Fetcher for SWR
+const fetcher = url => api.get(url).then(res => res.data);
+
+// Format Phone Number
+const formatPhoneNumber = (value) => {
+    if (!value) return '';
+    const number = value.replace(/[^\d]/g, '');
+    if (number.startsWith('62')) return number;
+    if (number.startsWith('0')) return '62' + number.slice(1);
+    return '62' + number;
+};
 
 function Kasir() {
     const socket = useSocket(); // New: Get Socket
