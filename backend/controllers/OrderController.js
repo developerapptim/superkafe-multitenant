@@ -772,7 +772,7 @@ exports.getPendingCount = async (req, res) => {
             // Status must be 'new' (for Baru tab)
             if (o.status !== 'new') return false;
 
-            // Date check - exact same as Frontend
+            // Date check - Sync with POS strict filter
             const orderDate = o.date || (o.timestamp && new Date(o.timestamp).toISOString().split('T')[0]);
             if (orderDate !== today) return false;
 

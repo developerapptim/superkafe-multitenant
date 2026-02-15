@@ -93,7 +93,7 @@ function Kasir() {
 
     // SWR Data Fetching
     const { data: menuData } = useSWR('/menu', fetcher, { refreshInterval: 60000 }); // Refresh menu every 1 min
-    const { data: ordersData } = useSWR('/orders?limit=200', fetcher, { refreshInterval: 3000 }); // Refresh orders every 3s
+    const { data: ordersData } = useSWR('/orders?limit=200', fetcher, { refreshInterval: 1000 }); // Refresh orders every 1s (Fast)
     const { data: tablesData } = useSWR('/tables', fetcher, { refreshInterval: 10000 });
 
     const { data: shiftData } = useSWR('/shift/current-balance', fetcher);
@@ -111,13 +111,13 @@ function Kasir() {
     const orders = rawOrders.filter(o => {
         if (o.is_archived_from_pos) return false;
 
+        // Strict Filter: Show ONLY orders from TODAY (Local Time) to avoid clutter
         // Get order's LOCAL date
         const getLocalDate = (timestamp) => {
             const d = new Date(timestamp);
             return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
         };
 
-        // Show only TODAY's orders (local timezone)
         // Prefer timestamp to determine "Today" accurately (fix UTC mismatches)
         const orderDate = (o.timestamp ? getLocalDate(o.timestamp) : o.date) || '';
         return orderDate === today;

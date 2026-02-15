@@ -9,7 +9,7 @@ const OrderNotification = () => {
     // Poll for new orders every 10 seconds (less frequent than Kasir to reduce load)
     // Or keep it 5s if realtime matters. Let's do 5s to match Kasir speed.
     const { data: ordersData } = useSWR('/orders?status=new&limit=50', fetcher, {
-        refreshInterval: 5000,
+        refreshInterval: 2000,
         revalidateOnFocus: false // Don't revalidate on focus to avoid double triggers
     });
 
