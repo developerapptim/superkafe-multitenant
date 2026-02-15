@@ -508,15 +508,15 @@ function Meja() {
                             const waLink = `https://wa.me/${phone}?text=${waMsg}`;
 
                             return (
-                                <div key={rsv.id || rsv._id} className="bg-gradient-to-br from-purple-900/40 to-black/40 border border-purple-500/30 rounded-xl p-4 shadow-lg hover:shadow-purple-500/20 transition-all flex flex-col h-full">
+                                <div key={rsv.id || rsv._id} className="bg-gradient-to-br from-purple-900/40 to-black/40 border border-purple-500/30 rounded-xl p-3 shadow-lg hover:shadow-purple-500/20 transition-all flex flex-col h-full">
                                     {/* Top: Name, Phone, Date */}
-                                    <div className="flex justify-between items-start mb-4">
-                                        <div>
-                                            <p className="font-bold text-white text-lg leading-tight">{rsv.customerName}</p>
-                                            <p className="text-sm text-purple-300 font-mono mt-0.5">{rsv.customerPhone}</p>
+                                    <div className="flex flex-col gap-2 mb-3 sm:flex-row sm:items-start sm:justify-between sm:gap-0">
+                                        <div className="min-w-0">
+                                            <p className="font-bold text-white text-lg leading-tight truncate">{rsv.customerName}</p>
+                                            <p className="text-sm text-purple-300 font-mono mt-0.5 truncate">{rsv.customerPhone}</p>
                                         </div>
-                                        <div className="text-right bg-black/30 px-3 py-1.5 rounded-lg border border-purple-500/20">
-                                            <p className="text-sm text-orange-400 font-bold whitespace-nowrap">📅 {timeStr}</p>
+                                        <div className="text-right bg-black/30 px-2 py-1 rounded-lg border border-purple-500/20 self-start sm:self-auto">
+                                            <p className="text-xs text-orange-400 font-bold whitespace-nowrap">📅 {timeStr}</p>
                                         </div>
                                     </div>
 
