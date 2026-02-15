@@ -7,6 +7,7 @@ import api from '../../services/api';
 import Sidebar from '../../components/Sidebar';
 import CommandPalette from '../../components/CommandPalette';
 import NotificationBell from '../../components/admin/NotificationBell';
+import OrderNotification from '../../components/OrderNotification'; // Global Order Notification
 
 // Fetcher
 const fetcher = url => api.get(url).then(res => res.data);
@@ -104,6 +105,7 @@ function AdminLayout() {
             }}
         >
             {/* Sidebar Wrapper */}
+            <OrderNotification /> {/* Global Sound/Toast Listener */}
             <div className={`${isSidebarCollapsed ? 'w-0 lg:w-20' : 'w-20 lg:w-64'} flex-shrink-0 h-full transition-all duration-300 relative`}>
                 <Sidebar onLogout={handleLogout} isCollapsed={isSidebarCollapsed} toggleSidebar={toggleSidebar} />
             </div>
