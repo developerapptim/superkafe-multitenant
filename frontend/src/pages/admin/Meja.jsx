@@ -521,7 +521,7 @@ function Meja() {
                                     </div>
 
                                     {/* Middle: Action Buttons */}
-                                    <div className="grid grid-cols-3 gap-2 mb-4">
+                                    <div className="flex flex-col gap-2 mb-4 sm:grid sm:grid-cols-3">
                                         <a
                                             href={waLink}
                                             target="_blank" rel="noopener noreferrer"

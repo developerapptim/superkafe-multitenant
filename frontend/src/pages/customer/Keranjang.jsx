@@ -742,12 +742,12 @@ function Keranjang() {
                         </button>
                     </div>
                 ) : (
-                    <div className="flex gap-2">
+                    <div className="flex flex-col sm:flex-row gap-2">
                         <input
                             type="text"
                             value={voucherCode}
                             onChange={(e) => setVoucherCode(e.target.value.toUpperCase())}
-                            className="flex-1 px-4 py-2 rounded-lg bg-white/5 border border-purple-500/30 text-white font-mono uppercase placeholder-gray-500 focus:border-purple-500 outline-none text-sm"
+                            className="w-full sm:flex-1 px-4 py-2 rounded-lg bg-white/5 border border-purple-500/30 text-white font-mono uppercase placeholder-gray-500 focus:border-purple-500 outline-none text-sm"
                             placeholder="Masukkan kode voucher"
                         />
                         <button
@@ -764,7 +764,7 @@ function Keranjang() {
                                 } finally { setApplyingVoucher(false); }
                             }}
                             disabled={applyingVoucher || !voucherCode.trim()}
-                            className="px-4 py-2 rounded-lg bg-gradient-to-r from-blue-600 to-purple-600 text-sm font-bold disabled:opacity-50 whitespace-nowrap"
+                            className="w-full sm:w-auto px-4 py-2 rounded-lg bg-gradient-to-r from-blue-600 to-purple-600 text-sm font-bold disabled:opacity-50 whitespace-nowrap"
                         >
                             {applyingVoucher ? '...' : 'Pakai'}
                         </button>
