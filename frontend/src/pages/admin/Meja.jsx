@@ -499,7 +499,7 @@ function Meja() {
                         <p className="text-sm">Belum ada permintaan reservasi baru</p>
                     </div>
                 ) : (
-                    <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-2 2xl:grid-cols-3">
+                    <div className="grid gap-4 md:grid-cols-1 2xl:grid-cols-2">
                         {pendingReservations.map(rsv => {
                             const rsvTime = new Date(rsv.reservationTime);
                             const timeStr = rsvTime.toLocaleString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
@@ -521,7 +521,7 @@ function Meja() {
                                     </div>
 
                                     {/* Middle: Action Buttons */}
-                                    <div className="flex flex-col gap-2 mb-4 xl:grid xl:grid-cols-3">
+                                    <div className="flex flex-col gap-2 mb-4">
                                         <a
                                             href={waLink}
                                             target="_blank" rel="noopener noreferrer"
