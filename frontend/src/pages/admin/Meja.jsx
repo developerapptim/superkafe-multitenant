@@ -499,7 +499,7 @@ function Meja() {
                         <p className="text-sm">Belum ada permintaan reservasi baru</p>
                     </div>
                 ) : (
-                    <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+                    <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-2 2xl:grid-cols-3">
                         {pendingReservations.map(rsv => {
                             const rsvTime = new Date(rsv.reservationTime);
                             const timeStr = rsvTime.toLocaleString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
@@ -525,7 +525,7 @@ function Meja() {
                                         <a
                                             href={waLink}
                                             target="_blank" rel="noopener noreferrer"
-                                            className="col-span-1 py-2 rounded-lg bg-green-600/20 text-green-400 hover:bg-green-600/30 text-center text-xs font-bold flex flex-col items-center justify-center gap-1 border border-green-600/30 transition-all"
+                                            className="col-span-1 py-2 rounded-lg bg-green-600/20 text-green-400 hover:bg-green-600/30 text-center text-xs font-bold flex flex-col items-center justify-center gap-1 border border-green-600/30 transition-all min-w-0 w-full"
                                             title="Hubungi via WhatsApp"
                                         >
                                             <span className="text-lg">💬</span>
@@ -538,7 +538,7 @@ function Meja() {
                                                 setApproveTableId(''); // Safe reset
                                                 setShowApproveModal(true);
                                             }}
-                                            className="col-span-1 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 text-center text-xs font-bold flex flex-col items-center justify-center gap-1 shadow-lg shadow-blue-600/30 transition-all"
+                                            className="col-span-1 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 text-center text-xs font-bold flex flex-col items-center justify-center gap-1 shadow-lg shadow-blue-600/30 transition-all min-w-0 w-full"
                                             title="Terima Reservasi"
                                         >
                                             <span className="text-lg">✅</span>
@@ -555,7 +555,7 @@ function Meja() {
                                                     toast.error('Gagal menolak reservasi');
                                                 }
                                             }}
-                                            className="col-span-1 py-2 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20 text-center text-xs font-bold flex flex-col items-center justify-center gap-1 border border-red-500/20 transition-all"
+                                            className="col-span-1 py-2 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20 text-center text-xs font-bold flex flex-col items-center justify-center gap-1 border border-red-500/20 transition-all min-w-0 w-full"
                                             title="Tolak Reservasi"
                                         >
                                             <span className="text-lg">✕</span>
