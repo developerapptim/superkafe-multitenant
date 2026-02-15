@@ -7,6 +7,31 @@ const compression = require('compression');
 
 // Initialize App
 const app = express();
+const http = require('http'); // New: Required for Socket.io
+const { Server } = require("socket.io"); // New: Socket.io
+const server = http.createServer(app); // New: Create HTTP server
+
+// Initialize Socket.io
+const io = new Server(server, {
+  cors: {
+    origin: "*", // Allow all origins (or restrict to frontend URL in prod)
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
+    credentials: true
+  }
+});
+
+// Attach io to app for use in controllers
+app.set('io', io);
+
+// Socket.io Connection Handler
+io.on('connection', (socket) => {
+  console.log('⚡ Client connected:', socket.id);
+
+  socket.on('disconnect', () => {
+    console.log('🔌 Client disconnected:', socket.id);
+  });
+});
+
 app.use(compression());
 app.use(cors({
   origin: true,
@@ -71,4 +96,4 @@ app.use('/api/reservations', require('./routes/reservationRoutes'));
 app.use('/api', require('./routes/marketingRoutes')); // Marketing: vouchers, banners, apply-voucher
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+server.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`)); // Listen on server, not app

@@ -3,85 +3,13 @@ import toast from 'react-hot-toast';
 import useSWR, { mutate } from 'swr';
 import api, { menuAPI, ordersAPI, tablesAPI, shiftAPI } from '../../services/api';
 import PrintButton from '../../components/PrintButton';
+import { useSocket } from '../../context/SocketContext'; // New: Import Socket
 
-// Generic fetcher for SWR
-const fetcher = url => api.get(url).then(res => res.data);
-
-// Phone number formatter (08xxx -> 62xxx)
-const formatPhoneNumber = (phone) => {
-    if (!phone || typeof phone !== 'string') return null;
-    let cleaned = phone.replace(/\D/g, '');
-    if (!cleaned || cleaned.length < 9) return null;
-    if (cleaned.startsWith('0')) cleaned = '62' + cleaned.substring(1);
-    if (!cleaned.startsWith('62') && cleaned.length >= 9) cleaned = '62' + cleaned;
-    return cleaned.length >= 11 ? cleaned : null;
-};
-
-// Custom Select Component for Consistent UI
-const CustomSelect = ({ label, value, options, onChange, disabled, placeholder = 'Pilih...' }) => {
-    const [isOpen, setIsOpen] = useState(false);
-    const containerRef = useRef(null);
-
-    // Close on click outside
-    useEffect(() => {
-        const handleClickOutside = (event) => {
-            if (containerRef.current && !containerRef.current.contains(event.target)) {
-                setIsOpen(false);
-            }
-        };
-        document.addEventListener('mousedown', handleClickOutside);
-        return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, []);
-
-    const selectedOption = options.find(o => o.value === value);
-
-    return (
-        <div className="relative" ref={containerRef}>
-            <label className="block text-sm text-gray-400 mb-1">{label}</label>
-            <button
-                type="button"
-                onClick={() => !disabled && setIsOpen(!isOpen)}
-                className={`w-full px-4 h-10 rounded-lg text-left bg-surface/50 border ${isOpen ? 'border-purple-500 ring-1 ring-purple-500/50' : 'border-purple-500/30'} flex items-center justify-between transition-all ${disabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-surface'}`}
-                disabled={disabled}
-            >
-                <div className="flex items-center gap-2 truncate">
-                    {selectedOption ? (
-                        <>
-                            <span>{selectedOption.icon}</span>
-                            <span className="text-white">{selectedOption.label}</span>
-                        </>
-                    ) : (
-                        <span className="text-gray-500">{placeholder}</span>
-                    )}
-                </div>
-                <span className="text-gray-400 text-xs">▼</span>
-            </button>
-
-            {isOpen && (
-                <div className="absolute z-50 w-full mt-1 bg-[#1a1a2e] border border-purple-500/30 rounded-lg shadow-xl max-h-60 overflow-auto animate-fade-in custom-scrollbar">
-                    {options.map((option) => (
-                        <button
-                            key={option.value}
-                            type="button"
-                            onClick={() => {
-                                onChange(option.value);
-                                setIsOpen(false);
-                            }}
-                            className={`w-full px-4 py-2 text-left flex items-center gap-2 hover:bg-purple-500/20 transition-colors ${value === option.value ? 'bg-purple-500/10 text-purple-300' : 'text-gray-300'}`}
-                        >
-                            <span>{option.icon}</span>
-                            <span>{option.label}</span>
-                            {value === option.value && <span className="ml-auto text-purple-400">✓</span>}
-                        </button>
-                    ))}
-                </div>
-            )}
-        </div>
-    );
-};
-
+// ... (Rest of imports/helpers)
 
 function Kasir() {
+    const socket = useSocket(); // New: Get Socket
+
     // Get User Role
     let user = {};
     try {
@@ -91,10 +19,36 @@ function Kasir() {
     }
     const isAdmin = user.role === 'admin' || user.role === 'owner';
 
+    // Socket Listener (Real-time Updates)
+    useEffect(() => {
+        if (!socket) return;
+
+        const handleOrderUpdate = (data) => {
+            console.log('⚡ Socket Event (Kasir):', data);
+
+            // Trigger refresh on ANY change
+            mutate(key => typeof key === 'string' && key.startsWith('/orders'));
+            mutate('/shift/current-balance');
+            mutate('/tables'); // Refresh tables too (for occupied status)
+
+            // Option: Show subtle toast if needed, but OrderNotification handles sound
+        };
+
+        socket.on('orders:update', handleOrderUpdate);
+
+        return () => {
+            socket.off('orders:update', handleOrderUpdate);
+        };
+    }, [socket]);
+
     // SWR Data Fetching
     const { data: menuData } = useSWR('/menu', fetcher, { refreshInterval: 60000 }); // Refresh menu every 1 min
-    const { data: ordersData } = useSWR('/orders?limit=200', fetcher, { refreshInterval: 1000 }); // Refresh orders every 1s (Fast)
-    const { data: tablesData } = useSWR('/tables', fetcher, { refreshInterval: 10000 });
+    // Opt: Disable Polling (0) or set to very long (60s) as backup
+    const { data: ordersData, isValidating: isOrdersValidating } = useSWR('/orders?limit=200', fetcher, {
+        refreshInterval: 0, // Disabled: Rely on Socket
+        revalidateOnFocus: true
+    });
+    const { data: tablesData } = useSWR('/tables', fetcher, { refreshInterval: 0 }); // socket triggers update
 
     const { data: shiftData } = useSWR('/shift/current-balance', fetcher);
     const { data: settings } = useSWR('/settings', fetcher);
@@ -814,7 +768,7 @@ function Kasir() {
                                         : 'bg-white/5 text-gray-400 hover:bg-white/10'
                                         }`}
                                 >
-                                    🪙 Baru <span className="bg-white/20 px-1.5 rounded text-xs ml-1">{orderCounts.new}</span>
+                                    {isOrdersValidating ? <span className="animate-spin text-xs">⏳</span> : '🪙'} Baru <span className="bg-white/20 px-1.5 rounded text-xs ml-1">{orderCounts.new}</span>
                                 </button>
                                 <button
                                     onClick={() => setFilter('pending_payment')}
@@ -927,7 +881,7 @@ function Kasir() {
                                 : 'bg-white/5 text-gray-400'
                                 }`}
                         >
-                            🪙 Baru <span className="bg-white/20 px-1.5 rounded text-xs ml-1">{orderCounts.new}</span>
+                            {isOrdersValidating ? <span className="animate-spin text-xs">⏳</span> : '🪙'} Baru <span className="bg-white/20 px-1.5 rounded text-xs ml-1">{orderCounts.new}</span>
                         </button>
                         <button
                             onClick={() => setFilter('pending_payment')}

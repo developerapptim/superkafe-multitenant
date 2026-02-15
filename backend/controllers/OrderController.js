@@ -483,6 +483,14 @@ exports.createOrder = async (req, res) => {
         }
 
         console.log("🎉 Order Creation Complete");
+
+        // Emit Socket Event
+        const io = req.app.get('io');
+        if (io) {
+            io.emit('orders:update', { action: 'create', order: newOrder });
+            console.log('📡 Emitted orders:update (create)');
+        }
+
         res.status(201).json(newOrder);
 
     } catch (err) {
@@ -576,6 +584,13 @@ exports.deleteOrder = async (req, res) => {
         await Order.deleteOne({ id: orderId });
         console.log(`🗑️ Order ${orderId} deleted by user`);
 
+        // Emit Socket Event
+        const io = req.app.get('io');
+        if (io) {
+            io.emit('orders:update', { action: 'delete', orderId });
+            console.log('📡 Emitted orders:update (delete)');
+        }
+
         res.json({ message: 'Pesanan berhasil dihapus' });
     } catch (err) {
         console.error('Delete Order Error:', err);
@@ -639,6 +654,13 @@ exports.updateOrderStatus = async (req, res) => {
 
         await order.save();
         console.log(`✅ Order ${order.id} status updated: ${previousStatus} → ${status || previousStatus}`);
+
+        // Emit Socket Event
+        const io = req.app.get('io');
+        if (io) {
+            io.emit('orders:update', { action: 'update', orderId: order.id, status: status || previousStatus });
+            console.log('📡 Emitted orders:update (update)');
+        }
 
         res.json(order);
     } catch (err) {
@@ -727,6 +749,14 @@ exports.payOrder = async (req, res) => {
         }
 
         await order.save();
+
+        // Emit Socket Event
+        // Emit Socket Event
+        const io = req.app.get('io');
+        if (io) {
+            io.emit('orders:update', { action: 'pay', orderId: order.id });
+            console.log('📡 Emitted orders:update (pay)');
+        }
 
         res.json(order);
     } catch (err) {
@@ -868,6 +898,13 @@ exports.mergeOrders = async (req, res) => {
             message: 'Pesanan berhasil digabung',
             mergedOrder
         });
+
+        // Emit Socket Event
+        const io = req.app.get('io');
+        if (io) {
+            io.emit('orders:update', { action: 'merge', mergedOrder });
+            console.log('📡 Emitted orders:update (merge)');
+        }
 
     } catch (error) {
         console.error('Merge Orders Error:', error);

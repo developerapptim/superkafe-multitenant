@@ -1,22 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
-import useSWR from 'swr';
+// import useSWR from 'swr'; // Removed Polling
 import toast from 'react-hot-toast';
-import api from '../services/api';
-
-const fetcher = url => api.get(url).then(res => res.data);
+import { useSocket } from '../context/SocketContext'; // New: Import Socket
 
 const OrderNotification = () => {
-    // Poll for new orders every 10 seconds (less frequent than Kasir to reduce load)
-    // Or keep it 5s if realtime matters. Let's do 5s to match Kasir speed.
-    const { data: ordersData } = useSWR('/orders?status=new&limit=50', fetcher, {
-        refreshInterval: 2000,
-        revalidateOnFocus: false // Don't revalidate on focus to avoid double triggers
-    });
-
+    const socket = useSocket(); // New: Get Socket
     const [isMuted, setIsMuted] = useState(() => localStorage.getItem('pos_muted') === 'true');
-    const prevNewOrdersCount = useRef(0);
     const audioContextRef = useRef(null);
-    const hasInitialized = useRef(false);
 
     // Initialize Audio Context on user interaction
     useEffect(() => {
@@ -70,11 +60,6 @@ const OrderNotification = () => {
             // Drop volume
             gain.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
 
-            // Second note (Lower) - Optional, let's keep it simple 'Ding'
-            // osc.frequency.setValueAtTime(587.33, now + 0.5); // D5
-            // gain.gain.setValueAtTime(0.1, now + 0.5);
-            // gain.gain.exponentialRampToValueAtTime(0.001, now + 1.0);
-
             osc.type = 'sine';
             osc.start(now);
             osc.stop(now + 0.6);
@@ -84,40 +69,34 @@ const OrderNotification = () => {
         }
     };
 
-    // Check for new orders
+    // Socket Listener for New Orders
     useEffect(() => {
-        if (!ordersData) return;
+        if (!socket) return;
 
-        const orders = Array.isArray(ordersData?.data) ? ordersData.data : (Array.isArray(ordersData) ? ordersData : []);
-        // Strict filter: only actual 'new' orders
-        const currentNewOrdersCount = orders.filter(o => o.status === 'new').length;
+        const handleOrderUpdate = (data) => {
+            // Only play sound for NEW orders
+            if (data.action === 'create') {
+                console.log('🔔 New Order Socket Event! Playing sound...');
+                playSound();
+                toast('Pesanan Baru Masuk!', {
+                    icon: '🔔',
+                    duration: 5000,
+                    position: 'top-right',
+                    style: {
+                        background: '#333',
+                        color: '#fff',
+                        border: '1px solid #a855f7'
+                    }
+                });
+            }
+        };
 
-        // On first load, just sync count, don't play sound (unless we want to alert on refresh?)
-        // Usually better to alert only on INCREASE
-        if (!hasInitialized.current) {
-            prevNewOrdersCount.current = currentNewOrdersCount;
-            hasInitialized.current = true;
-            return;
-        }
+        socket.on('orders:update', handleOrderUpdate);
 
-        // Play sound if count INCREASED
-        if (currentNewOrdersCount > prevNewOrdersCount.current) {
-            console.log('🔔 New Order Detected! Playing sound...');
-            playSound();
-            toast('Pesanan Baru Masuk!', {
-                icon: '🔔',
-                duration: 5000,
-                position: 'top-right',
-                style: {
-                    background: '#333',
-                    color: '#fff',
-                    border: '1px solid #a855f7'
-                }
-            });
-        }
-
-        prevNewOrdersCount.current = currentNewOrdersCount;
-    }, [ordersData, isMuted]);
+        return () => {
+            socket.off('orders:update', handleOrderUpdate);
+        };
+    }, [socket, isMuted]);
 
     // Handle mute toggle via custom event or check localStorage periodically
     // For now, simpler: Just check localStorage every poll or expose a toggle in UI?
