@@ -3,7 +3,8 @@ import toast from 'react-hot-toast';
 import useSWR, { mutate } from 'swr';
 import api, { menuAPI, ordersAPI, tablesAPI, shiftAPI } from '../../services/api';
 import PrintButton from '../../components/PrintButton';
-import { useSocket } from '../../context/SocketContext'; // New: Import Socket
+import { useSocket } from '../../context/SocketContext';
+import useOfflineSync from '../../hooks/useOfflineSync'; // New: Offline Hook
 
 // Fetcher for SWR
 const fetcher = url => api.get(url).then(res => res.data);
@@ -18,6 +19,7 @@ const formatPhoneNumber = (value) => {
 };
 
 function Kasir() {
+    const { isOnline, saveOrderOffline, getLocalMenu } = useOfflineSync(); // Offline Hook
     const socket = useSocket(); // New: Get Socket
 
     // Get User Role
@@ -64,7 +66,20 @@ function Kasir() {
     const { data: settings } = useSWR('/settings', fetcher);
 
     // Derived state from SWR data
-    const menuItems = (menuData || []).filter(m => m.is_active !== false && m.available !== false);
+    const [offlineMenu, setOfflineMenu] = useState([]);
+
+    // Load offline menu when offline
+    useEffect(() => {
+        if (!isOnline) {
+            getLocalMenu().then(data => {
+                setOfflineMenu(data);
+                toast('Menggunakan data menu offline', { icon: '📂' });
+            });
+        }
+    }, [isOnline]);
+
+    const sourceMenu = isOnline ? (menuData || []) : offlineMenu;
+    const menuItems = sourceMenu.filter(m => m.is_active !== false && m.available !== false);
     const tables = tablesData || [];
 
     // Process Active Orders
@@ -382,18 +397,28 @@ function Kasir() {
                 timestamp: now.getTime(),
             };
 
-            await ordersAPI.create(orderData);
+            if (isOnline) {
+                await ordersAPI.create(orderData);
 
-            // Mutate SWR cache to update UI
-            mutate('/orders?limit=200');
-            if (orderType === 'dine-in' && selectedTable) {
-                await tablesAPI.updateStatus(selectedTable, 'occupied');
-                mutate('/tables');
+                // Mutate SWR cache to update UI
+                mutate('/orders?limit=200');
+                if (orderType === 'dine-in' && selectedTable) {
+                    await tablesAPI.updateStatus(selectedTable, 'occupied');
+                    mutate('/tables');
+                }
+            } else {
+                await saveOrderOffline(orderData);
+                // No immediate mutation of /orders effectively unless we display offline orders too
+                // For now, simple "Saved" is enough, sync will happen later.
             }
 
             resetForm();
             setShowModal(false);
-            toast.success('Pesanan berhasil dibuat! ✅', { id: toastId });
+            if (isOnline) {
+                toast.success('Pesanan berhasil dibuat! ✅', { id: toastId });
+            } else {
+                toast.dismiss(toastId);
+            }
         } catch (err) {
             console.error('Error creating order:', err);
             toast.error('Gagal membuat pesanan: ' + (err.response?.data?.error || err.message), { id: toastId });
@@ -698,10 +723,15 @@ function Kasir() {
                 <div className="hidden md:flex flex-col gap-3">
                     {/* Top Row: Title & Actions */}
                     <div className="flex items-center justify-between">
-                        {/* Title Group - REMOVED (Moved to Header) */}
-                        {/* <div className="flex items-center gap-2">
-                            <h2 className="text-xl md:text-2xl font-bold text-left hidden md:block">🧾 Kasir</h2>
-                        </div> */}
+                        <div className="flex items-center gap-2">
+                            {/* Online/Offline Badge */}
+                            {!isOnline && (
+                                <div className="px-3 py-1 bg-red-500/20 text-red-400 border border-red-500/30 rounded-lg flex items-center gap-2 animate-pulse">
+                                    <span className="w-2 h-2 bg-red-500 rounded-full"></span>
+                                    <span className="text-sm font-bold">OFFLINE MODE</span>
+                                </div>
+                            )}
+                        </div>
 
                         {/* Actions Group */}
                         <div className="flex items-center gap-2">

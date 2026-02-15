@@ -15,6 +15,7 @@
     "@capacitor/cli": "^8.0.2",
     "@capacitor/core": "^8.0.2",
     "axios": "^1.13.3",
+    "dexie": "^4.3.0",
     "framer-motion": "^12.29.2",
     "html-to-image": "^1.11.13",
     "html2canvas": "^1.4.1",
