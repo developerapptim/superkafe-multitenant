@@ -20,7 +20,7 @@ export default function DataCenter() {
     const [modalInput, setModalInput] = useState('');
 
     // SWR conditional fetch - only fetches when audit tab is active
-    const { data: auditLogs = [] } = useSWR(
+    const { data: auditLogs = [], mutate: mutateAuditLogs } = useSWR(
         activeTab === 'audit' ? '/admin/audit-logs' : null,
         fetcher
     );
@@ -339,7 +339,7 @@ export default function DataCenter() {
                     <div>
                         <div className="flex justify-between items-center mb-4">
                             <h3 className="text-xl font-bold">Riwayat Aktivitas</h3>
-                            <button onClick={fetchAuditLogs} className="bg-white/10 hover:bg-white/20 px-3 py-1 rounded text-sm">Refresh</button>
+                            <button onClick={() => mutateAuditLogs()} className="bg-white/10 hover:bg-white/20 px-3 py-1 rounded text-sm">Refresh</button>
                         </div>
 
                         <div className="overflow-x-auto rounded-lg border border-purple-500/30">
