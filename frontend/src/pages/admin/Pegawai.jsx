@@ -360,26 +360,26 @@ function Pegawai() {
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                                 <div className="bg-white/5 rounded-lg p-3">
                                     <p className="text-sm text-gray-400">Hari Kerja</p>
-                                    <p className="text-2xl font-bold text-green-400">{payrollData.summary.days_present}</p>
+                                    <p className="text-2xl font-bold text-green-400">{payrollData.summary?.days_present || 0}</p>
                                 </div>
                                 <div className="bg-white/5 rounded-lg p-3">
                                     <p className="text-sm text-gray-400">Hari Telat</p>
-                                    <p className="text-2xl font-bold text-yellow-400">{payrollData.summary.days_late}</p>
+                                    <p className="text-2xl font-bold text-yellow-400">{payrollData.summary?.days_late || 0}</p>
                                 </div>
                                 <div className="bg-white/5 rounded-lg p-3">
                                     <p className="text-sm text-gray-400">Gaji Kotor</p>
-                                    <p className="text-xl font-bold">{formatCurrency(payrollData.summary.base_pay)}</p>
+                                    <p className="text-xl font-bold">{formatCurrency(payrollData.summary?.base_pay || 0)}</p>
                                 </div>
                                 <div className="bg-white/5 rounded-lg p-3">
                                     <p className="text-sm text-gray-400">Potongan Kasbon</p>
-                                    <p className="text-xl font-bold text-red-400">-{formatCurrency(payrollData.summary.kasbon_deduction)}</p>
+                                    <p className="text-xl font-bold text-red-400">-{formatCurrency(payrollData.summary?.kasbon_deduction || 0)}</p>
                                 </div>
                             </div>
 
                             <div className="border-t border-white/10 pt-4">
                                 <div className="flex justify-between items-center">
                                     <span className="text-lg font-medium">Total Gaji Bersih:</span>
-                                    <span className="text-3xl font-bold text-green-400">{formatCurrency(payrollData.summary.net_pay)}</span>
+                                    <span className="text-3xl font-bold text-green-400">{formatCurrency(payrollData.summary?.net_pay || 0)}</span>
                                 </div>
                             </div>
 
