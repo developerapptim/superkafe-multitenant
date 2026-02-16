@@ -394,11 +394,11 @@ export default function DataCenter() {
                             Simpan file ini di tempat aman secara berkala.
                         </p>
 
-                        <div className="flex gap-4">
+                        <div className="flex flex-col md:flex-row gap-4 w-full md:w-auto justify-center">
                             <button
                                 onClick={handleBackup}
                                 disabled={isLoading}
-                                className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 px-8 py-3 rounded-xl font-bold text-lg transition-transform hover:scale-105 disabled:opacity-50"
+                                className="flex justify-center items-center gap-2 bg-blue-600 hover:bg-blue-500 px-8 py-3 rounded-xl font-bold text-lg transition-transform hover:scale-105 disabled:opacity-50 w-full md:w-auto"
                             >
                                 <span>⬇️</span> Download Full Backup
                             </button>
@@ -422,7 +422,7 @@ export default function DataCenter() {
                             <button
                                 onClick={() => document.getElementById('restoreInput').click()}
                                 disabled={isLoading}
-                                className="flex items-center gap-2 bg-gray-700 hover:bg-gray-600 px-8 py-3 rounded-xl font-bold text-lg text-gray-300 transition-transform hover:scale-105 disabled:opacity-50"
+                                className="flex justify-center items-center gap-2 bg-gray-700 hover:bg-gray-600 px-8 py-3 rounded-xl font-bold text-lg text-gray-300 transition-transform hover:scale-105 disabled:opacity-50 w-full md:w-auto"
                             >
                                 <span>⬆️</span> Restore Database
                             </button>
