@@ -6,6 +6,8 @@ import CustomSelect from '../../components/CustomSelect';
 import api, { cashTransactionsAPI, cashAnalyticsAPI, debtsAPI, employeesAPI } from '../../services/api';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import toast from 'react-hot-toast';
+import OperationalExpensesTab from '../../components/admin/finance/OperationalExpensesTab';
+import ProfitLossTab from '../../components/admin/finance/ProfitLossTab';
 
 const fetcher = url => api.get(url).then(res => res.data);
 
@@ -193,10 +195,12 @@ function Keuangan() {
             </div>
 
             {/* Tabs */}
-            <div className="grid grid-cols-3 gap-1 border-b border-purple-500/30 pb-1">
+            <div className="grid grid-cols-5 gap-1 border-b border-purple-500/30 pb-1 overflow-x-auto">
                 {[
                     { id: 'ringkasan', label: '📊 Ringkasan' },
-                    { id: 'transaksi', label: '📋 Transaksi' },
+                    { id: 'laba-rugi', label: '📈 Laba Rugi' },
+                    { id: 'pengeluaran', label: '📤 Pengeluaran' },
+                    { id: 'transaksi', label: '📋 Transaksi Kas' },
                     { id: 'hutang', label: '📒 Hutang' }
                 ].map(tab => (
                     <button
@@ -312,6 +316,12 @@ function Keuangan() {
                     </div>
                 </div>
             )}
+
+            {/* ==================== LABA RUGI TAB ==================== */}
+            {activeTab === 'laba-rugi' && <ProfitLossTab />}
+
+            {/* ==================== PENGELUARAN TAB ==================== */}
+            {activeTab === 'pengeluaran' && <OperationalExpensesTab />}
 
             {/* ==================== TRANSAKSI TAB ==================== */}
             {activeTab === 'transaksi' && (

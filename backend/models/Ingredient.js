@@ -22,7 +22,7 @@ const IngredientSchema = new mongoose.Schema({
     // Custom Attributes
     type: {
         type: String,
-        enum: ['physical', 'non_physical'],
+        enum: ['physical'], // DEPRECATED: 'non_physical'. Use OperationalExpenses for costs.
         default: 'physical'
     },
 

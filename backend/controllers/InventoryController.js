@@ -234,7 +234,7 @@ exports.restockIngredient = async (req, res) => {
         if (!item) return res.status(404).json({ error: 'Ingredient not found' });
 
         if (item.type === 'non_physical') {
-            return res.status(400).json({ error: 'Cannot restock non-physical items' });
+            return res.status(400).json({ error: 'Restocking non-physical items is no longer supported in Inventory. Please use the new Operational Expenses menu.' });
         }
 
         // 3. Current Values

@@ -248,4 +248,18 @@ export const cartAPI = {
     applyVoucher: (code, subtotal) => api.post('/cart/apply-voucher', { code, subtotal }),
 };
 
+// ========== OPERATIONAL EXPENSES API ==========
+export const expensesAPI = {
+    getAll: (params) => api.get('/expenses', { params }),
+    getById: (id) => api.get(`/expenses/${id}`),
+    create: (data) => api.post('/expenses', data),
+    update: (id, data) => api.put(`/expenses/${id}`, data),
+    delete: (id) => api.delete(`/expenses/${id}`),
+};
+
+// ========== FINANCE API ==========
+export const financeAPI = {
+    getProfitLoss: (params) => api.get('/finance/profit-loss', { params }),
+};
+
 export default api;

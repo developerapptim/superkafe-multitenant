@@ -1,0 +1,101 @@
+
+// === PROFIT & LOSS REPORT (Global Margin System) ===
+exports.getProfitLoss = async (req, res) => {
+    try {
+        const { startDate, endDate } = req.query;
+        
+        let dateFilter = {};
+        let orderDateFilter = {};
+
+        if (startDate || endDate) {
+            dateFilter.date = {};
+            orderDateFilter.timestamp = {};
+
+            if (startDate) {
+                const start = new Date(startDate);
+                start.setHours(0, 0, 0, 0);
+                dateFilter.date.$gte = start;
+                orderDateFilter.timestamp.$gte = start.getTime();
+            }
+            if (endDate) {
+                const end = new Date(endDate);
+                end.setHours(23, 59, 59, 999);
+                dateFilter.date.$lte = end;
+                orderDateFilter.timestamp.$lte = end.getTime();
+            }
+        }
+
+        // 1. Calculate Gross Sales & COGS (HPP) from Orders
+        // Only count PAID or DONE orders
+        const orders = await Order.find({
+            ...orderDateFilter,
+            $or: [{ status: 'done' }, { paymentStatus: 'paid' }]
+        }).select('total items.hpp_locked subtotal voucherDiscount');
+
+        let totalSales = 0;
+        let totalHPP = 0;
+        let totalDiscounts = 0;
+
+        orders.forEach(o => {
+            totalSales += (o.total || 0);
+            totalDiscounts += (o.voucherDiscount || 0);
+
+            // Sum up HPP from items
+            if (o.items && Array.isArray(o.items)) {
+                o.items.forEach(item => {
+                    totalHPP += (Number(item.hpp_locked) * Number(item.qty || item.count || 0)) || 0;
+                });
+            }
+        });
+
+        // 2. Calculate Operational Expenses (OpEx)
+        const opexQuery = { ...dateFilter, isDeleted: false };
+        const opexList = await OperationalExpense.aggregate([
+            { $match: opexQuery },
+            { $group: { _id: '$category', total: { $sum: '$amount' } } }
+        ]);
+
+        let totalOpEx = 0;
+        const opexBreakdown = {};
+        
+        opexList.forEach(op => {
+            totalOpEx += op.total;
+            opexBreakdown[op._id] = op.total;
+        });
+
+        // 3. Final Calculations
+        const grossProfit = totalSales - totalHPP;
+        const netProfit = grossProfit - totalOpEx;
+        
+        // Margin Percentages
+        const grossMargin = totalSales > 0 ? (grossProfit / totalSales) * 100 : 0;
+        const netMargin = totalSales > 0 ? (netProfit / totalSales) * 100 : 0;
+
+        res.json({
+            period: { startDate, endDate },
+            sales: {
+                totalRevenue: totalSales,
+                totalDiscounts,
+                transactionCount: orders.length
+            },
+            cogs: {
+                totalHPP,
+                percentOfSales: totalSales > 0 ? (totalHPP / totalSales) * 100 : 0
+            },
+            expenses: {
+                totalOpEx,
+                breakdown: opexBreakdown
+            },
+            profit: {
+                grossProfit,
+                grossMargin: parseFloat(grossMargin.toFixed(2)),
+                netProfit,
+                netMargin: parseFloat(netMargin.toFixed(2))
+            }
+        });
+
+    } catch (err) {
+        console.error('P&L Error:', err);
+        res.status(500).json({ error: 'Server error: ' + err.message });
+    }
+};

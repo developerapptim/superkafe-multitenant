@@ -82,6 +82,7 @@ app.use('/api/data', require('./routes/dataRoutes'));
 app.use('/api/upload', require('./routes/uploadRoutes'));
 app.use('/api/cash', require('./routes/cashRoutes'));
 app.use('/api/cash-transactions', require('./routes/cashTransactionRoutes')); // New Link
+app.use('/api/expenses', require('./routes/expenseRoutes')); // Refactored OpEx
 app.use('/api/debts', require('./routes/debtRoutes'));
 app.use('/api/attendance', require('./routes/attendanceRoutes'));
 app.use('/api/payroll', require('./routes/payrollRoutes'));

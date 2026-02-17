@@ -7,6 +7,8 @@ router.use(checkJwt);
 
 router.get('/expenses', FinanceController.getExpenses);
 router.post('/expenses', FinanceController.addExpense);
+// Reports
 router.get('/summary', FinanceController.getSummary);
+router.get('/profit-loss', FinanceController.getProfitLoss); // New P&L Report
 
 module.exports = router;

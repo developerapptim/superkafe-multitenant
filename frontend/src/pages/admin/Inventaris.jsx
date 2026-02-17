@@ -246,10 +246,17 @@ function Inventaris() {
             const responseData = res.data;
 
             // Handle both paginated and legacy (flat array) responses
-            const items = responseData.data || responseData;
-            const pagination = responseData.pagination || null;
+            let items = responseData.data || responseData;
 
-            setIngredients(items);
+            // CLIENT-SIDE FILTER (Refactoring Phase):
+            // Remove 'non_physical' items from view & warn developer
+            const nonPhysicalItems = items.filter(i => i.type === 'non_physical');
+            if (nonPhysicalItems.length > 0) {
+                console.warn(`[Inventory] Hidden ${nonPhysicalItems.length} legacy 'non_physical' items directly from API response. These should be migrated to Expenses.`);
+            }
+            items = items.filter(i => i.type !== 'non_physical');
+
+            const pagination = responseData.pagination || null;
             setPaginationInfo(pagination);
 
             // Fetch custom units
@@ -375,7 +382,7 @@ function Inventaris() {
         setFormData({
             id: generateId(),
             nama: '',
-            type: 'physical',
+            // type: 'physical', // Removed from UI, always physical
             stok: 0,
             satuan_beli: 'pcs',
             harga_beli: 0,
@@ -390,6 +397,11 @@ function Inventaris() {
 
     // Open edit modal
     const openEditModal = (item) => {
+        if (item.type === 'non_physical') {
+            toast.error('Item ini adalah Data Lama (Non-Fisik). Silakan gunakan menu Pengeluaran.');
+            return;
+        }
+
         setEditingItem(item); // Keep track of what we are editing
 
         // Fix: Robust detection of conversion state
@@ -400,9 +412,7 @@ function Inventaris() {
         setFormData({
             id: item.id,
             nama: item.nama,
-            type: item.type || 'physical',
-            // Fix: If conversion is ON, the stock in DB is in Production Units (e.g. 3000 gram).
-            // We need to divide by isi_prod (1000) to show the user the Buying Unit (3 Kg).
+            // type: item.type || 'physical', // Always treat as physical in edit form
             stok: isKonversi && item.isi_prod > 0 ? (item.stok / item.isi_prod) : item.stok,
             satuan_beli: item.satuan_beli || 'pcs',
             harga_beli: item.harga_beli,
@@ -523,6 +533,7 @@ function Inventaris() {
 
             const dataToSend = {
                 ...formData,
+                type: 'physical', // Enforce physical type
 
                 // Fix: Update satuan explicitly
                 satuan: unitToSave,
@@ -531,11 +542,9 @@ function Inventaris() {
                 use_konversi: formData.use_konversi,
 
                 // Calculate final stock with conversion logic
-                stok: formData.type === 'non_physical'
-                    ? 0
-                    : (formData.use_konversi && isiProd > 0 ? Number(formData.stok) * isiProd : Number(formData.stok)),
+                stok: (formData.use_konversi && isiProd > 0 ? Number(formData.stok) * isiProd : Number(formData.stok)),
 
-                stok_min: formData.type === 'non_physical' ? 0 : Number(formData.stok_min),
+                stok_min: Number(formData.stok_min),
                 harga_beli: hargaBeli,
                 isi_prod: isiProd,
                 // Mapped fields for backend as requested
@@ -862,11 +871,6 @@ function Inventaris() {
                                                     <td className="px-4 py-3">
                                                         <div>
                                                             <SmartText className="font-medium text-white">{item.nama}</SmartText>
-                                                            {item.type === 'non_physical' && (
-                                                                <span className="mt-1 inline-flex items-center gap-1 bg-purple-500/10 text-purple-300 border border-purple-500/20 text-[10px] font-semibold px-2 py-0.5 rounded-full w-fit">
-                                                                    ⚡ Jasa / Non-Stok
-                                                                </span>
-                                                            )}
                                                         </div>
                                                         {isKonversi && (
                                                             <div className="text-xs text-gray-400 mt-1">
@@ -875,24 +879,20 @@ function Inventaris() {
                                                         )}
                                                     </td>
                                                     <td className={`px-4 py-3 text-center ${item.stok < 0 ? 'text-red-500 font-bold' : ''}`}>
-                                                        {item.type === 'non_physical' ? (
-                                                            <span className="text-xl text-gray-500 font-bold">∞</span>
-                                                        ) : (
-                                                            // Dual-View Logic: Show Buy Unit if conversion exists (isi_prod > 1) and buy unit is defined
-                                                            (item.isi_prod > 1 && item.satuan_beli) ? (
-                                                                <div className="flex flex-col items-center justify-center">
-                                                                    <span className="text-sm font-bold text-white">
-                                                                        {parseFloat((item.stok / item.isi_prod).toFixed(2))} <span className="text-sm font-bold text-white-400">{item.satuan_beli}</span>
-                                                                    </span>
-                                                                    <span className="text-[11px] text-gray-400 mt-0.5">
-                                                                        ({Math.floor(item.stok / item.isi_prod)} {item.satuan_beli} + {(item.stok % item.isi_prod).toFixed(0)} {item.satuan_prod})
-                                                                    </span>
-                                                                </div>
-                                                            ) : (
-                                                                <span className="font-bold text-white text-base">
-                                                                    {item.stok} <span className="font-normal text-gray-400 text-sm">{item.satuan_prod || item.satuan || 'unit'}</span>
+                                                        {/* Dual-View Logic: Show Buy Unit if conversion exists (isi_prod > 1) and buy unit is defined */}
+                                                        {(item.isi_prod > 1 && item.satuan_beli) ? (
+                                                            <div className="flex flex-col items-center justify-center">
+                                                                <span className="text-sm font-bold text-white">
+                                                                    {parseFloat((item.stok / item.isi_prod).toFixed(2))} <span className="text-sm font-bold text-white-400">{item.satuan_beli}</span>
                                                                 </span>
-                                                            )
+                                                                <span className="text-[11px] text-gray-400 mt-0.5">
+                                                                    ({Math.floor(item.stok / item.isi_prod)} {item.satuan_beli} + {(item.stok % item.isi_prod).toFixed(0)} {item.satuan_prod})
+                                                                </span>
+                                                            </div>
+                                                        ) : (
+                                                            <span className="font-bold text-white text-base">
+                                                                {item.stok} <span className="font-normal text-gray-400 text-sm">{item.satuan_prod || item.satuan || 'unit'}</span>
+                                                            </span>
                                                         )}
                                                     </td>
                                                     {isAdmin && (
@@ -950,15 +950,9 @@ function Inventaris() {
                                                         </>
                                                     )}
                                                     <td className="px-4 py-3 text-center">
-                                                        {item.type === 'non_physical' ? (
-                                                            <span className="px-2 py-1 rounded-full text-xs bg-gray-500/20 text-gray-400">
-                                                                Info
-                                                            </span>
-                                                        ) : (
-                                                            <span className={`px-2 py-1 rounded-full text-xs bg-${status.color}-500/20 text-${status.color}-400`}>
-                                                                {status.text}
-                                                            </span>
-                                                        )}
+                                                        <span className={`px-2 py-1 rounded-full text-xs bg-${status.color}-500/20 text-${status.color}-400`}>
+                                                            {status.text}
+                                                        </span>
                                                     </td>
                                                     <td className="px-4 py-3 text-center">
                                                         {canEdit ? (
@@ -1026,48 +1020,37 @@ function Inventaris() {
                                                 <div className="font-bold text-white text-lg leading-tight">
                                                     <SmartText maxLength={25}>{item.nama}</SmartText>
                                                 </div>
-                                                {item.type === 'non_physical' && (
-                                                    <span className="inline-block mt-1 text-[10px] bg-purple-500/20 text-purple-300 px-2 py-0.5 rounded-full border border-purple-500/20">
-                                                        ⚡ Jasa / Non-Stok
-                                                    </span>
-                                                )}
                                                 {isKonversi && (
                                                     <p className="text-xs text-gray-400 mt-1">
                                                         📦 1 {item.satuan_beli} = {item.isi_prod} {item.satuan_prod}
                                                     </p>
                                                 )}
                                             </div>
-                                            {item.type !== 'non_physical' && (
-                                                <span className={`px-2 py-1 rounded-full text-xs font-bold bg-${status.color}-500/20 text-${status.color}-400 shrink-0`}>
-                                                    {status.text}
-                                                </span>
-                                            )}
+                                            <span className={`px-2 py-1 rounded-full text-xs font-bold bg-${status.color}-500/20 text-${status.color}-400 shrink-0`}>
+                                                {status.text}
+                                            </span>
                                         </div>
 
                                         {/* Row 2: Stock Display (Big) */}
                                         <div className="mb-4 bg-white/5 rounded-lg p-3 text-center border border-white/5">
                                             <p className="text-xs text-gray-400 mb-1 uppercase tracking-wider">Stok Saat Ini</p>
-                                            {item.type === 'non_physical' ? (
-                                                <span className="text-3xl text-gray-500 font-bold">∞</span>
-                                            ) : (
-                                                <div className="flex items-baseline justify-center gap-1">
-                                                    {(item.isi_prod > 1 && item.satuan_beli) ? (
-                                                        <>
-                                                            <span className="text-2xl font-bold text-white">
-                                                                {parseFloat((item.stok / item.isi_prod).toFixed(2))}
-                                                            </span>
-                                                            <span className="text-sm text-gray-400 font-medium">{item.satuan_beli}</span>
-                                                        </>
-                                                    ) : (
-                                                        <>
-                                                            <span className="text-2xl font-bold text-white">
-                                                                {item.stok}
-                                                            </span>
-                                                            <span className="text-sm text-gray-400 font-medium">{item.satuan_prod || item.satuan || 'unit'}</span>
-                                                        </>
-                                                    )}
-                                                </div>
-                                            )}
+                                            <div className="flex items-baseline justify-center gap-1">
+                                                {(item.isi_prod > 1 && item.satuan_beli) ? (
+                                                    <>
+                                                        <span className="text-2xl font-bold text-white">
+                                                            {parseFloat((item.stok / item.isi_prod).toFixed(2))}
+                                                        </span>
+                                                        <span className="text-sm text-gray-400 font-medium">{item.satuan_beli}</span>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <span className="text-2xl font-bold text-white">
+                                                            {item.stok}
+                                                        </span>
+                                                        <span className="text-sm text-gray-400 font-medium">{item.satuan_prod || item.satuan || 'unit'}</span>
+                                                    </>
+                                                )}
+                                            </div>
                                         </div>
 
                                         {/* Row 3: Grid Info */}
@@ -1345,29 +1328,10 @@ function Inventaris() {
                             </div>
 
                             <form onSubmit={handleSubmit} className="space-y-4">
-                                {/* Type Selection */}
-                                <div className="flex p-1 bg-white/5 rounded-lg mb-4">
-                                    <button
-                                        type="button"
-                                        onClick={() => setFormData({ ...formData, type: 'physical' })}
-                                        className={`flex-1 py-2 text-sm font-medium rounded-md transition-all ${formData.type === 'physical'
-                                            ? 'bg-red-500 text-white shadow-lg'
-                                            : 'text-gray-400 hover:text-white'
-                                            }`}
-                                    >
-                                        🔴 Stok Fisik
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => setFormData({ ...formData, type: 'non_physical' })}
-                                        className={`flex-1 py-2 text-sm font-medium rounded-md transition-all ${formData.type === 'non_physical'
-                                            ? 'bg-blue-500 text-white shadow-lg'
-                                            : 'text-gray-400 hover:text-white'
-                                            }`}
-                                    >
-                                        🔵 Biaya/Jasa
-                                    </button>
-                                </div>
+                                {/* Type Selection REMOVED - Always Physical */}
+                                {/* 
+                                <div className="flex p-1 bg-white/5 rounded-lg mb-4">...</div> 
+                                */}
 
                                 <div>
                                     <label className="block text-sm text-gray-400 mb-1">Nama Bahan *</label>
@@ -1382,33 +1346,21 @@ function Inventaris() {
                                 </div>
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    {formData.type === 'physical' ? (
-                                        <div>
-                                            <label className="block text-sm text-gray-400 mb-1">Stok Awal</label>
-                                            <input
-                                                type="number"
-                                                value={formData.stok}
-                                                onChange={(e) => handleNumberChange('stok', e.target.value)}
-                                                className={`w-full px-4 py-2 rounded-lg bg-white/5 border border-purple-500/30 text-white focus:outline-none focus:border-purple-500 ${editingItem ? 'opacity-50 cursor-not-allowed' : ''}`}
-                                                disabled={!!editingItem}
-                                            />
-                                            {editingItem && (
-                                                <p className="text-[10px] text-amber-500 mt-1 italic">
-                                                    *Untuk mengubah jumlah stok, gunakan fitur Stock Opname.
-                                                </p>
-                                            )}
-                                        </div>
-                                    ) : (
-                                        <div>
-                                            <label className="block text-sm text-gray-400 mb-1 opacity-50">Stok (Auto)</label>
-                                            <input
-                                                type="text"
-                                                value="∞"
-                                                disabled
-                                                className="w-full px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-gray-500 cursor-not-allowed"
-                                            />
-                                        </div>
-                                    )}
+                                    <div>
+                                        <label className="block text-sm text-gray-400 mb-1">Stok Awal</label>
+                                        <input
+                                            type="number"
+                                            value={formData.stok}
+                                            onChange={(e) => handleNumberChange('stok', e.target.value)}
+                                            className={`w-full px-4 py-2 rounded-lg bg-white/5 border border-purple-500/30 text-white focus:outline-none focus:border-purple-500 ${editingItem ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                            disabled={!!editingItem}
+                                        />
+                                        {editingItem && (
+                                            <p className="text-[10px] text-amber-500 mt-1 italic">
+                                                *Untuk mengubah jumlah stok, gunakan fitur Stock Opname.
+                                            </p>
+                                        )}
+                                    </div>
                                     <div>
                                         <label className="block text-sm text-gray-400 mb-1">Satuan Beli</label>
                                         <div className="relative">
@@ -1462,27 +1414,15 @@ function Inventaris() {
                                             className="w-full px-4 py-2 rounded-lg bg-white/5 border border-purple-500/30 text-white focus:outline-none focus:border-purple-500"
                                         />
                                     </div>
-                                    {formData.type === 'physical' ? (
-                                        <div>
-                                            <label className="block text-sm text-gray-400 mb-1">Stok Minimum</label>
-                                            <input
-                                                type="number"
-                                                value={formData.stok_min}
-                                                onChange={(e) => handleNumberChange('stok_min', e.target.value)}
-                                                className="w-full px-4 py-2 rounded-lg bg-white/5 border border-purple-500/30 text-white focus:outline-none focus:border-purple-500"
-                                            />
-                                        </div>
-                                    ) : (
-                                        <div>
-                                            <label className="block text-sm text-gray-400 mb-1 opacity-50">Stok Minimum</label>
-                                            <input
-                                                type="text"
-                                                value="N/A"
-                                                disabled
-                                                className="w-full px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-gray-500 cursor-not-allowed"
-                                            />
-                                        </div>
-                                    )}
+                                    <div>
+                                        <label className="block text-sm text-gray-400 mb-1">Stok Minimum</label>
+                                        <input
+                                            type="number"
+                                            value={formData.stok_min}
+                                            onChange={(e) => handleNumberChange('stok_min', e.target.value)}
+                                            className="w-full px-4 py-2 rounded-lg bg-white/5 border border-purple-500/30 text-white focus:outline-none focus:border-purple-500"
+                                        />
+                                    </div>
                                 </div>
 
                                 <label className="flex items-center gap-2 cursor-pointer mb-4">
