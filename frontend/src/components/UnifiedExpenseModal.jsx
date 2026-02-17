@@ -119,17 +119,12 @@ const UnifiedExpenseModal = ({ isOpen, onClose, onSuccess, defaultCategory }) =>
 
                             <div>
                                 <label className="block text-sm text-gray-400 mb-1">Kategori Pengeluaran</label>
-                                <select
+                                <CustomSelect
                                     value={formData.category}
-                                    onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                                    className="w-full px-4 py-3 rounded-xl bg-black/20 border border-white/10 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 text-white appearance-none cursor-pointer"
-                                >
-                                    {categoryOptions.map((opt, idx) => (
-                                        <option key={idx} value={opt.value} disabled={opt.disabled} className={opt.disabled ? 'bg-gray-800 font-bold text-gray-400' : 'bg-[#1E1B4B]'}>
-                                            {opt.label}
-                                        </option>
-                                    ))}
-                                </select>
+                                    onChange={(val) => setFormData({ ...formData, category: val })}
+                                    options={categoryOptions}
+                                    placeholder="Pilih Kategori"
+                                />
                             </div>
 
                             <div>

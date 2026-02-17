@@ -189,15 +189,15 @@ export default function CustomSelect({ label, value, onChange, options = [], pla
                 >
 
                     {/* Search Input Sticky Header */}
-                    <div className="p-2 border-b border-white/10 bg-[#1f2937]/95 backdrop-blur-sm sticky top-0 z-10">
+                    <div className="p-2 border-b border-white/10 bg-[#1f2937] sticky top-0 z-20">
                         <input
                             ref={searchInputRef}
                             type="text"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="w-full px-3 py-1.5 text-sm rounded bg-white/10 border border-white/10 text-white placeholder-gray-500 focus:outline-none focus:border-purple-500/50"
-                            placeholder="🔍 Cari..."
-                            onClick={(e) => e.stopPropagation()} // Prevent closing when clicking input
+                            className="w-full px-3 py-2 text-sm rounded-lg bg-black/40 border border-white/10 text-white placeholder-gray-500 focus:outline-none focus:border-purple-500/50 transition-colors"
+                            placeholder="🔍 Cari kategori..."
+                            onClick={(e) => e.stopPropagation()}
                         />
                     </div>
 
@@ -207,21 +207,34 @@ export default function CustomSelect({ label, value, onChange, options = [], pla
                                 {searchTerm ? 'Tidak ditemukan' : 'Tidak ada opsi'}
                             </div>
                         ) : (
-                            filteredOptions.map((opt) => {
+                            filteredOptions.map((opt, idx) => {
                                 const isSelected = isMulti ? value.includes(opt.value) : value === opt.value;
+                                const isDisabled = opt.disabled;
+
+                                if (isDisabled) {
+                                    return (
+                                        <div
+                                            key={idx}
+                                            className="px-4 py-2 text-xs font-bold text-gray-500 uppercase tracking-wider bg-white/5 border-y border-white/5 first:border-t-0 sticky top-0"
+                                        >
+                                            {opt.label}
+                                        </div>
+                                    );
+                                }
+
                                 return (
                                     <button
                                         key={opt.value}
                                         type="button"
                                         onClick={() => isMulti ? handleMultiSelect(opt.value) : handleSingleSelect(opt.value)}
-                                        className={`w-full px-4 py-2 ${textSize} transition-colors flex items-center 
+                                        className={`w-full px-4 py-3 ${textSize} transition-colors flex items-center 
                                         ${optionAlign === 'center' ? 'justify-center' : 'justify-between text-left'}
                                         ${isSelected ? 'bg-purple-500/20 text-purple-300' : 'text-gray-300 hover:bg-white/5 hover:text-white'}
                                     `}
                                     >
-                                        <span className="flex-1">{opt.label}</span>
+                                        <span className="flex-1 truncate">{opt.label}</span>
                                         {isSelected && optionAlign !== 'center' && (
-                                            <span className="ml-2">✓</span>
+                                            <span className="ml-2 text-purple-400">✓</span>
                                         )}
                                     </button>
                                 );
