@@ -8,6 +8,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsi
 import toast from 'react-hot-toast';
 import OperationalExpensesTab from '../../components/admin/finance/OperationalExpensesTab';
 import ProfitLossTab from '../../components/admin/finance/ProfitLossTab';
+import UnifiedExpenseModal from '../../components/UnifiedExpenseModal';
 
 const fetcher = url => api.get(url).then(res => res.data);
 
@@ -42,6 +43,7 @@ function Keuangan() {
 
     // Modal states
     const [showModal, setShowModal] = useState(false);
+    const [showExpenseModal, setShowExpenseModal] = useState(false); // Unified Expense Modal
     const [modalType, setModalType] = useState('transaction'); // 'transaction' | 'kasbon' | 'piutang'
     const [formData, setFormData] = useState({
         type: 'in',
@@ -187,10 +189,16 @@ function Keuangan() {
             <div className="flex items-center justify-end flex-wrap gap-4">
                 {/* <h2 className="text-2xl font-bold hidden md:block">💰 Keuangan & Kas</h2> - Moved to Header */}
                 <button
-                    onClick={() => openModal('transaction', 'in')}
-                    className="bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-all"
+                    onClick={() => setShowExpenseModal(true)}
+                    className="bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-500 hover:to-orange-500 px-4 py-2 rounded-lg text-sm font-bold text-white flex items-center gap-2 transition-all shadow-lg shadow-red-500/20"
                 >
-                    <span>➕</span> Tambah Transaksi
+                    <span>💸</span> Catat Pengeluaran
+                </button>
+                <button
+                    onClick={() => openModal('transaction', 'in')}
+                    className="bg-gradient-to-r from-green-500 to-teal-500 hover:from-green-600 hover:to-teal-600 px-4 py-2 rounded-lg text-sm font-medium text-white flex items-center gap-2 transition-all"
+                >
+                    <span>📥</span> Catat Pemasukan
                 </button>
             </div>
 
@@ -406,12 +414,7 @@ function Keuangan() {
                 <div className="space-y-6">
                     {/* Quick Actions */}
                     <div className="flex gap-3 flex-wrap">
-                        <button
-                            onClick={() => openModal('kasbon')}
-                            className="px-4 py-2 rounded-lg bg-orange-500/20 text-orange-400 hover:bg-orange-500/30 flex items-center gap-2"
-                        >
-                            <span>👤</span> Kasbon Pegawai
-                        </button>
+                        {/* Kasbon Pegawai moved to Unified Expense */}
                         <button
                             onClick={() => openModal('piutang')}
                             className="px-4 py-2 rounded-lg bg-yellow-500/20 text-yellow-400 hover:bg-yellow-500/30 flex items-center gap-2"
@@ -657,6 +660,12 @@ function Keuangan() {
                     </div>
                 </div>
                 , document.body)}
+            {/* Unified Expense Modal */}
+            <UnifiedExpenseModal
+                isOpen={showExpenseModal}
+                onClose={() => setShowExpenseModal(false)}
+                onSuccess={mutateAll}
+            />
         </section>
     );
 }

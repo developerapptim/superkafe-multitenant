@@ -306,6 +306,126 @@ exports.deleteDebt = async (req, res) => {
     }
 };
 
+// === UNIFIED EXPENSE SYSTEM ===
+exports.unifiedExpense = async (req, res) => {
+    try {
+        const { amount, category, paymentMethod, description, date, proofImage, notes, personName } = req.body;
+        const numAmount = Number(amount);
+
+        if (!amount || numAmount <= 0) {
+            return res.status(400).json({ error: 'Jumlah harus lebih dari 0' });
+        }
+
+        const dateObj = date ? new Date(date) : new Date();
+        const actionsTaken = [];
+        let newOpEx = null;
+        let newCashTx = null;
+        let newDebt = null;
+
+        // 1. Determine if OpEx (Operational Expense)
+        // Non-OpEx categories: 'Tarik Tunai', 'Setor Bank', 'Kasbon', 'Lainnya (Non-OpEx)'
+        // Note: 'Lainnya' usually OpEx, so we specify 'Lainnya (Non-OpEx)' if strictly non-expense
+        const nonOpExCategories = ['Tarik Tunai', 'Setor Bank', 'Kasbon', 'Lainnya (Non-OpEx)'];
+        const isOpEx = !nonOpExCategories.includes(category);
+
+        // 2. Determine Transaction Type & Source
+        // paymentMethod: 'cash_drawer', 'cash_main', 'transfer'
+        // Backward compatibility: 'Tunai' -> 'cash_drawer', 'Transfer' -> 'transfer'
+
+        let normalizedPaymentMethod = paymentMethod;
+        if (paymentMethod === 'Tunai') normalizedPaymentMethod = 'cash_drawer';
+        if (paymentMethod === 'Transfer') normalizedPaymentMethod = 'transfer';
+        if (!normalizedPaymentMethod) normalizedPaymentMethod = 'cash_drawer'; // Default
+
+        const isCashDrawer = normalizedPaymentMethod === 'cash_drawer';
+        const isCashMain = normalizedPaymentMethod === 'cash_main';
+
+        // 3. Handle Cash Flow Logic FIRST (Consistency Check)
+        // We create CashTransaction for BOTH Drawer and Main for recording purposes, 
+        // BUT only Drawer outcome affects the active Shift balance.
+        if (isCashDrawer || isCashMain) {
+            const shift = await Shift.findOne({ endTime: null });
+
+            // Create Cash Transaction
+            newCashTx = new CashTransaction({
+                id: `trans_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+                type: 'out',
+                amount: numAmount,
+                category: category,
+                description: description || `Pengeluaran: ${category}`,
+                paymentMethod: normalizedPaymentMethod, // Save specific method
+                date: dateObj.toISOString(),
+                time: dateObj.toLocaleTimeString('id-ID', { hour12: false })
+            });
+            await newCashTx.save();
+            actionsTaken.push(`CashTransaction Created (${isCashDrawer ? 'Drawer' : 'Main Office'})`);
+
+            // Update Shift ONLY if Cash Drawer
+            if (isCashDrawer && shift) {
+                shift.currentCash = (shift.currentCash || 0) - numAmount;
+                if (!shift.expenseIds) shift.expenseIds = [];
+                shift.expenseIds.push(newCashTx.id);
+
+                await shift.save();
+                actionsTaken.push('Shift Balance Deducted');
+            }
+        }
+
+        // 4. Handle Kasbon (Debt) Logic
+        const isKasbon = category === 'Kasbon Karyawan' || category === 'Kasbon';
+
+        if (isKasbon) {
+            if (!personName) {
+                return res.status(400).json({ error: 'Nama pegawai wajib diisi untuk kasbon' });
+            }
+
+            newDebt = new Debt({
+                id: `debt_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+                type: 'kasbon',
+                personName: personName,
+                amount: numAmount,
+                description: description || 'Kasbon via Unified Expense',
+                status: 'pending',
+                createdAt: dateObj
+            });
+            await newDebt.save();
+            actionsTaken.push('Debt (Kasbon) Created');
+        }
+
+        // 5. Handle Operational Expense Logic
+        if (isOpEx) {
+            newOpEx = new OperationalExpense({
+                id: `opex_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+                category,
+                amount: numAmount,
+                description: description || '-',
+                paymentMethod: normalizedPaymentMethod,
+                date: dateObj,
+                notes,
+                proofImage,
+                createdBy: req.user ? (req.user.name || req.user.username) : 'System'
+            });
+            await newOpEx.save();
+            actionsTaken.push('OperationalExpense Created');
+        }
+
+        res.status(201).json({
+            message: 'Pengeluaran berhasil dicatat',
+            actions: actionsTaken,
+            data: {
+                opex: newOpEx,
+                cashTx: newCashTx,
+                debt: newDebt,
+                paymentMethod: normalizedPaymentMethod
+            }
+        });
+
+    } catch (err) {
+        console.error('Unified Expense Error:', err);
+        res.status(500).json({ error: 'Server error: ' + err.message });
+    }
+};
+
 // === PROFIT & LOSS REPORT (Global Margin System) ===
 exports.getProfitLoss = async (req, res) => {
     try {

@@ -1,0 +1,39 @@
+✅ Connected to MongoDB
+
+--- EXISTING COLLECTIONS ---
+- expenses
+- orders
+- cashtransactions
+- attendances
+- banners
+- tables
+- activitylogs
+- shifts
+- customers
+- servicerequests
+- categories
+- menuitems
+- settings
+- vouchers
+- operational_expenses
+- recipes
+- operationalexpenses
+- gramasis
+- reservations
+- employees
+- appdatas
+- users
+- feedbacks
+- debts
+- stockhistories
+- ingredients
+- auditlogs
+----------------------------
+
+Collection 'operationalexpenses': 1 documents
+
+!!! FOUND ACTIVE EXPENSES IN 'operationalexpenses' !!!
+[opex_1771335524332_6imx1] Listrik - Rp 500000 | Date: Tue Feb 17 2026 21:38:44 GMT+0800 (Central Indonesia Time) | isDeleted: false
+Collection 'operational_expenses': 0 documents
+
+---------------------------------------------------------
