@@ -1,11 +1,14 @@
-const OperationalExpense = require('../models/OperationalExpenses');
-const logActivity = require('../utils/activityLogger');
+const fs = require('fs');
+const path = require('path');
 
-// === HELPER: Check Role ===
-// Ideally middleware handles this, but for fine-grained control or double-check:
 const isOwner = (req) => {
-    // Assuming req.user is populated by auth middleware
-    return req.user && req.user.role === 'owner';
+    const logPath = path.join(__dirname, '../debug_rbac.txt');
+    const logMsg = `[${new Date().toISOString()}] User: ${JSON.stringify(req.user)} | Role: ${req.user?.role}\n`;
+    fs.appendFileSync(logPath, logMsg);
+
+    // Allow Owner, Admin, or Administrator (case-insensitive just in case)
+    const role = req.user?.role?.toLowerCase();
+    return req.user && (role === 'owner' || role === 'admin' || role === 'administrator');
 };
 
 exports.getExpenses = async (req, res) => {

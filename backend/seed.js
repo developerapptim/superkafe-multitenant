@@ -14,6 +14,7 @@ const Gramasi = require('./models/Gramasi');
 const Recipe = require('./models/Recipe');
 const Shift = require('./models/Shift');
 const Settings = require('./models/Settings');
+const OperationalExpense = require('./models/OperationalExpenses');
 
 const RESET_PIN = '123456'; // Default safety PIN
 
@@ -40,7 +41,8 @@ const resetDatabase = async () => {
             Gramasi.deleteMany({}),
             StockHistory.deleteMany({}),
             Recipe.deleteMany({}),
-            Shift.deleteMany({})
+            Shift.deleteMany({}),
+            OperationalExpense.deleteMany({})
         ]);
 
         console.log('✅ All data cleared successfully!');

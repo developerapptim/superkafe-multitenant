@@ -5,14 +5,30 @@ import api, { expensesAPI } from '../../../services/api';
 import SmartText from '../../SmartText';
 import CustomSelect from '../../CustomSelect';
 import toast from 'react-hot-toast';
+import ConfirmationModal from '../../ConfirmationModal'; // Import Custom Modal
 
 const fetcher = url => api.get(url).then(res => res.data);
 
 function OperationalExpensesTab() {
     const { data: expensesData } = useSWR('/expenses', fetcher);
-    const expenses = useMemo(() => Array.isArray(expensesData) ? expensesData : [], [expensesData]);
+
+    // Fix: Handle paginated response { data: [...], pagination: ... }
+    const expenses = useMemo(() => {
+        if (!expensesData) return [];
+        if (Array.isArray(expensesData)) return expensesData;
+        if (expensesData.data && Array.isArray(expensesData.data)) return expensesData.data;
+        return [];
+    }, [expensesData]);
 
     const [showModal, setShowModal] = useState(false);
+
+    // Delete Modal State
+    const [deleteModal, setDeleteModal] = useState({
+        show: false,
+        id: null,
+        loading: false
+    });
+
     const [formData, setFormData] = useState({
         category: 'Operasional',
         amount: '',
@@ -60,14 +76,25 @@ function OperationalExpensesTab() {
         }
     };
 
-    const handleDelete = async (id) => {
-        if (!confirm('Hapus pengeluaran ini?')) return;
+    // Open Delete Confirmation
+    const handleDeleteClick = (id) => {
+        setDeleteModal({ show: true, id, loading: false });
+    };
+
+    // Execute Delete
+    const confirmDelete = async () => {
+        if (!deleteModal.id) return;
+
+        setDeleteModal(prev => ({ ...prev, loading: true }));
         try {
-            await expensesAPI.delete(id);
+            await expensesAPI.delete(deleteModal.id);
             toast.success('Pengeluaran dihapus');
             mutate('/expenses');
+            setDeleteModal({ show: false, id: null, loading: false });
         } catch (err) {
+            console.error(err);
             toast.error('Gagal menghapus');
+            setDeleteModal(prev => ({ ...prev, loading: false }));
         }
     };
 
@@ -127,7 +154,7 @@ function OperationalExpensesTab() {
                                         - {formatCurrency(item.amount)}
                                     </span>
                                     <button
-                                        onClick={() => handleDelete(item.id || item._id)}
+                                        onClick={() => handleDeleteClick(item.id || item._id)}
                                         className="p-2 rounded hover:bg-red-500/20 text-gray-400 hover:text-red-400 transition-colors"
                                         title="Hapus"
                                     >
@@ -140,7 +167,7 @@ function OperationalExpensesTab() {
                 </div>
             </div>
 
-            {/* Modal */}
+            {/* Modal Form */}
             {showModal && (
                 <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
                     <div className="glass rounded-2xl p-6 w-full max-w-md border border-purple-500/30 animate-in fade-in zoom-in duration-200">
@@ -230,6 +257,19 @@ function OperationalExpensesTab() {
                     </div>
                 </div>
             )}
+
+            {/* Confirmation Modal */}
+            <ConfirmationModal
+                isOpen={deleteModal.show}
+                onClose={() => setDeleteModal({ show: false, id: null, loading: false })}
+                onConfirm={confirmDelete}
+                title="Hapus Pengeluaran?"
+                message="Data pengeluaran ini akan dihapus permanen. Tindakan ini tidak dapat dibatalkan."
+                confirmText="Ya, Hapus"
+                cancelText="Batal"
+                isDanger={true}
+                isLoading={deleteModal.loading}
+            />
         </div>
     );
 }
