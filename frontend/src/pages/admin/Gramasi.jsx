@@ -1,9 +1,10 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import SmartText from '../../components/SmartText';
 import CustomSelect from '../../components/CustomSelect';
 import useSWR, { mutate } from 'swr';
 import api, { menuAPI, inventoryAPI, recipesAPI } from '../../services/api';
+import { useRefresh } from '../../context/RefreshContext';
 
 // Fetcher
 const fetcher = url => api.get(url).then(res => res.data);
@@ -22,6 +23,19 @@ function Gramasi() {
     const { data: menuData } = useSWR('/menu', fetcher);
     const { data: inventoryResponse } = useSWR('/inventory?limit=9999', fetcher);
     const { data: recipesData } = useSWR('/recipes', fetcher);
+
+    const { registerRefreshHandler } = useRefresh();
+
+    useEffect(() => {
+        return registerRefreshHandler(async () => {
+            await Promise.all([
+                mutate('/settings'),
+                mutate('/menu'),
+                mutate('/inventory?limit=9999'),
+                mutate('/recipes')
+            ]);
+        });
+    }, [registerRefreshHandler]);
 
     // Derived State - inventory endpoint returns {data, pagination}
     const menuItems = useMemo(() => Array.isArray(menuData) ? menuData : [], [menuData]);

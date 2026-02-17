@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { shiftAPI } from '../../services/api';
+import { useRefresh } from '../../context/RefreshContext';
 
 // Helper: Shift Card Component (Accordion)
 const ShiftCard = ({ shift }) => {
@@ -133,6 +134,17 @@ function Shift() {
         fetchShiftHistory(1);
         fetchActivities(1);
     }, []);
+
+    const { registerRefreshHandler } = useRefresh();
+
+    useEffect(() => {
+        return registerRefreshHandler(async () => {
+            await Promise.all([
+                fetchShiftHistory(1),
+                fetchActivities(1)
+            ]);
+        });
+    }, [registerRefreshHandler]);
 
     const fetchActivities = async (pageToLoad) => {
         try {

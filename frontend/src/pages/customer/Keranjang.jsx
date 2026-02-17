@@ -3,9 +3,10 @@ import { useNavigate, useOutletContext } from 'react-router-dom';
 import { createPortal } from 'react-dom';
 import CustomSelect from '../../components/CustomSelect';
 import toast from 'react-hot-toast';
-import useSWR from 'swr';
+import useSWR, { useSWRConfig } from 'swr';
 import api, { ordersAPI, cartAPI } from '../../services/api';
 import { useCart } from '../../context/CartContext';
+import { useRefresh } from '../../context/RefreshContext';
 import Struk from '../../components/Struk';
 import { toPng } from 'html-to-image';
 import jsPDF from 'jspdf';
@@ -49,6 +50,15 @@ function Keranjang() {
     const [historyOptions, setHistoryOptions] = useState([]);
 
     // Load history on mount
+    const { mutate } = useSWRConfig();
+    const { registerRefreshHandler } = useRefresh();
+
+    useEffect(() => {
+        return registerRefreshHandler(async () => {
+            await mutate('/tables');
+        });
+    }, [registerRefreshHandler, mutate]);
+
     useEffect(() => {
         try {
             const history = JSON.parse(localStorage.getItem('customer_history') || '[]');

@@ -1,9 +1,10 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import useSWR, { mutate } from 'swr';
 import toast from 'react-hot-toast';
 import api, { voucherAPI, bannerAPI } from '../../services/api';
+import { useRefresh } from '../../context/RefreshContext';
 
 const fetcher = url => api.get(url).then(res => res.data);
 
@@ -39,6 +40,17 @@ function Marketing() {
     const banners = useMemo(() => Array.isArray(bannersData) ? bannersData : [], [bannersData]);
     const loadingVouchers = !vouchersData;
     const loadingBanners = !bannersData;
+
+    const { registerRefreshHandler } = useRefresh();
+
+    useEffect(() => {
+        return registerRefreshHandler(async () => {
+            await Promise.all([
+                mutate('/vouchers'),
+                mutate('/banners')
+            ]);
+        });
+    }, [registerRefreshHandler]);
 
     // ========== VOUCHER STATE ==========
     const [showVoucherModal, setShowVoucherModal] = useState(false);

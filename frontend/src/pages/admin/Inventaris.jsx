@@ -5,10 +5,10 @@ import toast from 'react-hot-toast';
 import Swal from 'sweetalert2';
 import api, { inventoryAPI, settingsAPI } from '../../services/api';
 import SmartText from '../../components/SmartText';
+import { useRefresh } from '../../context/RefreshContext';
 
 
 
-// Custom Dropdown for Status Filter
 // Custom Dropdown for Status Filter
 const StatusFilterDropdown = ({ currentFilter, onFilterChange }) => {
     const [isOpen, setIsOpen] = useState(false);
@@ -205,24 +205,11 @@ function Inventaris() {
     // Top Usage State
 
 
-    // Fetch data
-    useEffect(() => {
-        fetchData();
-    }, [currentPage, filterStatus]);
 
-    // Debounced search
-    useEffect(() => {
-        const timer = setTimeout(() => {
-            setCurrentPage(1);
-            fetchData();
-        }, 400);
-        return () => clearTimeout(timer);
-    }, [searchTerm]);
 
-    // Fetch stats separately (lightweight, once on mount)
-    useEffect(() => {
-        fetchStats();
-    }, []);
+    const { registerRefreshHandler } = useRefresh();
+
+
 
     const fetchStats = async () => {
         try {
@@ -287,6 +274,36 @@ function Inventaris() {
             setLoading(false);
         }
     };
+
+    // Fetch data
+    useEffect(() => {
+        fetchData();
+    }, [currentPage, filterStatus]);
+
+    // Register Pull-to-Refresh Handler
+    useEffect(() => {
+        return registerRefreshHandler(async () => {
+            await Promise.all([
+                fetchData(),
+                fetchStats(),
+                mutate('/settings')
+            ]);
+        });
+    }, [registerRefreshHandler, fetchData, fetchStats]);
+
+    // Debounced search
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setCurrentPage(1);
+            fetchData();
+        }, 400);
+        return () => clearTimeout(timer);
+    }, [searchTerm]);
+
+    // Fetch stats separately (lightweight, once on mount)
+    useEffect(() => {
+        fetchStats();
+    }, []);
 
     // Handle Delete with Toast Confirmation
     const handleDelete = (id) => {

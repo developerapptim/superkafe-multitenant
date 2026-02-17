@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import useSWR, { mutate } from 'swr';
 import api, { customersAPI, settingsAPI } from '../../services/api';
 import toast from 'react-hot-toast';
+import { useRefresh } from '../../context/RefreshContext';
 
 const fetcher = url => api.get(url).then(res => res.data);
 
@@ -204,6 +205,17 @@ function Pelanggan() {
             });
         }
     }, [settingsData]);
+
+    const { registerRefreshHandler } = useRefresh();
+
+    useEffect(() => {
+        return registerRefreshHandler(async () => {
+            await Promise.all([
+                mutate('/customers'),
+                mutate('/settings')
+            ]);
+        });
+    }, [registerRefreshHandler]);
 
     const [search, setSearch] = useState('');
     const [showModal, setShowModal] = useState(false);

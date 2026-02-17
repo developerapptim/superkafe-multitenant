@@ -5,6 +5,7 @@ import api, { menuAPI, ordersAPI, tablesAPI, shiftAPI } from '../../services/api
 import PrintButton from '../../components/PrintButton';
 import { useSocket } from '../../context/SocketContext';
 import useOfflineSync from '../../hooks/useOfflineSync'; // New: Offline Hook
+import { useRefresh } from '../../context/RefreshContext';
 
 // Fetcher for SWR
 const fetcher = url => api.get(url).then(res => res.data);
@@ -21,6 +22,25 @@ const formatPhoneNumber = (value) => {
 function Kasir() {
     const { isOnline, saveOrderOffline, getLocalMenu } = useOfflineSync(); // Offline Hook
     const socket = useSocket(); // New: Get Socket
+    const { registerRefreshHandler } = useRefresh();
+
+    // Register Pull-to-Refresh Handler
+    useEffect(() => {
+        const handleRefresh = async () => {
+            // HYBRID LOGIC: Refresh Master Data & Active Queue
+            // 1. /menu -> Update stock/prices for manual input
+            // 2. /orders -> Update queue status
+            // 3. /shift/current-balance -> Keep cash sync (optional but good)
+
+            // NOTE: State (Cart, Form) is PRESERVED because we only mutate SWR cache
+            await Promise.all([
+                mutate('/menu'),
+                mutate('/orders?limit=200'),
+                mutate('/shift/current-balance')
+            ]);
+        };
+        return registerRefreshHandler(handleRefresh);
+    }, [registerRefreshHandler]);
 
     // Get User Role
     let user = {};

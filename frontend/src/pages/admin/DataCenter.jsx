@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import useSWR from 'swr';
 import api from '../../services/api';
 import { toast } from 'react-hot-toast';
+import { useRefresh } from '../../context/RefreshContext';
 
 const fetcher = url => api.get(url).then(res => res.data);
 
@@ -24,6 +25,15 @@ export default function DataCenter() {
         activeTab === 'audit' ? '/admin/audit-logs' : null,
         fetcher
     );
+
+    const { registerRefreshHandler } = useRefresh();
+
+    useEffect(() => {
+        return registerRefreshHandler(async () => {
+            // Only invalidate audit logs if they are active, or just invalidate anyway, it won't hurt
+            await mutateAuditLogs();
+        });
+    }, [registerRefreshHandler, mutateAuditLogs]);
 
     const handleExport = async (type) => {
         try {

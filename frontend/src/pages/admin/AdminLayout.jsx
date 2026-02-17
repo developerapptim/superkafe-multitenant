@@ -8,6 +8,8 @@ import Sidebar from '../../components/Sidebar';
 import CommandPalette from '../../components/CommandPalette';
 import NotificationBell from '../../components/admin/NotificationBell';
 import OrderNotification from '../../components/OrderNotification'; // Global Order Notification
+import PullToRefresh from 'react-simple-pull-to-refresh';
+import { useRefresh } from '../../context/RefreshContext';
 
 // Fetcher
 const fetcher = url => api.get(url).then(res => res.data);
@@ -16,6 +18,7 @@ function AdminLayout() {
     const navigate = useNavigate();
     const location = useLocation();
     const constraintsRef = useRef(null);
+    const { triggerRefresh } = useRefresh();
 
     const [showCmd, setShowCmd] = useState(false);
 
@@ -193,10 +196,28 @@ function AdminLayout() {
                 </header>
 
                 {/* Main Content */}
-                <main className="flex-1 overflow-y-auto p-4 content-container relative">
-                    <div className="max-w-[1600px] mx-auto pb-24">
-                        <Outlet context={{ isSidebarCollapsed }} />
-                    </div>
+                <main className="flex-1 overflow-hidden relative bg-gray-900" id="main-scroll-container">
+                    <PullToRefresh
+                        onRefresh={triggerRefresh}
+                        className="h-full w-full overflow-y-auto"
+                        pullingContent={
+                            <div className="w-full flex justify-center items-center py-4 bg-transparent text-purple-400">
+                                <span className="animate-bounce">⬇️ Tarik untuk menyegarkan</span>
+                            </div>
+                        }
+                        refreshingContent={
+                            <div className="w-full flex justify-center items-center py-4 bg-transparent">
+                                <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-purple-500"></div>
+                            </div>
+                        }
+                        resistance={2.5}
+                    >
+                        <div className="p-4 content-container relative min-h-full">
+                            <div className="max-w-[1600px] mx-auto pb-24">
+                                <Outlet context={{ isSidebarCollapsed }} />
+                            </div>
+                        </div>
+                    </PullToRefresh>
                 </main>
             </div>
 

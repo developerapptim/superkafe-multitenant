@@ -1,13 +1,22 @@
-import { useState } from 'react';
-import useSWR from 'swr';
+import { useState, useEffect } from 'react';
+import useSWR, { mutate } from 'swr';
 import { feedbackAPI } from '../../services/api';
 import toast from 'react-hot-toast';
+import { useRefresh } from '../../context/RefreshContext';
 
 const fetcher = url => feedbackAPI.getAll().then(res => res.data);
 
 function FeedbackList() {
     const { data: feedbacks, error, isLoading } = useSWR('/feedback', fetcher, { refreshInterval: 60000 });
     const [searchTerm, setSearchTerm] = useState('');
+
+    const { registerRefreshHandler } = useRefresh();
+
+    useEffect(() => {
+        return registerRefreshHandler(async () => {
+            await mutate('/feedback');
+        });
+    }, [registerRefreshHandler]);
 
     if (error) return <div className="text-red-400 p-4">Gagal memuat data masukan.</div>;
     if (isLoading) return <div className="text-white p-4">Memuat...</div>;

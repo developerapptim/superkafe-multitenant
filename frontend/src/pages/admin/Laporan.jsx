@@ -4,6 +4,7 @@ import SmartText from '../../components/SmartText';
 import ConfirmationModal from '../../components/ConfirmationModal';
 import api from '../../services/api';
 import { toast } from 'react-hot-toast';
+import { useRefresh } from '../../context/RefreshContext';
 
 // Fetcher
 const fetcher = url => api.get(url).then(res => res.data);
@@ -15,13 +16,91 @@ const Skeleton = ({ className }) => (
 
 function Laporan() {
     const [period, setPeriod] = useState('daily');
+
+    // --- TRANSACTION HISTORY LOGIC ---
+    const [transactions, setTransactions] = useState([]);
+    const [startDate, setStartDate] = useState('');
+    const [endDate, setEndDate] = useState('');
+    const [statusFilter, setStatusFilter] = useState('all');
+
+    // Delete Modal State
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [orderToDelete, setOrderToDelete] = useState(null);
+    const [isDeleting, setIsDeleting] = useState(false);
+
+    const [isLoadingTransactions, setIsLoadingTransactions] = useState(false);
+    const [page, setPage] = useState(1);
+    const [hasMore, setHasMore] = useState(true);
+
+    const fetchTransactions = async (pageNum, replace = false) => {
+        if (!hasMore && !replace) return;
+
+        try {
+            setIsLoadingTransactions(true);
+            let url = `/orders?page=${pageNum}&limit=10`; // Server-side pagination
+            if (startDate) url += `&startDate=${startDate}`;
+            if (endDate) url += `&endDate=${endDate}`;
+            if (statusFilter !== 'all') url += `&status=${statusFilter}`;
+
+            const res = await api.get(url);
+
+            // Handle both old array format (fallback) and new paginated format
+            const newData = Array.isArray(res.data) ? res.data : res.data.data;
+            const pagination = res.data.pagination;
+
+            if (replace) {
+                setTransactions(newData);
+            } else {
+                setTransactions(prev => [...prev, ...newData]);
+            }
+
+            // Update hasMore based on metadata or array length (fallback)
+            if (pagination) {
+                setHasMore(pagination.hasMore);
+            } else {
+                // Fallback if backend not updated yet
+                setHasMore(newData.length === 10);
+            }
+
+        } catch (err) {
+            console.error('Error fetching transactions:', err);
+        } finally {
+            setIsLoadingTransactions(false);
+        }
+    };
+
+    // Initial Fetch or Filter Change
+    useEffect(() => {
+        setPage(1); // Reset page
+        setHasMore(true); // Reset hasMore
+        fetchTransactions(1, true); // Fetch page 1, replace data
+    }, [startDate, endDate, statusFilter]);
+
+    // Load More (Append)
+    const handleLoadMore = () => {
+        const nextPage = page + 1;
+        fetchTransactions(nextPage, false);
+        setPage(nextPage);
+    };
     // Fetch analytics data from backend
     const { data: analyticsData, error } = useSWR(
-        `/analytics/report?period=${period}&timezone=%2B07:00`,
-        fetcher,
+        '/analytics/report',
+        () => fetcher(`/analytics/report?period=${period}&timezone=%2B07:00`),
         { refreshInterval: 60000 }
     );
     const isLoading = !analyticsData && !error;
+
+    const { registerRefreshHandler } = useRefresh();
+
+    // Re-fetch transactions with current state
+    useEffect(() => {
+        return registerRefreshHandler(async () => {
+            await Promise.all([
+                mutate((key) => key.startsWith('/analytics/report')), // Invalidate all analytics keys
+                fetchTransactions(1, true)
+            ]);
+        });
+    }, [registerRefreshHandler, period, startDate, endDate, statusFilter]); // Dependencies ensure handler uses latest state closure
 
     // Default empty data to prevent crashes
     const { stats, paymentStats, topMenu, bottomMenu, peakHours, retention, topCombinations } = analyticsData || {
@@ -66,72 +145,7 @@ function Laporan() {
     const maxBottomCount = Math.max(...bottomMenu.map(m => m.count), 1);
     const maxPeakCount = Math.max(...peakHours.map(h => h.count), 1);
 
-    // --- TRANSACTION HISTORY LOGIC ---
-    // --- TRANSACTION HISTORY LOGIC ---
-    const [transactions, setTransactions] = useState([]);
-    const [startDate, setStartDate] = useState('');
-    const [endDate, setEndDate] = useState('');
-    const [statusFilter, setStatusFilter] = useState('all');
 
-    // Delete Modal State
-    const [showDeleteModal, setShowDeleteModal] = useState(false);
-    const [orderToDelete, setOrderToDelete] = useState(null);
-    const [isDeleting, setIsDeleting] = useState(false);
-
-    const [isLoadingTransactions, setIsLoadingTransactions] = useState(false);
-    const [page, setPage] = useState(1);
-    const [hasMore, setHasMore] = useState(true);
-
-    // Initial Fetch or Filter Change
-    useEffect(() => {
-        setPage(1); // Reset page
-        setHasMore(true); // Reset hasMore
-        fetchTransactions(1, true); // Fetch page 1, replace data
-    }, [startDate, endDate, statusFilter]);
-
-    // Load More (Append)
-    const handleLoadMore = () => {
-        const nextPage = page + 1;
-        fetchTransactions(nextPage, false);
-        setPage(nextPage);
-    };
-
-    const fetchTransactions = async (pageNum, replace = false) => {
-        if (!hasMore && !replace) return;
-
-        try {
-            setIsLoadingTransactions(true);
-            let url = `/orders?page=${pageNum}&limit=10`; // Server-side pagination
-            if (startDate) url += `&startDate=${startDate}`;
-            if (endDate) url += `&endDate=${endDate}`;
-            if (statusFilter !== 'all') url += `&status=${statusFilter}`;
-
-            const res = await api.get(url);
-
-            // Handle both old array format (fallback) and new paginated format
-            const newData = Array.isArray(res.data) ? res.data : res.data.data;
-            const pagination = res.data.pagination;
-
-            if (replace) {
-                setTransactions(newData);
-            } else {
-                setTransactions(prev => [...prev, ...newData]);
-            }
-
-            // Update hasMore based on metadata or array length (fallback)
-            if (pagination) {
-                setHasMore(pagination.hasMore);
-            } else {
-                // Fallback if backend not updated yet
-                setHasMore(newData.length === 10);
-            }
-
-        } catch (err) {
-            console.error('Error fetching transactions:', err);
-        } finally {
-            setIsLoadingTransactions(false);
-        }
-    };
 
     const handleDeleteClick = (orderId) => {
         setOrderToDelete(orderId);

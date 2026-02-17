@@ -2,6 +2,8 @@ import { createContext, useContext, useState, useEffect } from 'react';
 import { Outlet, NavLink, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from "framer-motion";
 import { settingsAPI } from '../../services/api';
+import PullToRefresh from 'react-simple-pull-to-refresh';
+import { useRefresh } from '../../context/RefreshContext';
 
 import CartContext from '../../context/CartContext';
 
@@ -10,6 +12,7 @@ import CartContext from '../../context/CartContext';
 
 function CustomerLayout() {
     const [searchParams, setSearchParams] = useSearchParams();
+    const { triggerRefresh } = useRefresh();
 
     // Logic Sticky Session: URL > LocalStorage
     const getTableFromUrl = () => {
@@ -140,9 +143,9 @@ function CustomerLayout() {
 
     return (
         <CartContext.Provider value={cartValue}>
-            <div className="min-h-screen bg-gradient-to-b from-[#1E1B4B] via-[#0F0A1F] to-[#1E1B4B] text-white pb-20">
+            <div className="h-screen flex flex-col overflow-hidden bg-gradient-to-b from-[#1E1B4B] via-[#0F0A1F] to-[#1E1B4B] text-white">
                 {/* Header */}
-                <header className="sticky top-0 z-40 bg-[#1E1B4B]/90 backdrop-blur-lg border-b border-purple-500/20">
+                <header className="sticky top-0 z-40 bg-[#1E1B4B]/90 backdrop-blur-lg border-b border-purple-500/20 flex-shrink-0">
                     <div className="max-w-md mx-auto md:max-w-7xl px-4 md:px-8 py-3">
                         <div className="flex items-center h-16">
                             {loadingSettings && !settings.businessName ? (
@@ -308,23 +311,41 @@ function CustomerLayout() {
                     </div>
                 </header>
 
-                <main className="max-w-md mx-auto md:max-w-7xl px-4 md:px-8">
-                    <Outlet context={{ tableId, settings, isTableLocked, clearScannedTable }} />
+                <main className="flex-1 overflow-hidden relative">
+                    <PullToRefresh
+                        onRefresh={triggerRefresh}
+                        className="h-full w-full overflow-y-auto"
+                        pullingContent={
+                            <div className="w-full flex justify-center items-center py-4 bg-transparent text-purple-400">
+                                <span className="animate-bounce">⬇️ Tarik untuk menyegarkan</span>
+                            </div>
+                        }
+                        refreshingContent={
+                            <div className="w-full flex justify-center items-center py-4 bg-transparent">
+                                <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-purple-500"></div>
+                            </div>
+                        }
+                        resistance={2.5}
+                    >
+                        <div className="max-w-md mx-auto md:max-w-7xl px-4 md:px-8 pb-24 pt-4">
+                            <Outlet context={{ tableId, settings, isTableLocked, clearScannedTable }} />
 
-                    {/* Branding */}
-                    <div className="text-center py-6 mt-8 border-t border-gray-800">
-                        <a
-                            href="https://wa.me/081999378385?text=Halo,%20saya%20tertarik%20dengan%20aplikasi%20kasir"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-block hover:opacity-80 transition-opacity group"
-                        >
-                            <p className="text-[10px] text-gray-600 mb-0.5 uppercase tracking-wider">Powered by LockApp.id</p>
-                            <p className="text-xs font-medium text-gray-500 group-hover:text-purple-400 transition-colors">
-                                🚀 Dapatkan Aplikasi Serupa
-                            </p>
-                        </a>
-                    </div>
+                            {/* Branding */}
+                            <div className="text-center py-6 mt-8 border-t border-gray-800">
+                                <a
+                                    href="https://wa.me/081999378385?text=Halo,%20saya%20tertarik%20dengan%20aplikasi%20kasir"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-block hover:opacity-80 transition-opacity group"
+                                >
+                                    <p className="text-[10px] text-gray-600 mb-0.5 uppercase tracking-wider">Powered by LockApp.id</p>
+                                    <p className="text-xs font-medium text-gray-500 group-hover:text-purple-400 transition-colors">
+                                        🚀 Dapatkan Aplikasi Serupa
+                                    </p>
+                                </a>
+                            </div>
+                        </div>
+                    </PullToRefresh>
                 </main>
 
                 {/* Bottom Navigation (Mobile Only) */}

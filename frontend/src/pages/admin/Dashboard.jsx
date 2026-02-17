@@ -1,5 +1,6 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import SmartText from '../../components/SmartText';
+import { useRefresh } from '../../context/RefreshContext';
 import useSWR from 'swr';
 import api, { reportsAPI, tablesAPI, menuAPI } from '../../services/api';
 
@@ -10,9 +11,24 @@ function Dashboard() {
     const [searchTerm, setSearchTerm] = useState('');
 
     // SWR Hooks for Data Fetching
-    const { data: statsData } = useSWR('/stats', fetcher, { refreshInterval: 15000 });
-    const { data: tablesData } = useSWR('/tables', fetcher, { refreshInterval: 15000 });
-    const { data: menuData } = useSWR('/menu', fetcher, { refreshInterval: 60000 });
+    const { data: statsData, mutate: mutateStats } = useSWR('/stats', fetcher, { refreshInterval: 15000 });
+    const { data: tablesData, mutate: mutateTables } = useSWR('/tables', fetcher, { refreshInterval: 15000 });
+    const { data: menuData, mutate: mutateMenu } = useSWR('/menu', fetcher, { refreshInterval: 60000 });
+
+    const { registerRefreshHandler } = useRefresh();
+
+    // Register Refresh Handler
+    useEffect(() => {
+        const handleRefresh = async () => {
+            // Parallel refresh
+            await Promise.all([
+                mutateStats(),
+                mutateTables(),
+                mutateMenu()
+            ]);
+        };
+        return registerRefreshHandler(handleRefresh);
+    }, [registerRefreshHandler, mutateStats, mutateTables, mutateMenu]);
 
     // Derived State: Stats & Transactions
     const { stats, topMenuItems, transactions, hourlyData } = useMemo(() => {

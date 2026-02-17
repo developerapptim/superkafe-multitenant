@@ -4,6 +4,7 @@ import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaChevronDown, FaChevronUp, FaCircle } from 'react-icons/fa';
 import api, { settingsAPI, userAPI } from '../../services/api';
+import { useRefresh } from '../../context/RefreshContext';
 
 // Fetcher
 const fetcher = url => api.get(url).then(res => res.data);
@@ -112,6 +113,14 @@ function Pengaturan() {
             setInitialSettings(data);
         }
     }, [settingsData]);
+
+    const { registerRefreshHandler } = useRefresh();
+
+    useEffect(() => {
+        return registerRefreshHandler(async () => {
+            await mutate('/settings');
+        });
+    }, [registerRefreshHandler]);
 
     // Check if section is dirty
     const checkDirty = (keys) => {

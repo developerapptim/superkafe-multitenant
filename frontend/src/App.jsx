@@ -3,6 +3,7 @@ import { Toaster } from 'react-hot-toast';
 import { Suspense, lazy, useEffect } from 'react';
 import { App as CapacitorApp } from '@capacitor/app';
 import { SWRConfig } from 'swr';
+import { RefreshProvider } from './context/RefreshContext';
 import api from './services/api';
 import Loading from './components/Loading';
 import './App.css';
@@ -82,80 +83,82 @@ function App() {
         }}
       >
         <Suspense fallback={<Loading />}>
-          <Routes>
-            {/* Public Routes (Customer Menu as Default) */}
-            <Route path="/" element={<CustomerLayout />}>
-              <Route index element={<MenuCustomer />} />
-              <Route path="keranjang" element={<Keranjang />} />
-              <Route path="pesanan" element={<PesananSaya />} />
-              <Route path="bantuan" element={<Bantuan />} />
-            </Route>
+          <RefreshProvider>
+            <Routes>
+              {/* Public Routes (Customer Menu as Default) */}
+              <Route path="/" element={<CustomerLayout />}>
+                <Route index element={<MenuCustomer />} />
+                <Route path="keranjang" element={<Keranjang />} />
+                <Route path="pesanan" element={<PesananSaya />} />
+                <Route path="bantuan" element={<Bantuan />} />
+              </Route>
 
-            <Route path="/login" element={<Login />} />
+              <Route path="/login" element={<Login />} />
 
-            {/* Admin Routes - Protected (Admin & Kasir) */}
-            <Route path="/admin" element={
-              <ProtectedRoute allowedRoles={['admin', 'kasir', 'staf']}>
-                <AdminLayout />
-              </ProtectedRoute>
-            }>
-              <Route index element={<Navigate to="dashboard" replace />} />
+              {/* Admin Routes - Protected (Admin & Kasir) */}
+              <Route path="/admin" element={
+                <ProtectedRoute allowedRoles={['admin', 'kasir', 'staf']}>
+                  <AdminLayout />
+                </ProtectedRoute>
+              }>
+                <Route index element={<Navigate to="dashboard" replace />} />
 
-              {/* Accessible by All Roles (Admin + Kasir) */}
-              <Route path="dashboard" element={<Dashboard />} />
-              <Route path="menu" element={<MenuManagement />} />
-              <Route path="kasir" element={<Kasir />} />
-              <Route path="inventaris" element={<Inventaris />} />
-              <Route path="meja" element={<Meja />} />
-              <Route path="pelanggan" element={<Pelanggan />} />
+                {/* Accessible by All Roles (Admin + Kasir) */}
+                <Route path="dashboard" element={<Dashboard />} />
+                <Route path="menu" element={<MenuManagement />} />
+                <Route path="kasir" element={<Kasir />} />
+                <Route path="inventaris" element={<Inventaris />} />
+                <Route path="meja" element={<Meja />} />
+                <Route path="pelanggan" element={<Pelanggan />} />
 
-              {/* Restricted to Admin Only */}
-              <Route path="keuangan" element={
-                <ProtectedRoute allowedRoles={['admin']}>
-                  <Keuangan />
-                </ProtectedRoute>
-              } />
-              <Route path="pegawai" element={
-                <ProtectedRoute allowedRoles={['admin']}>
-                  <Pegawai />
-                </ProtectedRoute>
-              } />
-              <Route path="pengaturan" element={
-                <ProtectedRoute allowedRoles={['admin']}>
-                  <Pengaturan />
-                </ProtectedRoute>
-              } />
-              <Route path="data-center" element={
-                <ProtectedRoute allowedRoles={['admin']}>
-                  <DataCenter />
-                </ProtectedRoute>
-              } />
-              <Route path="feedback" element={<FeedbackList />} />
-              <Route path="marketing" element={
-                <ProtectedRoute allowedRoles={['admin']}>
-                  <Marketing />
-                </ProtectedRoute>
-              } />
-              <Route path="gramasi" element={
-                <ProtectedRoute allowedRoles={['admin', 'staf']}>
-                  <Gramasi />
-                </ProtectedRoute>
-              } />
-              <Route path="laporan" element={
-                <ProtectedRoute allowedRoles={['admin']}>
-                  <Laporan />
-                </ProtectedRoute>
-              } />
-              <Route path="shift" element={
-                <ProtectedRoute allowedRoles={['admin']}>
-                  <Shift />
-                </ProtectedRoute>
-              } />
-            </Route>
+                {/* Restricted to Admin Only */}
+                <Route path="keuangan" element={
+                  <ProtectedRoute allowedRoles={['admin']}>
+                    <Keuangan />
+                  </ProtectedRoute>
+                } />
+                <Route path="pegawai" element={
+                  <ProtectedRoute allowedRoles={['admin']}>
+                    <Pegawai />
+                  </ProtectedRoute>
+                } />
+                <Route path="pengaturan" element={
+                  <ProtectedRoute allowedRoles={['admin']}>
+                    <Pengaturan />
+                  </ProtectedRoute>
+                } />
+                <Route path="data-center" element={
+                  <ProtectedRoute allowedRoles={['admin']}>
+                    <DataCenter />
+                  </ProtectedRoute>
+                } />
+                <Route path="feedback" element={<FeedbackList />} />
+                <Route path="marketing" element={
+                  <ProtectedRoute allowedRoles={['admin']}>
+                    <Marketing />
+                  </ProtectedRoute>
+                } />
+                <Route path="gramasi" element={
+                  <ProtectedRoute allowedRoles={['admin', 'staf']}>
+                    <Gramasi />
+                  </ProtectedRoute>
+                } />
+                <Route path="laporan" element={
+                  <ProtectedRoute allowedRoles={['admin']}>
+                    <Laporan />
+                  </ProtectedRoute>
+                } />
+                <Route path="shift" element={
+                  <ProtectedRoute allowedRoles={['admin']}>
+                    <Shift />
+                  </ProtectedRoute>
+                } />
+              </Route>
 
-            {/* 404 - Redirect to customer menu */}
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
+              {/* 404 - Redirect to customer menu */}
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </RefreshProvider>
         </Suspense>
       </SWRConfig>
     </BrowserRouter>

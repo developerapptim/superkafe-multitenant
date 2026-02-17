@@ -4,6 +4,7 @@ import CustomSelect from '../../components/CustomSelect';
 import toast from 'react-hot-toast';
 import useSWR, { mutate } from 'swr';
 import api, { employeesAPI, payrollAPI, debtsAPI } from '../../services/api';
+import { useRefresh } from '../../context/RefreshContext';
 
 // Fetchers
 const employeesFetcher = () => employeesAPI.getAll().then(res => res.data);
@@ -40,6 +41,14 @@ function Pegawai() {
 
     const employees = useMemo(() => Array.isArray(employeesData) ? employeesData : [], [employeesData]);
     const isLoading = !employeesData;
+
+    const { registerRefreshHandler } = useRefresh();
+
+    useEffect(() => {
+        return registerRefreshHandler(async () => {
+            await mutate('/employees');
+        });
+    }, [registerRefreshHandler]);
 
     // Simplified roles: Admin (full access) or Staf (operational access)
     const roles = [

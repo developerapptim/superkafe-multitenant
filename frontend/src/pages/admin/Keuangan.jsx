@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import useSWR, { mutate } from 'swr';
 import SmartText from '../../components/SmartText';
@@ -9,6 +9,7 @@ import toast from 'react-hot-toast';
 import OperationalExpensesTab from '../../components/admin/finance/OperationalExpensesTab';
 import ProfitLossTab from '../../components/admin/finance/ProfitLossTab';
 import UnifiedExpenseModal from '../../components/UnifiedExpenseModal';
+import { useRefresh } from '../../context/RefreshContext';
 
 const fetcher = url => api.get(url).then(res => res.data);
 
@@ -34,12 +35,21 @@ function Keuangan() {
 
     // Revalidate all SWR keys after mutations
     const mutateAll = () => {
-        mutate('/cash-transactions');
-        mutate('/cash/analytics');
-        mutate('/cash/breakdown');
-        mutate('/debts');
-        mutate('/employees');
+        return Promise.all([
+            mutate('/cash-transactions'),
+            mutate('/cash/analytics'),
+            mutate('/cash/breakdown'),
+            mutate('/debts'),
+            mutate('/employees')
+        ]);
     };
+
+    const { registerRefreshHandler } = useRefresh();
+
+    // Register Pull-to-Refresh Handler
+    useEffect(() => {
+        return registerRefreshHandler(mutateAll);
+    }, [registerRefreshHandler]);
 
     // Modal states
     const [showModal, setShowModal] = useState(false);

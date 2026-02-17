@@ -7,6 +7,7 @@ import PointsQuickCard from '../../components/PointsQuickCard';
 import CustomSelect from '../../components/CustomSelect';
 import CalendarInput from '../../components/CalendarInput';
 import toast from 'react-hot-toast';
+import { useRefresh } from '../../context/RefreshContext';
 
 function PesananSaya() {
     const { tableId, settings } = useOutletContext();
@@ -54,14 +55,25 @@ function PesananSaya() {
 
 
 
+    const { registerRefreshHandler } = useRefresh();
+
     useEffect(() => {
         // Initial Load & Cleanup
         cleanUpOldOrders();
         fetchData();
 
         const interval = setInterval(fetchData, 15000); // Poll every 15s to sync status
-        return () => clearInterval(interval);
-    }, [activeOrderId, tableId]);
+
+        // Register Refresh Handler
+        const unregisterRefresh = registerRefreshHandler(async () => {
+            await fetchData();
+        });
+
+        return () => {
+            clearInterval(interval);
+            unregisterRefresh();
+        };
+    }, [activeOrderId, tableId, registerRefreshHandler]);
 
     // 1. Cleanup Function (24-Hour Rule)
     const cleanUpOldOrders = () => {

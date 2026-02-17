@@ -6,6 +6,7 @@ import CustomSelect from '../../components/CustomSelect';
 import useSWR, { mutate } from 'swr';
 import toast from 'react-hot-toast';
 import api, { menuAPI, categoriesAPI } from '../../services/api';
+import { useRefresh } from '../../context/RefreshContext';
 
 // Fetcher
 // Fetcher
@@ -144,6 +145,17 @@ function MenuManagement() {
     // SWR Data Fetching
     const { data: menuData, error: menuError } = useSWR('/menu', fetcher);
     const { data: categoriesData, error: categoriesError } = useSWR('/categories', fetcher);
+
+    const { registerRefreshHandler } = useRefresh();
+
+    useEffect(() => {
+        return registerRefreshHandler(async () => {
+            await Promise.all([
+                mutate('/menu'),
+                mutate('/categories')
+            ]);
+        });
+    }, [registerRefreshHandler]);
 
     // Derived State
     const menuItems = useMemo(() => Array.isArray(menuData) ? menuData : [], [menuData]);

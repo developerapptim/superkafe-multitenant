@@ -7,6 +7,7 @@ import { useNavigate } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
 import api, { tablesAPI, reservationsAPI } from '../../services/api';
 import toast from 'react-hot-toast';
+import { useRefresh } from '../../context/RefreshContext';
 
 const fetcher = url => api.get(url).then(res => res.data);
 
@@ -32,6 +33,20 @@ function Meja() {
     const pendingReservations = Array.isArray(reservationsData) ? reservationsData : [];
     const { data: settingsData } = useSWR('/settings', fetcher);
     const shopName = settingsData?.name || 'Warkop';
+
+    const { registerRefreshHandler } = useRefresh();
+
+    // Register Pull-to-Refresh Handler
+    useEffect(() => {
+        const handleRefresh = async () => {
+            await Promise.all([
+                mutate('/tables'),
+                mutate('/reservations?status=pending'),
+                mutate('/settings')
+            ]);
+        };
+        return registerRefreshHandler(handleRefresh);
+    }, [registerRefreshHandler]);
 
     const [showModal, setShowModal] = useState(false);
 

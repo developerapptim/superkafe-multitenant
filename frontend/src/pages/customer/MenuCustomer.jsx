@@ -3,6 +3,7 @@ import { useOutletContext } from 'react-router-dom';
 import { motion, AnimatePresence } from "framer-motion";
 import { menuAPI, categoriesAPI, bannerAPI } from '../../services/api';
 import { useCart } from '../../context/CartContext';
+import { useRefresh } from '../../context/RefreshContext';
 
 function MenuCustomer() {
     const { tableId } = useOutletContext();
@@ -16,9 +17,14 @@ function MenuCustomer() {
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
 
+    const { registerRefreshHandler } = useRefresh();
+
     useEffect(() => {
         fetchData();
-    }, []);
+        return registerRefreshHandler(async () => {
+            await fetchData();
+        });
+    }, [registerRefreshHandler]);
 
     const fetchData = async () => {
         try {
