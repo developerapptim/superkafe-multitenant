@@ -1,7 +1,8 @@
-name: Deploy to VPS
+name: Deploy Superkafe Multitenant
+
 on:
   push:
-    branches: [ main ] # Setiap kali push ke branch main
+    branches: [ main ] # Memicu deploy otomatis setiap push ke branch main
 
 jobs:
   deploy:
@@ -10,19 +11,36 @@ jobs:
       - name: Deploy via SSH
         uses: appleboy/ssh-action@master
         with:
-          host: 76.13.196.116
-          username: root
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          password: ${{ secrets.SSH_PASSWORD }}
           script: |
+            # 1. Pastikan PATH Node.js sesuai dengan versi di VPS Anda
             export PATH=$PATH:/root/.nvm/versions/node/v24.13.1/bin
-            cd /root/superkafe
-            git fetch --all
-            git reset --hard origin/main
-            cd frontend
-            # Inject Environment Variables
-            echo "VITE_API_URL=${{ secrets.VITE_API_URL }}" > .env
-            
-            npm install
-            npm run build
-            pm2 restart superkafe-web
-            pm2 restart superkafe-server
+
+            # 2. Masuk ke folder khusus multitenant agar tidak menimpa proyek lama
+            # Jika folder belum ada, silakan jalankan 'mkdir -p /root/superkafe-multitenant' di terminal VPS dulu
+            cd /root/superkafe-multitenant
+
+            # 3. Sinkronisasi kode dari GitHub
+            if [ ! -d ".git" ]; then
+              git clone https://github.com/developerapptim/superkafe-multitenant.git .
+            else
+              git fetch --all
+              git reset --hard origin/main
+            fi
+
+            # 4. Setup Backend
+            cd backend
+            npm install --production
+
+            # 5. Jalankan Seed Tenant
+            # Ini akan memasukkan data "Warkop Pusat" ke database port 27018
+            node scripts/seedTenant.js
+
+            # 6. Restart Aplikasi menggunakan PM2
+            # Menggunakan nama 'superkafe-multi' agar berbeda dengan 'superkafe-web' yang lama
+            pm2 restart superkafe-multi || pm2 start server.js --name superkafe-multi
+
+            # 7. Tampilkan status PM2 untuk memastikan sudah Running
+            pm2 list
