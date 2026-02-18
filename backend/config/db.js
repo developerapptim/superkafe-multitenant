@@ -40,9 +40,20 @@ const getTenantDB = async (dbName) => {
   }
 
   try {
-    // Ambil base URI dan ganti nama database
+    // Ambil base URI dari environment variable
     const baseURI = process.env.MONGODB_URI || 'mongodb://localhost:27017/superkafe_v2';
-    const tenantURI = baseURI.replace(/\/[^\/]*(\?.*)?$/, `/${dbName}$1`);
+    
+    // Pisahkan URI menjadi bagian-bagian: mongodb://user:pass@host:port/dbname?params
+    const uriParts = baseURI.split('/');
+    
+    // Ambil bagian protokol + kredensial + host:port (3 bagian pertama)
+    // Contoh: ['mongodb:', '', 'root:example@localhost:27018']
+    const uriWithoutDB = uriParts.slice(0, 3).join('/');
+    
+    // Susun URI tenant dengan database baru dan authSource=admin
+    const tenantURI = `${uriWithoutDB}/${dbName}?authSource=admin`;
+    
+    console.log(`[DB] Creating tenant connection: ${uriWithoutDB}/${dbName}?authSource=admin`);
 
     // Buat koneksi baru untuk tenant
     const tenantDB = mongoose.createConnection(tenantURI, {
