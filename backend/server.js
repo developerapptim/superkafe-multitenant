@@ -80,6 +80,7 @@ app.use('/api/admin/audit-logs', require('./routes/auditLogRoutes'));
 app.use('/api', require('./routes/authRoutes')); // Mounts /login -> /api/login
 app.use('/api/data', require('./routes/dataRoutes'));
 app.use('/api/upload', require('./routes/uploadRoutes'));
+app.use('/api/test', require('./routes/test')); // Testing routes untuk tenant resolver
 app.use('/api/cash', require('./routes/cashRoutes'));
 app.use('/api/cash-transactions', require('./routes/cashTransactionRoutes')); // New Link
 app.use('/api/expenses', require('./routes/expenseRoutes')); // Refactored OpEx
