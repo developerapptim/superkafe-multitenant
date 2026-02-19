@@ -12543,7 +12543,7 @@
           <label class="block text-gray-400 text-sm font-medium mb-2">Keterangan</label>
           <input type="text" id="expenseDescription"
             class="w-full bg-gray-900 border border-gray-700 text-white px-4 py-3 rounded-xl"
-            placeholder="Contoh: Beli Es Batu, Beli Tissue">
+            placeholder="Contoh: Beli Es Batu, Beli Tissuee">
         </div>
 
         <div class="flex gap-3 mt-6">
