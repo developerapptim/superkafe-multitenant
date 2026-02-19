@@ -10,6 +10,11 @@ import './App.css';
 
 // Auth & Protected Routes
 import ProtectedRoute from './components/ProtectedRoute';
+
+// Landing & Auth Pages
+const LandingPage = lazy(() => import('./pages/LandingPage'));
+const TenantLogin = lazy(() => import('./pages/auth/TenantLogin'));
+const TenantRegister = lazy(() => import('./pages/auth/TenantRegister'));
 const Login = lazy(() => import('./pages/auth/Login'));
 
 // Admin Layout
@@ -32,6 +37,7 @@ const Marketing = lazy(() => import('./pages/admin/Marketing'));
 
 // Customer Layout & Pages
 const CustomerLayout = lazy(() => import('./pages/customer/CustomerLayout'));
+const DynamicStorefront = lazy(() => import('./pages/customer/DynamicStorefront'));
 const MenuCustomer = lazy(() => import('./pages/customer/MenuCustomer'));
 const Keranjang = lazy(() => import('./pages/customer/Keranjang'));
 const PesananSaya = lazy(() => import('./pages/customer/PesananSaya'));
@@ -85,15 +91,23 @@ function App() {
         <Suspense fallback={<Loading />}>
           <RefreshProvider>
             <Routes>
-              {/* Public Routes (Customer Menu as Default) */}
-              <Route path="/" element={<CustomerLayout />}>
-                <Route index element={<MenuCustomer />} />
-                <Route path="keranjang" element={<Keranjang />} />
-                <Route path="pesanan" element={<PesananSaya />} />
-                <Route path="bantuan" element={<Bantuan />} />
-              </Route>
+              {/* Landing Page */}
+              <Route path="/" element={<LandingPage />} />
 
-              <Route path="/login" element={<Login />} />
+              {/* Auth Routes */}
+              <Route path="/auth/login" element={<TenantLogin />} />
+              <Route path="/auth/register" element={<TenantRegister />} />
+              <Route path="/login" element={<Login />} /> {/* Legacy login */}
+
+              {/* Dynamic Storefront - Customer Menu by Slug */}
+              <Route path="/:slug" element={<DynamicStorefront />}>
+                <Route element={<CustomerLayout />}>
+                  <Route index element={<MenuCustomer />} />
+                  <Route path="keranjang" element={<Keranjang />} />
+                  <Route path="pesanan" element={<PesananSaya />} />
+                  <Route path="bantuan" element={<Bantuan />} />
+                </Route>
+              </Route>
 
               {/* Admin Routes - Protected (Admin & Kasir) */}
               <Route path="/admin" element={
@@ -155,7 +169,7 @@ function App() {
                 } />
               </Route>
 
-              {/* 404 - Redirect to customer menu */}
+              {/* 404 - Redirect to landing page */}
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </RefreshProvider>
