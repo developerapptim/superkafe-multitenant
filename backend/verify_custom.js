@@ -24,7 +24,7 @@ async function run() {
         console.log('1. Creating Custom Request (Lainnya)...');
         const customRes = await request({
             hostname: 'localhost',
-            port: 3000,
+            port: 5001,
             path: '/api/service-request',
             method: 'POST',
             headers: { 'Content-Type': 'application/json' }
@@ -37,7 +37,7 @@ async function run() {
         console.log('\n2. Creating Standard Request (Bill)...');
         const standardRes = await request({
             hostname: 'localhost',
-            port: 3000,
+            port: 5001,
             path: '/api/service-request',
             method: 'POST',
             headers: { 'Content-Type': 'application/json' }
@@ -50,7 +50,7 @@ async function run() {
         console.log('\n3. Fetching Pending Requests...');
         const pendingRes = await request({
             hostname: 'localhost',
-            port: 3000,
+            port: 5001,
             path: '/api/service-request/pending',
             method: 'GET'
         });
@@ -66,8 +66,8 @@ async function run() {
         if (standardReq) console.log('Standard Note:', standardReq.note);
 
         console.log('\n4. Cleaning up...');
-        await request({ hostname: 'localhost', port: 3000, path: `/api/service-request/${customId}/complete`, method: 'PUT' });
-        await request({ hostname: 'localhost', port: 3000, path: `/api/service-request/${standardId}/complete`, method: 'PUT' });
+        await request({ hostname: 'localhost', port: 5001, path: `/api/service-request/${customId}/complete`, method: 'PUT' });
+        await request({ hostname: 'localhost', port: 5001, path: `/api/service-request/${standardId}/complete`, method: 'PUT' });
 
         console.log('\n✅ TEST PASSED: Custom Message Feature is working.');
     } catch (err) {

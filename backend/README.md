@@ -24,7 +24,7 @@ Build and run:
 
 ```bash
 docker build -t warkop-backend .
-docker run -e MONGODB_URI="your-mongo-uri" -e API_KEY="secret" -p 3000:3000 warkop-backend
+docker run -e MONGODB_URI="your-mongo-uri" -e API_KEY="secret" -p 5001:5001 warkop-backend
 ```
 
 ## GitHub Actions (CI)

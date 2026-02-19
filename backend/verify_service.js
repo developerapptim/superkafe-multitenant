@@ -27,7 +27,7 @@ async function run() {
         console.log('1. Creating Service Request...');
         const createRes = await request({
             hostname: 'localhost',
-            port: 3000,
+            port: 5001,
             path: '/api/service-request',
             method: 'POST',
             headers: { 'Content-Type': 'application/json' }
@@ -42,7 +42,7 @@ async function run() {
         console.log('\n2. Fetching Pending Requests...');
         const pendingRes = await request({
             hostname: 'localhost',
-            port: 3000,
+            port: 5001,
             path: '/api/service-request/pending',
             method: 'GET'
         });
@@ -55,7 +55,7 @@ async function run() {
         console.log('\n3. Completing Request...');
         const completeRes = await request({
             hostname: 'localhost',
-            port: 3000,
+            port: 5001,
             path: `/api/service-request/${id}/complete`,
             method: 'PUT'
         });
@@ -66,7 +66,7 @@ async function run() {
         console.log('\n4. Verifying Removal from Pending...');
         const finalRes = await request({
             hostname: 'localhost',
-            port: 3000,
+            port: 5001,
             path: '/api/service-request/pending',
             method: 'GET'
         });

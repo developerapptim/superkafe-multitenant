@@ -3,8 +3,8 @@ const FormData = require('form-data');
 const fs = require('fs');
 
 async function testOrder() {
-    const ports = [3000, 5000, 8000, 8080];
-    let port = 3000;
+    const ports = [5001, 5000, 8000, 8080];
+    let port = 5001;
 
     // simplistic port scanner / checker could go here, or just try them
     for (const p of ports) {

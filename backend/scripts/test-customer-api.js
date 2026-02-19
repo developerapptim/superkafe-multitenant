@@ -2,7 +2,7 @@ const http = require('http');
 
 const options = {
     hostname: 'localhost',
-    port: 3000,
+    port: 5001,
     path: '/api/menu/customer',
     headers: { 'x-api-key': 'warkop_secret_123' }
 };
@@ -56,5 +56,5 @@ http.get(options, (res) => {
     });
 }).on('error', e => {
     console.log('❌ Connection error:', e.message);
-    console.log('Make sure backend is running on port 3000');
+    console.log('Make sure backend is running on port 5001');
 });

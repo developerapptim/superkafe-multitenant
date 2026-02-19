@@ -12,11 +12,11 @@ export const SocketProvider = ({ children }) => {
 
     useEffect(() => {
         // Use Vite Env for URL or fallback to window.location logic
-        // In dev: localhost:3000. In prod: relative or specific URL.
-        const socketUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+        // In dev: localhost:5001. In prod: relative or specific URL.
+        const socketUrl = import.meta.env.VITE_API_URL || 'http://localhost:5001';
 
         // Remove /api if present in VITE_API_URL because socket connects to root
-        // Example: http://localhost:3000/api -> http://localhost:3000
+        // Example: http://localhost:5001/api -> http://localhost:5001
         const baseUrl = socketUrl.replace('/api', '');
 
         console.log('🔌 Connecting to Socket.io at:', baseUrl);

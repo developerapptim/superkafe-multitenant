@@ -2,7 +2,7 @@ import axios from 'axios';
 
 // Create axios instance with dynamic baseURL for development & production
 const api = axios.create({
-    baseURL: import.meta.env.VITE_API_URL || (import.meta.env.DEV ? `http://${window.location.hostname}:3000/api` : ''),
+    baseURL: import.meta.env.VITE_API_URL || (import.meta.env.DEV ? `http://${window.location.hostname}:5001/api` : ''),
     withCredentials: true, // Required for cookies/sessions across domains
     headers: {
         'Content-Type': 'application/json',

@@ -97,5 +97,5 @@ app.use('/api/service-request', require('./routes/serviceRequestRoutes'));
 app.use('/api/reservations', require('./routes/reservationRoutes'));
 app.use('/api', require('./routes/marketingRoutes')); // Marketing: vouchers, banners, apply-voucher
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 5001;
 server.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`)); // Listen on server, not app

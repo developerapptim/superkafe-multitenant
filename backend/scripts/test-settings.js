@@ -2,7 +2,7 @@ const http = require('http');
 
 http.get({
     hostname: 'localhost',
-    port: 3000,
+    port: 5001,
     path: '/api/settings/public',
     headers: { 'x-api-key': 'warkop_secret_123' }
 }, (res) => {

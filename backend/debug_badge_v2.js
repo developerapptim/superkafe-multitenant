@@ -53,7 +53,7 @@ async function run() {
 
         // Test API
         try {
-            const res = await axios.get('http://localhost:3000/api/orders/pending-count', {
+            const res = await axios.get('http://localhost:5001/api/orders/pending-count', {
                 headers: { 'x-api-key': 'warkop_secret_123' } // Add API Key
             });
             console.log('API Response:', res.data);
