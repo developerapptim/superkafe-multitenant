@@ -28,3 +28,6 @@ services:
     restart: always
     environment:
       - VITE_API_URL=http://76.13.196.116:5001/api
+
+volumes:
+  mongo_data_v2:
