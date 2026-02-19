@@ -52,10 +52,19 @@ jobs:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           password: ${{ secrets.SSH_PASSWORD }}
+          envs: MONGODB_URI,JWT_SECRET,API_KEY,SMTP_USER,SMTP_PASS
           script: |
             cd /root/superkafe-multitenant
             git fetch --all
             git reset --hard origin/main
+
+            echo "MONGODB_URI=$MONGODB_URI" > backend/.env
+            echo "JWT_SECRET=$JWT_SECRET" >> backend/.env
+            echo "API_KEY=$API_KEY" >> backend/.env
+            echo "SMTP_USER=$SMTP_USER" >> backend/.env
+            echo "SMTP_PASS=$SMTP_PASS" >> backend/.env
+            echo "PORT=5001" >> backend/.env
+            
             docker compose pull
             docker compose up -d
             # Jalankan seeding tenant otomatis di dalam container backend

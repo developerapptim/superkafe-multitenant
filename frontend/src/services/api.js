@@ -274,4 +274,15 @@ export const tenantAPI = {
     toggleStatus: (id) => api.patch(`/tenants/${id}/toggle`),
 };
 
+// ========== VERIFICATION API (Email OTP) ==========
+export const verificationAPI = {
+    verifyOTP: (data) => api.post('/verify/otp', data),
+    resendOTP: (data) => api.post('/verify/resend-otp', data),
+};
+
+// ========== GOOGLE AUTH API ==========
+export const googleAuthAPI = {
+    authenticate: (data) => api.post('/google-auth', data),
+};
+
 export default api;

@@ -15,6 +15,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 const LandingPage = lazy(() => import('./pages/LandingPage'));
 const TenantLogin = lazy(() => import('./pages/auth/TenantLogin'));
 const TenantRegister = lazy(() => import('./pages/auth/TenantRegister'));
+const OTPVerification = lazy(() => import('./pages/auth/OTPVerification'));
 const Login = lazy(() => import('./pages/auth/Login'));
 
 // Admin Layout
@@ -97,6 +98,7 @@ function App() {
               {/* Auth Routes */}
               <Route path="/auth/login" element={<TenantLogin />} />
               <Route path="/auth/register" element={<TenantRegister />} />
+              <Route path="/auth/verify-otp" element={<OTPVerification />} />
               <Route path="/login" element={<Login />} /> {/* Legacy login */}
 
               {/* Dynamic Storefront - Customer Menu by Slug */}

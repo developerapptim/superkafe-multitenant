@@ -12,10 +12,11 @@ exports.login = async (req, res) => {
     try {
         const { username, password } = req.body;
 
-        // 1. Find Employee by Username or Name
+        // 1. Find Employee by Username, Email, or Name
         const employee = await Employee.findOne({
             $or: [
                 { username: username },
+                { email: username }, // Support login dengan email
                 { name: username }
             ],
             status: 'active'
@@ -23,6 +24,15 @@ exports.login = async (req, res) => {
 
         if (!employee) {
             return res.status(404).json({ error: 'Karyawan tidak ditemukan atau tidak aktif' });
+        }
+
+        // 1a. Check Email Verification (only for local auth with email)
+        if (employee.authProvider === 'local' && employee.email && !employee.isVerified) {
+            return res.status(403).json({
+                error: 'Email belum diverifikasi. Silakan cek email Anda untuk kode verifikasi.',
+                requiresVerification: true,
+                email: employee.email
+            });
         }
 
         // 2. Check for "Single Active Staff" Policy (Only for restricted roles)

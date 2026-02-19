@@ -42,7 +42,7 @@ const TenantLogin = () => {
         password: formData.password
       });
 
-      if (response.data.success) {
+      if (response.data.token) {
         // Simpan token dan user data
         localStorage.setItem('token', response.data.token);
         localStorage.setItem('user', JSON.stringify(response.data.user));
@@ -55,12 +55,31 @@ const TenantLogin = () => {
     } catch (error) {
       console.error('Login error:', error);
       
+      // Handle email verification error
+      if (error.response?.data?.requiresVerification) {
+        toast.error('Email belum diverifikasi');
+        
+        // Simpan email untuk proses verifikasi
+        localStorage.setItem('pending_email', error.response.data.email);
+        
+        // Redirect ke halaman verifikasi OTP
+        setTimeout(() => {
+          navigate('/auth/verify-otp', {
+            state: {
+              email: error.response.data.email,
+              tenantSlug: formData.tenant_slug
+            }
+          });
+        }, 1500);
+        return;
+      }
+      
       if (error.response?.status === 404) {
         toast.error('Tenant tidak ditemukan atau tidak aktif');
       } else if (error.response?.status === 401) {
         toast.error('Username atau password salah');
       } else {
-        toast.error(error.response?.data?.message || 'Login gagal. Silakan coba lagi.');
+        toast.error(error.response?.data?.error || error.response?.data?.message || 'Login gagal. Silakan coba lagi.');
       }
     } finally {
       setLoading(false);

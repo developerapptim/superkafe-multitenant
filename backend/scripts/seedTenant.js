@@ -1,16 +1,34 @@
 const mongoose = require('mongoose');
+const bcrypt = require('bcryptjs');
 require('dotenv').config();
 
 // Import model Tenant
 const Tenant = require('../models/Tenant');
+const { getTenantDB } = require('../config/db');
 
 /**
- * Script untuk seed data tenant ke database utama superkafe_v2
- * Usage: node backend/scripts/seedTenant.js
+ * Script untuk seed data tenant ke database utama dan membuat user admin default
+ * Usage: node backend/scripts/seedTenant.js <slug> [name]
+ * Contoh: node backend/scripts/seedTenant.js zona-mapan "Zona Mapan Coffee"
  */
 const seedTenant = async () => {
   try {
+    // Ambil slug dari command line argument
+    const slug = process.argv[2];
+    const name = process.argv[3] || slug.split('-').map(word => 
+      word.charAt(0).toUpperCase() + word.slice(1)
+    ).join(' ');
+
+    if (!slug) {
+      console.error('[SEED] Error: Slug tenant wajib disertakan');
+      console.log('Usage: node backend/scripts/seedTenant.js <slug> [name]');
+      console.log('Contoh: node backend/scripts/seedTenant.js zona-mapan "Zona Mapan Coffee"');
+      process.exit(1);
+    }
+
     console.log('[SEED] Memulai proses seed tenant...');
+    console.log(`[SEED] Slug: ${slug}`);
+    console.log(`[SEED] Name: ${name}`);
     
     // Koneksi ke database utama
     const dbURI = process.env.MONGODB_URI || 'mongodb://localhost:27017/superkafe_v2';
@@ -23,61 +41,131 @@ const seedTenant = async () => {
     
     console.log('[SEED] Koneksi database berhasil');
 
+    // Susun dbName otomatis
+    const dbName = `superkafe_${slug.toLowerCase().replace(/-/g, '_')}`;
+
     // Data tenant yang akan di-seed
     const tenantData = {
-      name: 'Warkop Pusat',
-      slug: 'warkop-pusat',
-      dbName: 'superkafe_warkop_pusat',
+      name: name,
+      slug: slug.toLowerCase(),
+      dbName: dbName,
       isActive: true
     };
 
     // Cek apakah tenant dengan slug yang sama sudah ada
-    const existingTenant = await Tenant.findOne({ slug: tenantData.slug });
+    let tenant = await Tenant.findOne({ slug: tenantData.slug });
 
-    if (existingTenant) {
+    if (tenant) {
       console.log(`[SEED] Tenant dengan slug '${tenantData.slug}' sudah ada`);
       console.log('[SEED] Data tenant yang ada:', {
-        id: existingTenant._id,
-        name: existingTenant.name,
-        slug: existingTenant.slug,
-        dbName: existingTenant.dbName,
-        isActive: existingTenant.isActive
+        id: tenant._id,
+        name: tenant.name,
+        slug: tenant.slug,
+        dbName: tenant.dbName,
+        isActive: tenant.isActive
       });
       
       // Update jika ada perubahan
-      const updated = await Tenant.findByIdAndUpdate(
-        existingTenant._id,
+      tenant = await Tenant.findByIdAndUpdate(
+        tenant._id,
         tenantData,
         { new: true }
       );
       
-      console.log('[SEED] Tenant berhasil diupdate:', {
-        id: updated._id,
-        name: updated.name,
-        slug: updated.slug,
-        dbName: updated.dbName,
-        isActive: updated.isActive
-      });
+      console.log('[SEED] Tenant berhasil diupdate');
     } else {
       // Buat tenant baru
-      const newTenant = await Tenant.create(tenantData);
+      tenant = await Tenant.create(tenantData);
       
       console.log('[SEED] Tenant baru berhasil dibuat:', {
-        id: newTenant._id,
-        name: newTenant.name,
-        slug: newTenant.slug,
-        dbName: newTenant.dbName,
-        isActive: newTenant.isActive
+        id: tenant._id,
+        name: tenant.name,
+        slug: tenant.slug,
+        dbName: tenant.dbName,
+        isActive: tenant.isActive
       });
+    }
+
+    // ===== SEEDING USER ADMIN =====
+    console.log('\n[SEED] Memulai seeding user admin...');
+    
+    try {
+      // Koneksi ke database tenant
+      const tenantDB = await getTenantDB(dbName);
+      
+      // Load Employee model untuk tenant database
+      const EmployeeModel = tenantDB.model('Employee', require('../models/Employee').schema);
+      
+      // Cek apakah admin sudah ada
+      const existingAdmin = await EmployeeModel.findOne({ username: 'admin' });
+      
+      if (existingAdmin) {
+        console.log('[SEED] User admin sudah ada di database tenant');
+        console.log('[SEED] Admin info:', {
+          id: existingAdmin.id,
+          username: existingAdmin.username,
+          name: existingAdmin.name,
+          role: existingAdmin.role
+        });
+      } else {
+        // Hash password default
+        const defaultPassword = 'admin123'; // Password default
+        const hashedPassword = await bcrypt.hash(defaultPassword, 10);
+        
+        // Generate unique ID untuk employee
+        const employeeId = `EMP-${Date.now()}`;
+        
+        // Data admin default
+        const adminData = {
+          id: employeeId,
+          username: 'admin',
+          password: hashedPassword,
+          name: 'Administrator',
+          role: 'admin',
+          role_access: ['POS', 'Kitchen', 'Meja', 'Keuangan', 'Laporan', 'Menu', 'Pegawai', 'Pengaturan'],
+          phone: '',
+          address: '',
+          salary: 0,
+          daily_rate: 0,
+          status: 'active',
+          is_logged_in: false,
+          isActive: true
+        };
+        
+        // Buat user admin
+        const newAdmin = await EmployeeModel.create(adminData);
+        
+        console.log('[SEED] ✓ User admin berhasil dibuat!');
+        console.log('[SEED] Admin credentials:', {
+          id: newAdmin.id,
+          username: newAdmin.username,
+          password: defaultPassword, // Show plain password for first time setup
+          name: newAdmin.name,
+          role: newAdmin.role
+        });
+        
+        console.log('\n[SEED] ⚠️  PENTING: Simpan kredensial ini!');
+        console.log(`Username: admin`);
+        console.log(`Password: ${defaultPassword}`);
+        console.log('Segera ubah password setelah login pertama kali!');
+      }
+      
+    } catch (dbError) {
+      console.error('[SEED ERROR] Gagal seeding user admin:', {
+        error: dbError.message,
+        stack: dbError.stack
+      });
+      throw dbError;
     }
 
     console.log('\n[SEED] ✓ Proses seed tenant selesai!');
     console.log('\n[INFO] Cara testing dengan curl:');
-    console.log(`curl -H "x-tenant-id: ${tenantData.slug}" http://localhost:5000/api/test/tenant-info`);
-    console.log('\n[INFO] Atau dengan Postman:');
-    console.log('- Method: GET');
-    console.log('- URL: http://localhost:5000/api/test/tenant-info');
-    console.log(`- Header: x-tenant-id = ${tenantData.slug}`);
+    console.log(`curl -H "x-tenant-id: ${tenantData.slug}" http://localhost:5001/api/test/tenant-info`);
+    console.log('\n[INFO] Cara login:');
+    console.log('1. Buka http://localhost:5002/auth/login');
+    console.log(`2. Tenant Slug: ${tenantData.slug}`);
+    console.log('3. Username: admin');
+    console.log('4. Password: admin123');
 
   } catch (error) {
     console.error('[SEED ERROR] Gagal melakukan seed tenant:', {

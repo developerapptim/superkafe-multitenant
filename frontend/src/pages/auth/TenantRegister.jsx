@@ -9,7 +9,10 @@ const TenantRegister = () => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
     name: '',
-    slug: ''
+    slug: '',
+    email: '',
+    password: '',
+    adminName: ''
   });
   const [loading, setLoading] = useState(false);
   const [slugAvailable, setSlugAvailable] = useState(null);
@@ -64,8 +67,23 @@ const TenantRegister = () => {
 
     try {
       // Validasi input
-      if (!formData.name || !formData.slug) {
-        toast.error('Nama dan slug wajib diisi');
+      if (!formData.name || !formData.slug || !formData.email || !formData.password) {
+        toast.error('Semua field wajib diisi');
+        setLoading(false);
+        return;
+      }
+
+      // Validasi format email
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(formData.email)) {
+        toast.error('Format email tidak valid');
+        setLoading(false);
+        return;
+      }
+
+      // Validasi password minimal 6 karakter
+      if (formData.password.length < 6) {
+        toast.error('Password minimal 6 karakter');
         setLoading(false);
         return;
       }
@@ -81,21 +99,26 @@ const TenantRegister = () => {
       // Register tenant
       const response = await tenantAPI.register({
         name: formData.name,
-        slug: formData.slug
+        slug: formData.slug,
+        email: formData.email,
+        password: formData.password,
+        adminName: formData.adminName || 'Administrator'
       });
 
       if (response.data.success) {
-        toast.success('Tenant berhasil didaftarkan!');
+        toast.success('Registrasi berhasil! Silakan cek email Anda untuk kode verifikasi.');
         
-        // Simpan tenant_slug ke localStorage
+        // Simpan tenant_slug dan email ke localStorage untuk proses verifikasi
         localStorage.setItem('tenant_slug', formData.slug);
+        localStorage.setItem('pending_email', formData.email);
         
-        // Redirect ke login dengan slug yang sudah terisi
+        // Redirect ke halaman verifikasi OTP
         setTimeout(() => {
-          navigate('/auth/login', { 
+          navigate('/auth/verify-otp', { 
             state: { 
-              tenant_slug: formData.slug,
-              message: 'Tenant berhasil dibuat! Silakan login dengan kredensial admin Anda.' 
+              email: formData.email,
+              tenantSlug: formData.slug,
+              tenantName: formData.name
             } 
           });
         }, 1500);
@@ -219,6 +242,63 @@ const TenantRegister = () => {
               </div>
             </div>
 
+            {/* Admin Name */}
+            <div>
+              <label className="block text-sm font-medium mb-2">
+                Nama Admin
+              </label>
+              <input
+                type="text"
+                name="adminName"
+                value={formData.adminName}
+                onChange={handleChange}
+                placeholder="Administrator"
+                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all placeholder:text-white/30"
+              />
+              <p className="text-xs text-white/40 mt-1">
+                Opsional - default: Administrator
+              </p>
+            </div>
+
+            {/* Email */}
+            <div>
+              <label className="block text-sm font-medium mb-2">
+                Email Admin
+              </label>
+              <input
+                type="email"
+                name="email"
+                value={formData.email}
+                onChange={handleChange}
+                placeholder="admin@warkop.com"
+                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all placeholder:text-white/30"
+                required
+              />
+              <p className="text-xs text-white/40 mt-1">
+                Email untuk login dan verifikasi akun
+              </p>
+            </div>
+
+            {/* Password */}
+            <div>
+              <label className="block text-sm font-medium mb-2">
+                Password
+              </label>
+              <input
+                type="password"
+                name="password"
+                value={formData.password}
+                onChange={handleChange}
+                placeholder="Minimal 6 karakter"
+                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all placeholder:text-white/30"
+                required
+                minLength={6}
+              />
+              <p className="text-xs text-white/40 mt-1">
+                Password untuk login (minimal 6 karakter)
+              </p>
+            </div>
+
             {/* Info Box */}
             <div className="backdrop-blur-md bg-blue-500/10 border border-blue-500/30 rounded-xl p-4">
               <h3 className="font-semibold mb-2 flex items-center gap-2">
@@ -229,7 +309,7 @@ const TenantRegister = () => {
                 <li>• Database terpisah untuk tenant Anda</li>
                 <li>• Akses penuh ke semua fitur dasar</li>
                 <li>• Dashboard analitik real-time</li>
-                <li>• Support email</li>
+                <li>• Verifikasi email untuk keamanan</li>
               </ul>
             </div>
 

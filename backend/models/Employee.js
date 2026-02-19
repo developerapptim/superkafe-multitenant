@@ -4,6 +4,7 @@ const mongoose = require('mongoose');
 const EmployeeSchema = new mongoose.Schema({
     id: { type: String, required: true, unique: true },
     username: { type: String, sparse: true },
+    email: { type: String, sparse: true }, // Email untuk authentication
     password: { type: String }, // hashed
     pin: { type: String },
     pin_code: { type: String, maxlength: 6 }, // 6-digit PIN for kiosk attendance
@@ -17,6 +18,13 @@ const EmployeeSchema = new mongoose.Schema({
     status: { type: String, enum: ['active', 'inactive'], default: 'active' },
     is_logged_in: { type: Boolean, default: false },
     isActive: { type: Boolean, default: true },
+    // Email Verification Fields
+    isVerified: { type: Boolean, default: false },
+    otpCode: { type: String },
+    otpExpiry: { type: Date },
+    // Google Auth Fields
+    googleId: { type: String, sparse: true },
+    authProvider: { type: String, enum: ['local', 'google'], default: 'local' },
     createdAt: { type: Date, default: Date.now }
 });
 

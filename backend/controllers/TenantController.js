@@ -9,12 +9,13 @@ const { getTenantDB } = require('../config/db');
 /**
  * POST /api/tenants/register
  * Mendaftarkan tenant baru dan menginisialisasi database-nya
+ * Dengan email verification
  */
 exports.registerTenant = async (req, res) => {
   const startTime = Date.now();
   
   try {
-    const { name, slug } = req.body;
+    const { name, slug, email, password, adminName } = req.body;
 
     // Validasi input
     if (!name || !slug) {
@@ -26,6 +27,31 @@ exports.registerTenant = async (req, res) => {
       return res.status(400).json({
         success: false,
         message: 'Nama dan slug wajib diisi'
+      });
+    }
+
+    // Validasi email dan password (required untuk dynamic registration)
+    if (!email || !password) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email dan password wajib diisi'
+      });
+    }
+
+    // Validasi format email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Format email tidak valid'
+      });
+    }
+
+    // Validasi password minimal 6 karakter
+    if (password.length < 6) {
+      return res.status(400).json({
+        success: false,
+        message: 'Password minimal 6 karakter'
       });
     }
 
@@ -76,7 +102,6 @@ exports.registerTenant = async (req, res) => {
       const tenantDB = await getTenantDB(dbName);
       
       // Seeding data awal: Buat koleksi settings dengan data default
-      // Menggunakan schema Setting yang ada (key-value pairs)
       const SettingModel = tenantDB.model('Setting', require('../models/Setting').schema);
       
       // Data settings awal untuk tenant baru
@@ -150,9 +175,54 @@ exports.registerTenant = async (req, res) => {
       // Insert semua settings sekaligus
       await SettingModel.insertMany(defaultSettings);
 
+      console.log('[TENANT] Settings berhasil di-seed', {
+        dbName,
+        settingsCount: defaultSettings.length
+      });
+
+      // Generate OTP untuk email verification
+      const { generateOTP, sendOTPEmail } = require('../services/emailService');
+      const otpCode = generateOTP();
+      const otpExpiry = new Date(Date.now() + 10 * 60 * 1000); // 10 menit
+
+      // Seeding User Admin dengan data dari registrasi
+      const { seedAdminUser } = require('../utils/seedAdminUser');
+      const adminResult = await seedAdminUser(tenantDB, name, {
+        email: email,
+        password: password,
+        name: adminName || 'Administrator',
+        username: email.split('@')[0], // Username dari email
+        isVerified: false // Belum terverifikasi
+      });
+
+      // Update admin dengan OTP code
+      const EmployeeModel = tenantDB.model('Employee', require('../models/Employee').schema);
+      await EmployeeModel.findOneAndUpdate(
+        { email: email },
+        {
+          otpCode: otpCode,
+          otpExpiry: otpExpiry
+        }
+      );
+
+      console.log('[TENANT] Admin user created with OTP', {
+        email: email,
+        otpExpiry: otpExpiry
+      });
+
+      // Kirim OTP ke email
+      try {
+        await sendOTPEmail(email, otpCode, name);
+        console.log('[TENANT] OTP email sent successfully');
+      } catch (emailError) {
+        console.error('[TENANT] Failed to send OTP email:', emailError.message);
+        // Don't fail registration if email fails, user can request resend
+      }
+
       console.log('[TENANT] Database tenant berhasil diinisialisasi dengan data awal', {
         dbName,
         settingsCount: defaultSettings.length,
+        adminCreated: !adminResult.existed,
         duration: `${Date.now() - startTime}ms`
       });
 
@@ -188,14 +258,16 @@ exports.registerTenant = async (req, res) => {
     // Response sukses
     res.status(201).json({
       success: true,
-      message: 'Tenant berhasil didaftarkan',
+      message: 'Tenant berhasil didaftarkan. Silakan cek email Anda untuk kode verifikasi.',
       data: {
         id: newTenant._id,
         name: newTenant.name,
         slug: newTenant.slug,
         dbName: newTenant.dbName,
+        email: email,
         isActive: newTenant.isActive,
-        createdAt: newTenant.createdAt
+        createdAt: newTenant.createdAt,
+        requiresVerification: true
       }
     });
 
