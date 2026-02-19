@@ -25,6 +25,10 @@ api.interceptors.request.use((config) => {
         config.headers['Authorization'] = `Bearer ${token}`;
     }
 
+    // 4. Add Tenant ID untuk multitenant support
+    const tenantSlug = localStorage.getItem('tenant_slug') || 'warkop-pusat';
+    config.headers['x-tenant-id'] = tenantSlug;
+
     return config;
 }, (error) => {
     return Promise.reject(error);
@@ -260,6 +264,14 @@ export const expensesAPI = {
 // ========== FINANCE API ==========
 export const financeAPI = {
     getProfitLoss: (params) => api.get('/finance/profit-loss', { params }),
+};
+
+// ========== TENANT API (Multitenant Management) ==========
+export const tenantAPI = {
+    register: (data) => api.post('/tenants/register', data),
+    getAll: () => api.get('/tenants'),
+    getBySlug: (slug) => api.get(`/tenants/${slug}`),
+    toggleStatus: (id) => api.patch(`/tenants/${id}/toggle`),
 };
 
 export default api;
