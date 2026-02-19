@@ -1,0 +1,30 @@
+services:
+  # Database diletakkan di sini agar satu jaringan dengan aplikasi
+  mongodb-v2:
+    image: mongo:latest
+    container_name: mongodb-v2
+    ports:
+      - "27018:27017"
+    volumes:
+      - mongo_data_v2:/data/db
+    restart: always
+
+  backend:
+    container_name: superkafe-backend
+    image: ghcr.io/developerapptim/superkafe-backend:latest
+    ports:
+      - "5001:5001"
+    restart: always
+    environment:
+      - MONGODB_URI=mongodb://mongodb-v2:27017/superkafe_main
+    depends_on:
+      - mongodb-v2
+
+  frontend:
+    container_name: superkafe-frontend
+    image: ghcr.io/developerapptim/superkafe-frontend:latest
+    ports:
+      - "5002:80"
+    restart: always
+    environment:
+      - VITE_API_URL=http://76.13.196.116:5001/api
