@@ -76,48 +76,112 @@ exports.registerTenant = async (req, res) => {
       const tenantDB = await getTenantDB(dbName);
       
       // Seeding data awal: Buat koleksi settings dengan data default
-      const SettingsModel = tenantDB.model('Setting', require('../models/Setting').schema);
+      // Menggunakan schema Setting yang ada (key-value pairs)
+      const SettingModel = tenantDB.model('Setting', require('../models/Setting').schema);
       
-      const defaultSettings = {
-        storeName: name,
-        storeAddress: '',
-        storePhone: '',
-        currency: 'IDR',
-        timezone: 'Asia/Jakarta',
-        taxRate: 0,
-        serviceCharge: 0,
-        loyaltySettings: {
-          enabled: false,
-          pointsPerRupiah: 0.01,
-          minPointsForReward: 100
+      // Data settings awal untuk tenant baru
+      const defaultSettings = [
+        {
+          key: 'store_name',
+          value: name,
+          description: 'Nama toko/warkop'
         },
-        notificationSound: '/sounds/notif.mp3',
-        units: ['pcs', 'kg', 'liter', 'porsi']
-      };
+        {
+          key: 'store_address',
+          value: '',
+          description: 'Alamat toko'
+        },
+        {
+          key: 'store_phone',
+          value: '',
+          description: 'Nomor telepon toko'
+        },
+        {
+          key: 'currency',
+          value: 'IDR',
+          description: 'Mata uang yang digunakan'
+        },
+        {
+          key: 'timezone',
+          value: 'Asia/Jakarta',
+          description: 'Zona waktu'
+        },
+        {
+          key: 'tax_rate',
+          value: 0,
+          description: 'Persentase pajak'
+        },
+        {
+          key: 'service_charge',
+          value: 0,
+          description: 'Biaya layanan'
+        },
+        {
+          key: 'loyalty_settings',
+          value: {
+            enabled: false,
+            pointsPerRupiah: 0.01,
+            minPointsForReward: 100
+          },
+          description: 'Konfigurasi program loyalitas'
+        },
+        {
+          key: 'notification_sound',
+          value: '/sounds/notif.mp3',
+          description: 'File suara notifikasi'
+        },
+        {
+          key: 'units',
+          value: ['pcs', 'kg', 'liter', 'porsi'],
+          description: 'Unit satuan yang tersedia'
+        },
+        {
+          key: 'initialized',
+          value: true,
+          description: 'Status inisialisasi database'
+        },
+        {
+          key: 'initialized_at',
+          value: new Date().toISOString(),
+          description: 'Waktu inisialisasi database'
+        }
+      ];
 
-      await SettingsModel.create(defaultSettings);
+      // Insert semua settings sekaligus
+      await SettingModel.insertMany(defaultSettings);
 
       console.log('[TENANT] Database tenant berhasil diinisialisasi dengan data awal', {
         dbName,
-        collections: ['settings'],
+        settingsCount: defaultSettings.length,
         duration: `${Date.now() - startTime}ms`
       });
 
     } catch (dbError) {
       // Jika gagal inisialisasi database, rollback tenant yang sudah dibuat
-      console.error('[TENANT ERROR] Gagal inisialisasi database tenant', {
+      console.error('[TENANT ERROR] Gagal inisialisasi database tenant, melakukan rollback', {
         error: dbError.message,
         stack: dbError.stack,
         dbName,
         tenantId: newTenant._id
       });
 
-      // Hapus tenant dari database utama
-      await Tenant.findByIdAndDelete(newTenant._id);
+      // ROLLBACK: Hapus tenant dari database utama
+      try {
+        await Tenant.findByIdAndDelete(newTenant._id);
+        console.log('[TENANT] Rollback berhasil: tenant dihapus dari database utama', {
+          tenantId: newTenant._id,
+          slug: newTenant.slug
+        });
+      } catch (rollbackError) {
+        console.error('[TENANT ERROR] Gagal melakukan rollback', {
+          error: rollbackError.message,
+          tenantId: newTenant._id
+        });
+      }
 
       return res.status(500).json({
         success: false,
-        message: 'Gagal menginisialisasi database tenant'
+        message: 'Gagal menginisialisasi database tenant. Registrasi dibatalkan.'
       });
     }
 
