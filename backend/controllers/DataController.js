@@ -16,7 +16,7 @@ const Settings = require('../models/Settings');
 const MASTER_PIN = process.env.MASTER_PIN || '123456';
 
 // Reset Database (Delete All Data)
-exports.resetDatabase = async (req, res) => {
+const resetDatabase = async (req, res) => {
     try {
         const { masterPin, confirmText } = req.body;
 
@@ -51,7 +51,7 @@ exports.resetDatabase = async (req, res) => {
 };
 
 // Delete specific collection
-exports.deleteCollection = async (req, res) => {
+const deleteCollection = async (req, res) => {
     try {
         const { masterPin } = req.body;
         const collectionName = req.params.name;
@@ -87,7 +87,7 @@ exports.deleteCollection = async (req, res) => {
 };
 
 // Get All Data (Backup)
-exports.getAllData = async (req, res) => {
+const getAllData = async (req, res) => {
     try {
         const [menuItems, categories, orders, tables, employees, cashTransactions, customers, ingredients, gramasiData, stockHistory, recipesRaw, settings] = await Promise.all([
             MenuItem.find(),
@@ -131,7 +131,7 @@ exports.getAllData = async (req, res) => {
 
 // Restore Data (Post)
 // Restore Data (Post)
-exports.restoreData = async (req, res) => {
+const restoreData = async (req, res) => {
     try {
         const data = req.body;
         console.log('📥 Receiving Restore Data...');
@@ -221,7 +221,7 @@ exports.restoreData = async (req, res) => {
     }
 };
 // Delete Transactions Only
-exports.deleteTransactions = async (req, res) => {
+const deleteTransactions = async (req, res) => {
     try {
         const { confirmText } = req.body;
 
@@ -242,4 +242,12 @@ exports.deleteTransactions = async (req, res) => {
         console.error('Delete transactions error:', err);
         res.status(500).json({ error: 'Gagal menghapus transaksi: ' + err.message });
     }
+};
+
+module.exports = {
+  resetDatabase,
+  deleteCollection,
+  getAllData,
+  restoreData,
+  deleteTransactions
 };

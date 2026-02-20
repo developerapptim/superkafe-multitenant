@@ -5,7 +5,7 @@ const logActivity = require('../utils/activityLogger');
 // ========== VOUCHER CRUD ==========
 
 // GET /api/vouchers - Daftar semua voucher
-exports.getVouchers = async (req, res) => {
+const getVouchers = async (req, res) => {
     try {
         const vouchers = await Voucher.find().sort({ createdAt: -1 });
         res.json(vouchers);
@@ -16,7 +16,7 @@ exports.getVouchers = async (req, res) => {
 };
 
 // POST /api/vouchers - Buat voucher baru
-exports.createVoucher = async (req, res) => {
+const createVoucher = async (req, res) => {
     try {
         const { code, discount_type, discount_value, min_purchase, max_discount, quota, valid_until } = req.body;
 
@@ -53,7 +53,7 @@ exports.createVoucher = async (req, res) => {
 };
 
 // PUT /api/vouchers/:id - Update voucher
-exports.updateVoucher = async (req, res) => {
+const updateVoucher = async (req, res) => {
     try {
         const { id } = req.params;
         const { code, discount_type, discount_value, min_purchase, max_discount, quota, valid_until } = req.body;
@@ -84,7 +84,7 @@ exports.updateVoucher = async (req, res) => {
 };
 
 // PATCH /api/vouchers/:id/toggle - Toggle aktif/nonaktif
-exports.toggleVoucher = async (req, res) => {
+const toggleVoucher = async (req, res) => {
     try {
         const { id } = req.params;
         const voucher = await Voucher.findById(id);
@@ -101,7 +101,7 @@ exports.toggleVoucher = async (req, res) => {
 };
 
 // DELETE /api/vouchers/:id - Hapus voucher
-exports.deleteVoucher = async (req, res) => {
+const deleteVoucher = async (req, res) => {
     try {
         const { id } = req.params;
         await Voucher.findByIdAndDelete(id);
@@ -115,7 +115,7 @@ exports.deleteVoucher = async (req, res) => {
 // ========== APPLY VOUCHER (Customer) ==========
 
 // POST /api/cart/apply-voucher
-exports.applyVoucher = async (req, res) => {
+const applyVoucher = async (req, res) => {
     try {
         const { code, subtotal } = req.body;
 
@@ -186,7 +186,7 @@ exports.applyVoucher = async (req, res) => {
 // ========== BANNER CRUD ==========
 
 // GET /api/banners - Daftar banner (public)
-exports.getBanners = async (req, res) => {
+const getBanners = async (req, res) => {
     try {
         const { active_only } = req.query;
         const filter = active_only === 'true' ? { is_active: true } : {};
@@ -199,7 +199,7 @@ exports.getBanners = async (req, res) => {
 };
 
 // POST /api/banners - Upload banner baru (dengan multer)
-exports.createBanner = async (req, res) => {
+const createBanner = async (req, res) => {
     try {
         if (!req.file) {
             return res.status(400).json({ error: 'Gambar banner wajib diupload' });
@@ -256,7 +256,7 @@ exports.createBanner = async (req, res) => {
 };
 
 // DELETE /api/banners/:id - Hapus banner
-exports.deleteBanner = async (req, res) => {
+const deleteBanner = async (req, res) => {
     try {
         const { id } = req.params;
         await Banner.findByIdAndDelete(id);
@@ -265,4 +265,16 @@ exports.deleteBanner = async (req, res) => {
         console.error('Error deleteBanner:', err);
         res.status(500).json({ error: 'Gagal menghapus banner' });
     }
+};
+
+module.exports = {
+  getVouchers,
+  createVoucher,
+  updateVoucher,
+  toggleVoucher,
+  deleteVoucher,
+  applyVoucher,
+  getBanners,
+  createBanner,
+  deleteBanner
 };

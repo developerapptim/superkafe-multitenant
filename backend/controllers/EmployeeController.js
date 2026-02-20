@@ -4,7 +4,7 @@ const jwt = require('jsonwebtoken');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'change_this_secret';
 
-exports.getEmployees = async (req, res) => {
+const getEmployees = async (req, res) => {
     try {
         const employees = await Employee.find({ status: { $ne: 'inactive' } }).select('-password');
         res.json(employees);
@@ -13,7 +13,7 @@ exports.getEmployees = async (req, res) => {
     }
 };
 
-exports.createEmployee = async (req, res) => {
+const createEmployee = async (req, res) => {
     try {
         console.log('Creating employee:', req.body); // Debug log
         const {
@@ -72,7 +72,7 @@ exports.createEmployee = async (req, res) => {
 };
 
 
-exports.updateEmployee = async (req, res) => {
+const updateEmployee = async (req, res) => {
     try {
         const { id } = req.params;
         const updates = req.body;
@@ -97,7 +97,7 @@ exports.updateEmployee = async (req, res) => {
     }
 };
 
-exports.deleteEmployee = async (req, res) => {
+const deleteEmployee = async (req, res) => {
     try {
         const { id } = req.params;
 
@@ -117,7 +117,7 @@ exports.deleteEmployee = async (req, res) => {
     }
 };
 
-exports.login = async (req, res) => {
+const login = async (req, res) => {
     try {
         const { username, password } = req.body;
 
@@ -153,7 +153,7 @@ exports.login = async (req, res) => {
     }
 };
 
-exports.fixData = async (req, res) => {
+const fixData = async (req, res) => {
     try {
         console.log('🔧 Starting Data Repair...');
         const employees = await Employee.find({});
@@ -207,4 +207,13 @@ exports.fixData = async (req, res) => {
         console.error('Fix Data Error:', err);
         res.status(500).json({ error: err.message });
     }
+};
+
+module.exports = {
+    getEmployees,
+    createEmployee,
+    updateEmployee,
+    deleteEmployee,
+    login,
+    fixData
 };

@@ -1,7 +1,7 @@
 const Feedback = require('../models/Feedback');
 
 // POST /api/feedback
-exports.createFeedback = async (req, res) => {
+const createFeedback = async (req, res) => {
     try {
         const { name, message, rating } = req.body;
 
@@ -25,7 +25,7 @@ exports.createFeedback = async (req, res) => {
 };
 
 // GET /api/feedback
-exports.getAllFeedback = async (req, res) => {
+const getAllFeedback = async (req, res) => {
     try {
         const feedbacks = await Feedback.find().sort({ created_at: -1 });
         res.json(feedbacks);
@@ -33,4 +33,9 @@ exports.getAllFeedback = async (req, res) => {
         console.error('Get Feedback Error:', error);
         res.status(500).json({ error: 'Server error' });
     }
+};
+
+module.exports = {
+  createFeedback,
+  getAllFeedback
 };

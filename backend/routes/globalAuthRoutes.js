@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const GlobalAuthController = require('../controllers/GlobalAuthController');
-const { authenticate } = require('../middleware/auth');
+const { checkJwt } = require('../middleware/auth');
 
 /**
  * Global Authentication Routes
@@ -21,6 +21,6 @@ router.get('/staff-list/:tenantSlug', GlobalAuthController.getStaffList);
 router.post('/verify-admin-pin', GlobalAuthController.verifyAdminPIN);
 
 // Set/update PIN untuk employee (requires authentication)
-router.post('/set-pin', authenticate, GlobalAuthController.setPIN);
+router.post('/set-pin', checkJwt, GlobalAuthController.setPIN);
 
 module.exports = router;

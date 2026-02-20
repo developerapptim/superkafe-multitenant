@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const PaymentController = require('../controllers/PaymentController');
-const { authenticate } = require('../middleware/auth');
+const { checkJwt } = require('../middleware/auth');
 
 /**
  * Payment Routes
@@ -9,13 +9,13 @@ const { authenticate } = require('../middleware/auth');
  */
 
 // POST /api/payments/create-invoice - Create payment invoice
-router.post('/create-invoice', authenticate, PaymentController.createInvoice);
+router.post('/create-invoice', checkJwt, PaymentController.createInvoice);
 
 // POST /api/payments/callback - Handle payment callback (no auth - dari Duitku)
 router.post('/callback', PaymentController.handleCallback);
 
 // GET /api/payments/status/:merchantOrderId - Check payment status
-router.get('/status/:merchantOrderId', authenticate, PaymentController.checkStatus);
+router.get('/status/:merchantOrderId', checkJwt, PaymentController.checkStatus);
 
 // GET /api/payments/pricing - Get pricing plans
 router.get('/pricing', PaymentController.getPricing);

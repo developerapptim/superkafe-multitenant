@@ -1,7 +1,7 @@
 const Category = require('../models/Category');
 
 // Get all categories
-exports.getAll = async (req, res) => {
+const getAll = async (req, res) => {
     try {
         const categories = await Category.find().sort({ order: 1, name: 1 });
         res.json(categories);
@@ -11,7 +11,7 @@ exports.getAll = async (req, res) => {
 };
 
 // Create category
-exports.create = async (req, res) => {
+const create = async (req, res) => {
     try {
         const { id, name, emoji } = req.body;
         const newCategory = new Category({
@@ -27,7 +27,7 @@ exports.create = async (req, res) => {
 };
 
 // Update category
-exports.update = async (req, res) => {
+const update = async (req, res) => {
     try {
         const { name, emoji } = req.body;
         const category = await Category.findOneAndUpdate(
@@ -43,7 +43,7 @@ exports.update = async (req, res) => {
 };
 
 // Delete category
-exports.delete = async (req, res) => {
+const deleteCategory = async (req, res) => {
     try {
         const categoryId = req.params.id;
 
@@ -91,7 +91,7 @@ exports.delete = async (req, res) => {
 };
 
 // Reorder categories
-exports.reorder = async (req, res) => {
+const reorder = async (req, res) => {
     try {
         const { categories } = req.body; // Array of { id, order }
 
@@ -112,4 +112,12 @@ exports.reorder = async (req, res) => {
         console.error('Error reordering categories:', err);
         res.status(500).json({ error: 'Server error' });
     }
+};
+
+module.exports = {
+  getAll,
+  create,
+  update,
+  deleteCategory,
+  reorder
 };

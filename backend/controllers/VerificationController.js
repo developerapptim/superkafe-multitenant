@@ -6,7 +6,7 @@ const Tenant = require('../models/Tenant');
  * POST /api/verify/otp
  * Verifikasi OTP code
  */
-exports.verifyOTP = async (req, res) => {
+const verifyOTP = async (req, res) => {
   try {
     const { email, otpCode, tenantSlug } = req.body;
 
@@ -110,7 +110,7 @@ exports.verifyOTP = async (req, res) => {
  * POST /api/verify/resend-otp
  * Kirim ulang OTP code
  */
-exports.resendOTP = async (req, res) => {
+const resendOTP = async (req, res) => {
   try {
     const { email, tenantSlug } = req.body;
 

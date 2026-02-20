@@ -1,6 +1,5 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const mongoose = require('mongoose');
 const Tenant = require('../models/Tenant');
 const { getTenantDB } = require('../config/db');
 
@@ -157,7 +156,7 @@ const globalLogin = async (req, res) => {
  * POST /api/auth/login-pin
  * Login dengan PIN untuk shared tablet
  */
-exports.loginWithPIN = async (req, res) => {
+const loginWithPIN = async (req, res) => {
   const startTime = Date.now();
   
   try {
@@ -287,7 +286,7 @@ exports.loginWithPIN = async (req, res) => {
  * GET /api/auth/staff-list/:tenantSlug
  * Mendapatkan daftar staff untuk shared tablet selection screen
  */
-exports.getStaffList = async (req, res) => {
+const getStaffList = async (req, res) => {
   try {
     const { tenantSlug } = req.params;
 
@@ -344,7 +343,7 @@ exports.getStaffList = async (req, res) => {
  * POST /api/auth/verify-admin-pin
  * Verifikasi PIN admin untuk override actions (tanpa logout)
  */
-exports.verifyAdminPIN = async (req, res) => {
+const verifyAdminPIN = async (req, res) => {
   try {
     const { tenantSlug, pin } = req.body;
 
@@ -426,7 +425,7 @@ exports.verifyAdminPIN = async (req, res) => {
  * POST /api/auth/set-pin
  * Set atau update PIN untuk employee (harus authenticated)
  */
-exports.setPIN = async (req, res) => {
+const setPIN = async (req, res) => {
   try {
     const { employeeId, pin, tenantSlug } = req.body;
 

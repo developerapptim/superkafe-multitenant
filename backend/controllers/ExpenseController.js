@@ -11,7 +11,7 @@ const isOwner = (req) => {
     return req.user && (role === 'owner' || role === 'admin' || role === 'administrator');
 };
 
-exports.getExpenses = async (req, res) => {
+const getExpenses = async (req, res) => {
     try {
         const { startDate, endDate, category, search, page, limit } = req.query;
         let query = { isDeleted: false };
@@ -59,7 +59,7 @@ exports.getExpenses = async (req, res) => {
     }
 };
 
-exports.getExpenseById = async (req, res) => {
+const getExpenseById = async (req, res) => {
     try {
         const item = await OperationalExpense.findOne({ id: req.params.id, isDeleted: false });
         if (!item) return res.status(404).json({ error: 'Not found' });
@@ -69,7 +69,7 @@ exports.getExpenseById = async (req, res) => {
     }
 };
 
-exports.createExpense = async (req, res) => {
+const createExpense = async (req, res) => {
     try {
         // RBAC Check (Extra safety if middleware fails/missed)
         if (!isOwner(req)) {
@@ -116,7 +116,7 @@ exports.createExpense = async (req, res) => {
     }
 };
 
-exports.updateExpense = async (req, res) => {
+const updateExpense = async (req, res) => {
     try {
         if (!isOwner(req)) return res.status(403).json({ error: 'Access denied' });
 
@@ -163,7 +163,7 @@ exports.updateExpense = async (req, res) => {
     }
 };
 
-exports.deleteExpense = async (req, res) => {
+const deleteExpense = async (req, res) => {
     try {
         if (!isOwner(req)) return res.status(403).json({ error: 'Access denied' });
 
@@ -193,4 +193,12 @@ exports.deleteExpense = async (req, res) => {
         console.error(err);
         res.status(500).json({ error: 'Server error' });
     }
+};
+
+module.exports = {
+  getExpenses,
+  getExpenseById,
+  createExpense,
+  updateExpense,
+  deleteExpense
 };

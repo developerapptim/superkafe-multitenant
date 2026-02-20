@@ -12,6 +12,6 @@ router.post('/', checkApiKey, CategoryController.create);
 router.put('/reorder', checkApiKey, CategoryController.reorder);
 
 router.put('/:id', checkApiKey, CategoryController.update);
-router.delete('/:id', checkApiKey, CategoryController.delete);
+router.delete('/:id', checkApiKey, CategoryController.deleteCategory);
 
 module.exports = router;

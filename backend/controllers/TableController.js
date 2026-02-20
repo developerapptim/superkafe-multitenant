@@ -1,7 +1,7 @@
 const Table = require('../models/Table');
 const Order = require('../models/Order');
 
-exports.getTables = async (req, res) => {
+const getTables = async (req, res) => {
     try {
         const tables = await Table.find().sort({ number: 1 });
         res.json(tables);
@@ -10,7 +10,7 @@ exports.getTables = async (req, res) => {
     }
 };
 
-exports.addTable = async (req, res) => {
+const addTable = async (req, res) => {
     try {
         const { number, capacity, location } = req.body;
 
@@ -32,7 +32,7 @@ exports.addTable = async (req, res) => {
     }
 };
 
-exports.updateStatus = async (req, res) => {
+const updateStatus = async (req, res) => {
     try {
         const { id } = req.params;
         const { status, currentOrderId } = req.body; // status: 'available', 'occupied', 'reserved', 'dirty'
@@ -65,7 +65,7 @@ exports.updateStatus = async (req, res) => {
     }
 };
 
-exports.moveTable = async (req, res) => {
+const moveTable = async (req, res) => {
     try {
         const { fromId, toId } = req.params;
 
@@ -121,7 +121,7 @@ exports.moveTable = async (req, res) => {
     }
 };
 
-exports.cleanTable = async (req, res) => {
+const cleanTable = async (req, res) => {
     try {
         let table = await Table.findOne({ id: req.params.id });
         if (!table) {
@@ -143,7 +143,7 @@ exports.cleanTable = async (req, res) => {
     }
 };
 
-exports.deleteTable = async (req, res) => {
+const deleteTable = async (req, res) => {
     try {
         const { id } = req.params;
 
@@ -169,3 +169,11 @@ exports.deleteTable = async (req, res) => {
     }
 };
 
+module.exports = {
+  getTables,
+  addTable,
+  updateStatus,
+  moveTable,
+  cleanTable,
+  deleteTable
+};

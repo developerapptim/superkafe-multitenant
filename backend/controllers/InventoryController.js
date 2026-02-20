@@ -5,7 +5,7 @@ const MenuItem = require('../models/MenuItem'); // For error msg
 const Recipe = require('../models/Recipe'); // For safety check
 const logActivity = require('../utils/activityLogger'); // NEW: Activity Logger
 
-exports.getInventory = async (req, res) => {
+const getInventory = async (req, res) => {
     try {
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 20;
@@ -60,7 +60,7 @@ exports.getInventory = async (req, res) => {
     }
 };
 
-exports.getInventoryStats = async (req, res) => {
+const getInventoryStats = async (req, res) => {
     try {
         const stats = await Ingredient.aggregate([
             {
@@ -94,7 +94,7 @@ exports.getInventoryStats = async (req, res) => {
     }
 };
 
-exports.getInventoryById = async (req, res) => {
+const getInventoryById = async (req, res) => {
     try {
         const item = await Ingredient.findOne({ id: req.params.id });
         if (!item) return res.status(404).json({ error: 'Not found' });
@@ -104,7 +104,7 @@ exports.getInventoryById = async (req, res) => {
     }
 };
 
-exports.addInventory = async (req, res) => {
+const addInventory = async (req, res) => {
     try {
         const item = new Ingredient(req.body);
         await item.save();
@@ -115,7 +115,7 @@ exports.addInventory = async (req, res) => {
     }
 };
 
-exports.updateInventory = async (req, res) => {
+const updateInventory = async (req, res) => {
     try {
         const { id } = req.params;
         const updates = { ...req.body };
@@ -174,7 +174,7 @@ exports.updateInventory = async (req, res) => {
     }
 };
 
-exports.deleteInventory = async (req, res) => {
+const deleteInventory = async (req, res) => {
     try {
         const { id } = req.params;
 
@@ -223,7 +223,7 @@ exports.deleteInventory = async (req, res) => {
     }
 };
 
-exports.restockIngredient = async (req, res) => {
+const restockIngredient = async (req, res) => {
     try {
         // 1. Inputs
         const { id, amount, totalPrice, conversionRate } = req.body;
@@ -309,7 +309,7 @@ exports.restockIngredient = async (req, res) => {
     }
 };
 
-exports.updateStock = async (req, res) => {
+const updateStock = async (req, res) => {
     try {
         const { id } = req.params;
         const { qty, note } = req.body; // qty can be positive (add) or negative (adjust)
@@ -359,7 +359,7 @@ exports.updateStock = async (req, res) => {
     }
 };
 
-exports.getStockHistory = async (req, res) => {
+const getStockHistory = async (req, res) => {
     try {
         const items = await StockHistory.find().sort({ timestamp: -1 });
         res.json(items);
@@ -369,7 +369,7 @@ exports.getStockHistory = async (req, res) => {
     }
 };
 
-exports.getHistoryByIngredientId = async (req, res) => {
+const getHistoryByIngredientId = async (req, res) => {
     try {
         const { id } = req.params;
         const history = await StockHistory.find({ ing_id: id }).sort({ timestamp: -1 });
@@ -380,7 +380,7 @@ exports.getHistoryByIngredientId = async (req, res) => {
     }
 };
 
-exports.addStockHistory = async (req, res) => {
+const addStockHistory = async (req, res) => {
     try {
         const item = new StockHistory(req.body);
         await item.save();
@@ -392,7 +392,7 @@ exports.addStockHistory = async (req, res) => {
 };
 
 // New: Top Usage for Inventory Dashboard
-exports.getTopUsage = async (req, res) => {
+const getTopUsage = async (req, res) => {
     try {
         // Aggregate 'out' types from StockHistory
         const usage = await StockHistory.aggregate([
@@ -417,7 +417,7 @@ exports.getTopUsage = async (req, res) => {
 };
 
 // GRAMASI CRUD
-exports.getGramasi = async (req, res) => {
+const getGramasi = async (req, res) => {
     try {
         const items = await Gramasi.find();
         res.json(items);
@@ -426,7 +426,7 @@ exports.getGramasi = async (req, res) => {
     }
 };
 
-exports.addGramasi = async (req, res) => {
+const addGramasi = async (req, res) => {
     try {
         const item = new Gramasi(req.body);
         await item.save();
@@ -436,7 +436,7 @@ exports.addGramasi = async (req, res) => {
     }
 };
 
-exports.addGramasiBulk = async (req, res) => {
+const addGramasiBulk = async (req, res) => {
     try {
         const items = req.body;
         const result = await Gramasi.insertMany(items);
@@ -446,11 +446,30 @@ exports.addGramasiBulk = async (req, res) => {
     }
 };
 
-exports.deleteGramasi = async (req, res) => {
+const deleteGramasi = async (req, res) => {
     try {
         await Gramasi.deleteOne({ id: req.params.id });
         res.json({ ok: true });
     } catch (err) {
         res.status(500).json({ error: 'Server error' });
     }
+};
+
+module.exports = {
+  getInventory,
+  getInventoryStats,
+  getInventoryById,
+  addInventory,
+  updateInventory,
+  deleteInventory,
+  restockIngredient,
+  updateStock,
+  getStockHistory,
+  getHistoryByIngredientId,
+  addStockHistory,
+  getTopUsage,
+  getGramasi,
+  addGramasi,
+  addGramasiBulk,
+  deleteGramasi
 };

@@ -1,6 +1,6 @@
 const Order = require('../models/Order');
 
-exports.getDashboardStats = async (req, res) => {
+const getDashboardStats = async (req, res) => {
     try {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
@@ -57,4 +57,8 @@ exports.getDashboardStats = async (req, res) => {
         console.error(err);
         res.status(500).json({ error: 'Server error' });
     }
+};
+
+module.exports = {
+  getDashboardStats
 };

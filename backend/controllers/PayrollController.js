@@ -2,7 +2,7 @@
 const Attendance = require('../models/Attendance');
 const Employee = require('../models/Employee');
 
-exports.calculate = async (req, res) => {
+const calculate = async (req, res) => {
     try {
         const { employee_id, start_date, end_date } = req.body;
 
@@ -51,4 +51,8 @@ exports.calculate = async (req, res) => {
         console.error("Payroll Error:", err);
         res.status(500).json({ error: 'Server error' });
     }
+};
+
+module.exports = {
+  calculate
 };

@@ -1,7 +1,7 @@
 const Employee = require('../models/Employee');
 const bcrypt = require('bcryptjs');
 
-exports.changePassword = async (req, res) => {
+const changePassword = async (req, res) => {
     try {
         const { currentPassword, newPassword } = req.body;
         const userId = req.user.id; // From checkJwt middleware
@@ -49,7 +49,7 @@ exports.changePassword = async (req, res) => {
     }
 }
 
-exports.resetSessions = async (req, res) => {
+const resetSessions = async (req, res) => {
     try {
         // Ensure only admin/owner can do this (Middleware checkJwt already ran, check role here or in routes)
         // Assuming checkRole('admin') middleware will be used, or check here:
@@ -69,4 +69,9 @@ exports.resetSessions = async (req, res) => {
         console.error('Reset Session Error:', err);
         res.status(500).json({ error: 'Gagal mereset sesi' });
     }
+};
+
+module.exports = {
+  changePassword,
+  resetSessions
 };

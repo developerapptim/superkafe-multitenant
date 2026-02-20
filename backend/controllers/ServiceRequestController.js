@@ -1,7 +1,7 @@
 const ServiceRequest = require('../models/ServiceRequest');
 
 // POST /api/service-request
-exports.createRequest = async (req, res) => {
+const createRequest = async (req, res) => {
     try {
         const { table_number, request_type, note } = req.body;
 
@@ -25,7 +25,7 @@ exports.createRequest = async (req, res) => {
 };
 
 // GET /api/service-request/pending
-exports.getPendingRequests = async (req, res) => {
+const getPendingRequests = async (req, res) => {
     try {
         const requests = await ServiceRequest.find({ status: 'pending' }).sort({ created_at: 1 });
         res.json(requests);
@@ -36,7 +36,7 @@ exports.getPendingRequests = async (req, res) => {
 };
 
 // PUT /api/service-request/:id/complete
-exports.completeRequest = async (req, res) => {
+const completeRequest = async (req, res) => {
     try {
         const { id } = req.params;
         const request = await ServiceRequest.findByIdAndUpdate(
@@ -54,4 +54,10 @@ exports.completeRequest = async (req, res) => {
         console.error('Complete Request Error:', error);
         res.status(500).json({ error: 'Server error' });
     }
+};
+
+module.exports = {
+  createRequest,
+  getPendingRequests,
+  completeRequest
 };

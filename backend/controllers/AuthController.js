@@ -8,7 +8,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'warkop_secret_jwt';
 // Restricted roles that can only have one active session at a time
 const restrictedRoles = ['kasir', 'waiter', 'kitchen', 'barista', 'staf'];
 
-exports.login = async (req, res) => {
+const login = async (req, res) => {
     try {
         const { username, password } = req.body;
 
@@ -116,11 +116,11 @@ exports.login = async (req, res) => {
     }
 };
 
-exports.checkAuth = (req, res) => {
+const checkAuth = (req, res) => {
     res.json({ valid: true, user: req.user });
 };
 
-exports.logout = async (req, res) => {
+const logout = async (req, res) => {
     try {
         const userId = req.user.id;
         await Employee.updateOne({ id: userId }, { is_logged_in: false });
@@ -129,4 +129,10 @@ exports.logout = async (req, res) => {
         console.error('Logout error:', err);
         res.status(500).json({ error: 'Gagal logout' });
     }
+};
+
+module.exports = {
+    login,
+    checkAuth,
+    logout
 };

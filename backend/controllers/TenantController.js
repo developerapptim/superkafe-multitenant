@@ -11,7 +11,7 @@ const { getTenantDB } = require('../config/db');
  * Mendaftarkan tenant baru dan menginisialisasi database-nya
  * Dengan email verification
  */
-exports.registerTenant = async (req, res) => {
+const registerTenant = async (req, res) => {
   const startTime = Date.now();
   
   try {
@@ -306,7 +306,7 @@ exports.registerTenant = async (req, res) => {
  * GET /api/tenants
  * Mendapatkan daftar semua tenant
  */
-exports.getAllTenants = async (req, res) => {
+const getAllTenants = async (req, res) => {
   try {
     const tenants = await Tenant.find().lean();
 
@@ -332,7 +332,7 @@ exports.getAllTenants = async (req, res) => {
  * GET /api/tenants/:slug
  * Mendapatkan detail tenant berdasarkan slug
  */
-exports.getTenantBySlug = async (req, res) => {
+const getTenantBySlug = async (req, res) => {
   try {
     const { slug } = req.params;
 
@@ -368,7 +368,7 @@ exports.getTenantBySlug = async (req, res) => {
  * PATCH /api/tenants/:id/toggle
  * Mengaktifkan/menonaktifkan tenant
  */
-exports.toggleTenantStatus = async (req, res) => {
+const toggleTenantStatus = async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -419,7 +419,7 @@ exports.toggleTenantStatus = async (req, res) => {
  * GET /api/tenants/:slug/trial-status
  * Mendapatkan status trial tenant
  */
-exports.getTrialStatus = async (req, res) => {
+const getTrialStatus = async (req, res) => {
   try {
     const { slug } = req.params;
 
@@ -463,4 +463,12 @@ exports.getTrialStatus = async (req, res) => {
       message: 'Gagal mengambil status trial'
     });
   }
+};
+
+module.exports = {
+  registerTenant,
+  getAllTenants,
+  getTenantBySlug,
+  toggleTenantStatus,
+  getTrialStatus
 };

@@ -1,7 +1,7 @@
 const AuditLog = require('../models/AuditLog');
 
 // Get all audit logs (with pagination support if needed later)
-exports.getAuditLogs = async (req, res) => {
+const getAuditLogs = async (req, res) => {
     try {
         const logs = await AuditLog.find()
             .sort({ timestamp: -1 })
@@ -14,7 +14,7 @@ exports.getAuditLogs = async (req, res) => {
 };
 
 // Create a new audit log entry
-exports.createAuditLog = async (req, res) => {
+const createAuditLog = async (req, res) => {
     try {
         const { userId, userName, role, action, target, details } = req.body;
 
@@ -36,7 +36,7 @@ exports.createAuditLog = async (req, res) => {
 };
 
 // Internal helper to create log from other controllers
-exports.logAction = async (user, action, target, details) => {
+const logAction = async (user, action, target, details) => {
     try {
         await AuditLog.create({
             userId: user._id || user.id,
@@ -50,4 +50,10 @@ exports.logAction = async (user, action, target, details) => {
         console.error('Failed to save audit log:', err);
         // Don't throw error to prevent blocking main action
     }
+};
+
+module.exports = {
+  getAuditLogs,
+  createAuditLog,
+  logAction
 };

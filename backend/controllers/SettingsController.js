@@ -1,7 +1,7 @@
 const Setting = require('../models/Setting');
 const Settings = require('../models/Settings');
 
-exports.getSettings = async (req, res) => {
+const getSettings = async (req, res) => {
     try {
         const settings = await Setting.find();
         // Convert array to object key-value for easier frontend consumption
@@ -15,7 +15,7 @@ exports.getSettings = async (req, res) => {
     }
 }
 
-exports.getPublicSettings = async (req, res) => {
+const getPublicSettings = async (req, res) => {
     try {
         // Get key-value settings (branding)
         const settings = await Setting.find({ key: { $in: ['businessName', 'tagline', 'logo', 'showLogo'] } });
@@ -45,7 +45,7 @@ exports.getPublicSettings = async (req, res) => {
     }
 };
 
-exports.updateSettings = async (req, res) => {
+const updateSettings = async (req, res) => {
     try {
         const updates = req.body;
 
@@ -76,7 +76,7 @@ exports.updateSettings = async (req, res) => {
     }
 };
 
-exports.addUnit = async (req, res) => {
+const addUnit = async (req, res) => {
     try {
         const { unit } = req.body;
         if (!unit) return res.status(400).json({ error: 'Unit name is required' });
@@ -103,7 +103,7 @@ exports.addUnit = async (req, res) => {
     }
 };
 
-exports.removeUnit = async (req, res) => {
+const removeUnit = async (req, res) => {
     try {
         const { unitName } = req.params;
 
@@ -127,7 +127,7 @@ exports.removeUnit = async (req, res) => {
     }
 };
 
-exports.uploadSound = async (req, res) => {
+const uploadSound = async (req, res) => {
     try {
         if (!req.file) {
             return res.status(400).json({ error: 'No sound file uploaded' });
@@ -148,4 +148,13 @@ exports.uploadSound = async (req, res) => {
         console.error('Upload sound error:', err);
         res.status(500).json({ error: 'Server error during upload' });
     }
+};
+
+module.exports = {
+  getSettings,
+  getPublicSettings,
+  updateSettings,
+  addUnit,
+  removeUnit,
+  uploadSound
 };

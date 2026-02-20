@@ -1,7 +1,7 @@
 const Customer = require('../models/Customer');
 const Order = require('../models/Order');
 
-exports.searchCustomers = async (req, res) => {
+const searchCustomers = async (req, res) => {
     try {
         const { q } = req.query;
         if (!q) return res.json([]);
@@ -22,7 +22,7 @@ exports.searchCustomers = async (req, res) => {
     }
 };
 
-exports.getCustomers = async (req, res) => {
+const getCustomers = async (req, res) => {
     try {
         const { page = 1, limit = 50, sort = 'name' } = req.query;
         // Basic implementation
@@ -41,7 +41,7 @@ exports.getCustomers = async (req, res) => {
     }
 };
 
-exports.upsertCustomer = async (req, res) => {
+const upsertCustomer = async (req, res) => {
     try {
         const { id, name, phone, email, address, notes, tags } = req.body;
 
@@ -86,7 +86,7 @@ exports.upsertCustomer = async (req, res) => {
     }
 };
 
-exports.getAnalytics = async (req, res) => {
+const getAnalytics = async (req, res) => {
     try {
         const { id } = req.params;
         const customer = await Customer.findOne({ id });
@@ -219,7 +219,7 @@ exports.getAnalytics = async (req, res) => {
  * GET /customers/points/:phone
  * Auto-creates customer if not found
  */
-exports.getCustomerPoints = async (req, res) => {
+const getCustomerPoints = async (req, res) => {
     try {
         const { phone } = req.params;
 
@@ -289,4 +289,12 @@ exports.getCustomerPoints = async (req, res) => {
         console.error('Get Customer Points Error:', err);
         res.status(500).json({ error: 'Server error' });
     }
+};
+
+module.exports = {
+  searchCustomers,
+  getCustomers,
+  upsertCustomer,
+  getAnalytics,
+  getCustomerPoints
 };

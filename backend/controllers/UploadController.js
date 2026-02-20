@@ -1,6 +1,6 @@
 const Settings = require('../models/Settings');
 
-exports.uploadSound = async (req, res) => {
+const uploadSound = async (req, res) => {
     try {
         if (!req.file) {
             return res.status(400).json({ error: 'No file uploaded' });
@@ -20,4 +20,8 @@ exports.uploadSound = async (req, res) => {
         console.error(err);
         res.status(500).json({ error: 'Server error' });
     }
+};
+
+module.exports = {
+  uploadSound
 };

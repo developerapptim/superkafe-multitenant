@@ -24,7 +24,7 @@ const optimizeCloudinaryUrl = (url, width = 400) => {
     return url.replace(/\/upload\//, `/upload/w_${width},c_fill,q_auto,f_auto/`);
 };
 
-exports.getMenus = async (req, res) => {
+const getMenus = async (req, res) => {
     try {
         const items = await MenuItem.find().sort({ order: 1, category: 1, name: 1 });
         const recipes = await Recipe.find();
@@ -133,7 +133,7 @@ exports.getMenus = async (req, res) => {
 };
 
 // ─── GET /api/menu/customer — Endpoint ringan untuk halaman customer ───
-exports.getMenusCustomer = async (req, res) => {
+const getMenusCustomer = async (req, res) => {
     try {
         // Cek cache
         if (customerMenuCache && (Date.now() - customerMenuCacheTime < CACHE_TTL)) {
@@ -227,7 +227,7 @@ exports.getMenusCustomer = async (req, res) => {
     }
 };
 
-exports.getMenuById = async (req, res) => {
+const getMenuById = async (req, res) => {
     try {
         const item = await MenuItem.findOne({ id: req.params.id });
         if (!item) return res.status(404).json({ error: 'Not found' });
@@ -244,7 +244,7 @@ exports.getMenuById = async (req, res) => {
     }
 };
 
-exports.createMenu = async (req, res) => {
+const createMenu = async (req, res) => {
     try {
         const data = req.body; // Expects { menu: {...}, recipe: [...] }
 
@@ -283,7 +283,7 @@ exports.createMenu = async (req, res) => {
     }
 };
 
-exports.updateMenu = async (req, res) => {
+const updateMenu = async (req, res) => {
     try {
         // Map image -> imageUrl for DB storage
         const updateData = { ...req.body };
@@ -309,7 +309,7 @@ exports.updateMenu = async (req, res) => {
     }
 };
 
-exports.deleteMenu = async (req, res) => {
+const deleteMenu = async (req, res) => {
     try {
         await MenuItem.deleteOne({ id: req.params.id });
         await Recipe.deleteOne({ menuId: req.params.id }); // Logic for cascading delete
@@ -325,7 +325,7 @@ exports.deleteMenu = async (req, res) => {
 };
 
 // Recipe Specific Endpoints
-exports.getRecipes = async (req, res) => {
+const getRecipes = async (req, res) => {
     try {
         const recipes = await Recipe.find();
         res.json(recipes);
@@ -334,7 +334,7 @@ exports.getRecipes = async (req, res) => {
     }
 };
 
-exports.updateRecipe = async (req, res) => {
+const updateRecipe = async (req, res) => {
     try {
         const { ingredients, menuId: bodyMenuId } = req.body;
         // Fix: Use params.menuId if available (PUT /:menuId), otherwise use body.menuId (POST /)
@@ -359,7 +359,7 @@ exports.updateRecipe = async (req, res) => {
     }
 };
 
-exports.reorderMenus = async (req, res) => {
+const reorderMenus = async (req, res) => {
     try {
         const { items } = req.body; // Expects array of IDs in new order
         if (!items || !Array.isArray(items)) {
@@ -383,4 +383,16 @@ exports.reorderMenus = async (req, res) => {
         console.error(err);
         res.status(500).json({ error: 'Server error' });
     }
+};
+
+module.exports = {
+  getMenus,
+  getMenusCustomer,
+  getMenuById,
+  createMenu,
+  updateMenu,
+  deleteMenu,
+  getRecipes,
+  updateRecipe,
+  reorderMenus
 };

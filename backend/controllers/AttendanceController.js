@@ -2,7 +2,7 @@ const Attendance = require('../models/Attendance');
 const Employee = require('../models/Employee');
 
 // Get all attendance records
-exports.getAll = async (req, res) => {
+const getAll = async (req, res) => {
     try {
         const { date, employee_id } = req.query;
         let query = {};
@@ -17,7 +17,7 @@ exports.getAll = async (req, res) => {
 };
 
 // Get today's attendance
-exports.getToday = async (req, res) => {
+const getToday = async (req, res) => {
     try {
         const today = new Date().toISOString().split('T')[0];
         const attendance = await Attendance.find({ date: today });
@@ -28,7 +28,7 @@ exports.getToday = async (req, res) => {
 };
 
 // Clock In
-exports.clockIn = async (req, res) => {
+const clockIn = async (req, res) => {
     try {
         const { employee_id } = req.body;
         const employee = await Employee.findOne({ id: employee_id });
@@ -55,7 +55,7 @@ exports.clockIn = async (req, res) => {
 };
 
 // Clock Out
-exports.clockOut = async (req, res) => {
+const clockOut = async (req, res) => {
     try {
         const { employee_id } = req.body;
 
@@ -75,7 +75,7 @@ exports.clockOut = async (req, res) => {
 };
 
 // Manual Create
-exports.create = async (req, res) => {
+const create = async (req, res) => {
     try {
         const item = new Attendance({
             ...req.body,
@@ -89,11 +89,20 @@ exports.create = async (req, res) => {
 };
 
 // Update
-exports.update = async (req, res) => {
+const update = async (req, res) => {
     try {
         const item = await Attendance.findOneAndUpdate({ id: req.params.id }, req.body, { new: true });
         res.json(item);
     } catch (err) {
         res.status(500).json({ error: 'Server error' });
     }
+};
+
+module.exports = {
+  getAll,
+  getToday,
+  clockIn,
+  clockOut,
+  create,
+  update
 };

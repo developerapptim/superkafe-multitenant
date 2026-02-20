@@ -4,7 +4,7 @@ const ActivityLog = require('../models/ActivityLog'); // NEW: Activity Log Model
 const logActivity = require('../utils/activityLogger'); // NEW: Activity Logger
 const Employee = require('../models/Employee'); // For auto-logout
 
-exports.startShift = async (req, res) => {
+const startShift = async (req, res) => {
     try {
         const { cashierName, startCash, userId } = req.body;
 
@@ -36,9 +36,9 @@ exports.startShift = async (req, res) => {
 };
 
 // Alias for Open Shift (Request Requirement)
-exports.openShift = exports.startShift;
+const openShift = startShift;
 
-exports.getCurrentShift = async (req, res) => {
+const getCurrentShift = async (req, res) => {
     try {
         const shift = await Shift.findOne({ status: 'OPEN' });
         // Return null if no open shift (not 404, just null data)
@@ -50,7 +50,7 @@ exports.getCurrentShift = async (req, res) => {
 };
 
 // New: Get Current Balance/Drawer Stats
-exports.getCurrentBalance = async (req, res) => {
+const getCurrentBalance = async (req, res) => {
     try {
         const shift = await Shift.findOne({ status: 'OPEN' });
 
@@ -89,7 +89,7 @@ exports.getCurrentBalance = async (req, res) => {
     }
 };
 
-exports.endShift = async (req, res) => {
+const endShift = async (req, res) => {
     try {
         const { endCash } = req.body; // Actual cash in drawer
 
@@ -139,9 +139,9 @@ exports.endShift = async (req, res) => {
 };
 
 // Alias for Close Shift (Request Requirement)
-exports.closeShift = exports.endShift;
+const closeShift = endShift;
 
-exports.getShiftHistory = async (req, res) => {
+const getShiftHistory = async (req, res) => {
     try {
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 10;
@@ -177,7 +177,7 @@ exports.getShiftHistory = async (req, res) => {
     }
 };
 
-exports.getActivities = async (req, res) => {
+const getActivities = async (req, res) => {
     try {
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 20; // Default 20
@@ -202,4 +202,15 @@ exports.getActivities = async (req, res) => {
         console.error('Get activities error:', err);
         res.status(500).json({ error: 'Server error' });
     }
+};
+
+module.exports = {
+  startShift,
+  openShift,
+  getCurrentShift,
+  getCurrentBalance,
+  endShift,
+  closeShift,
+  getShiftHistory,
+  getActivities
 };

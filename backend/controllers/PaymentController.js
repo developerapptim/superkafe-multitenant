@@ -10,7 +10,7 @@ const PaymentService = require('../services/payment/PaymentService');
  * POST /api/payments/create-invoice
  * Create payment invoice untuk subscription
  */
-exports.createInvoice = async (req, res) => {
+const createInvoice = async (req, res) => {
   const startTime = Date.now();
 
   try {
@@ -92,7 +92,7 @@ exports.createInvoice = async (req, res) => {
  * POST /api/payments/callback
  * Handle callback dari payment gateway
  */
-exports.handleCallback = async (req, res) => {
+const handleCallback = async (req, res) => {
   const startTime = Date.now();
 
   try {
@@ -137,7 +137,7 @@ exports.handleCallback = async (req, res) => {
  * GET /api/payments/status/:merchantOrderId
  * Check payment status
  */
-exports.checkStatus = async (req, res) => {
+const checkStatus = async (req, res) => {
   try {
     const { merchantOrderId } = req.params;
 
@@ -175,7 +175,7 @@ exports.checkStatus = async (req, res) => {
  * GET /api/payments/pricing
  * Get pricing plans
  */
-exports.getPricing = async (req, res) => {
+const getPricing = async (req, res) => {
   try {
     const pricing = {
       monthly: PaymentService.getPricing('monthly'),
@@ -197,4 +197,11 @@ exports.getPricing = async (req, res) => {
       error: 'Gagal mengambil informasi harga'
     });
   }
+};
+
+module.exports = {
+  createInvoice,
+  handleCallback,
+  checkStatus,
+  getPricing
 };

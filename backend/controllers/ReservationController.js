@@ -2,7 +2,7 @@ const Reservation = require('../models/Reservation');
 const Table = require('../models/Table');
 
 // POST /api/reservations — Buat reservasi baru
-exports.createReservation = async (req, res) => {
+const createReservation = async (req, res) => {
     try {
         const { customerName, customerPhone, pax, eventType, notes, reservationTime, createdBy, tableId, tableIds } = req.body;
 
@@ -67,7 +67,7 @@ exports.createReservation = async (req, res) => {
 };
 
 // GET /api/reservations — Daftar reservasi (filter by status)
-exports.getReservations = async (req, res) => {
+const getReservations = async (req, res) => {
     try {
         const { status } = req.query;
         let query = {};
@@ -88,7 +88,7 @@ exports.getReservations = async (req, res) => {
 };
 
 // PUT /api/reservations/:id/approve — Approve + assign meja (Single or Multiple)
-exports.approveReservation = async (req, res) => {
+const approveReservation = async (req, res) => {
     try {
         const { id } = req.params;
         const { tableId, tableIds } = req.body;
@@ -146,7 +146,7 @@ exports.approveReservation = async (req, res) => {
 };
 
 // PUT /api/reservations/:id/reject — Reject reservasi
-exports.rejectReservation = async (req, res) => {
+const rejectReservation = async (req, res) => {
     try {
         const { id } = req.params;
 
@@ -162,4 +162,11 @@ exports.rejectReservation = async (req, res) => {
         console.error('Reject Reservation Error:', err);
         res.status(500).json({ error: 'Server error: ' + err.message });
     }
+};
+
+module.exports = {
+  createReservation,
+  getReservations,
+  approveReservation,
+  rejectReservation
 };

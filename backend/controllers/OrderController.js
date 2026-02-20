@@ -160,7 +160,7 @@ async function revertStockForOrder(order) {
     console.log(`✅ [REVERT] Stock reversion complete for Order: ${order.id}`);
 }
 
-exports.checkPhone = async (req, res) => {
+const checkPhone = async (req, res) => {
     try {
         const { phone } = req.body;
         const orders = await Order.find({
@@ -188,7 +188,7 @@ exports.checkPhone = async (req, res) => {
     }
 };
 
-exports.createOrder = async (req, res) => {
+const createOrder = async (req, res) => {
     try {
         console.log("➡️ Create Order Request Received");
         let orderData = req.body;
@@ -503,7 +503,7 @@ exports.createOrder = async (req, res) => {
     }
 };
 
-exports.getOrders = async (req, res) => {
+const getOrders = async (req, res) => {
     try {
         const { startDate, endDate, status, limit, page } = req.query;
         let query = {};
@@ -561,7 +561,7 @@ exports.getOrders = async (req, res) => {
     }
 };
 
-exports.deleteOrder = async (req, res) => {
+const deleteOrder = async (req, res) => {
     try {
         const orderId = req.params.id;
         const order = await Order.findOne({ id: orderId });
@@ -598,7 +598,7 @@ exports.deleteOrder = async (req, res) => {
     }
 };
 
-exports.getOrderById = async (req, res) => {
+const getOrderById = async (req, res) => {
     try {
         const order = await Order.findOne({ id: req.params.id });
         if (!order) return res.status(404).json({ error: 'Order not found' });
@@ -609,7 +609,7 @@ exports.getOrderById = async (req, res) => {
     }
 };
 
-exports.updateOrderStatus = async (req, res) => {
+const updateOrderStatus = async (req, res) => {
     try {
         const { status, paymentStatus } = req.body;
         const order = await Order.findOne({ id: req.params.id });
@@ -668,7 +668,7 @@ exports.updateOrderStatus = async (req, res) => {
         res.status(500).json({ error: 'Server error' });
     }
 };
-exports.payOrder = async (req, res) => {
+const payOrder = async (req, res) => {
     try {
         const { paymentMethod, note } = req.body;
         const order = await Order.findOne({ id: req.params.id });
@@ -766,7 +766,7 @@ exports.payOrder = async (req, res) => {
 };
 
 // Get orders for today (public/customer usage to sync status)
-exports.getTodayOrders = async (req, res) => {
+const getTodayOrders = async (req, res) => {
     try {
         const startOfDay = new Date();
         startOfDay.setHours(0, 0, 0, 0);
@@ -787,7 +787,7 @@ exports.getTodayOrders = async (req, res) => {
 };
 
 // Get Pending Orders Count (Today Only) - Sync with POS Frontend Logic
-exports.getPendingCount = async (req, res) => {
+const getPendingCount = async (req, res) => {
     try {
         // Exact same logic as Frontend Kasir.jsx
         const today = new Date().toISOString().split('T')[0];
@@ -819,7 +819,7 @@ exports.getPendingCount = async (req, res) => {
 };
 
 // Merge Orders Feature
-exports.mergeOrders = async (req, res) => {
+const mergeOrders = async (req, res) => {
     try {
         const { orderIds, mergedCustomerName, mergedTableNumber, mergedBy } = req.body;
 
@@ -910,4 +910,17 @@ exports.mergeOrders = async (req, res) => {
         console.error('Merge Orders Error:', error);
         res.status(500).json({ message: error.message });
     }
+};
+
+module.exports = {
+  checkPhone,
+  createOrder,
+  getOrders,
+  deleteOrder,
+  getOrderById,
+  updateOrderStatus,
+  payOrder,
+  getTodayOrders,
+  getPendingCount,
+  mergeOrders
 };

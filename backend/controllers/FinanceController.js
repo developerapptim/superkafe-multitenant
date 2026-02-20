@@ -7,7 +7,7 @@ const OperationalExpense = require('../models/OperationalExpenses');
 
 // === EXPENSES (Legacy Support?) ===
 // Kept if other parts use it, but generic generic CashTransaction is preferred.
-exports.getExpenses = async (req, res) => {
+const getExpenses = async (req, res) => {
     try {
         const { startDate, endDate, category } = req.query;
         let query = {};
@@ -24,7 +24,7 @@ exports.getExpenses = async (req, res) => {
     }
 };
 
-exports.addExpense = async (req, res) => {
+const addExpense = async (req, res) => {
     try {
         const { category, amount, description, paymentMethod, date } = req.body;
         const newExpense = new Expense({
@@ -48,7 +48,7 @@ exports.addExpense = async (req, res) => {
     }
 };
 
-exports.getSummary = async (req, res) => {
+const getSummary = async (req, res) => {
     try {
         const startOfMonth = new Date();
         startOfMonth.setDate(1);
@@ -69,7 +69,7 @@ exports.getSummary = async (req, res) => {
 };
 
 // === CASH TRANSACTION CRUD (New for /api/cash-transactions) ===
-exports.getCashTransactions = async (req, res) => {
+const getCashTransactions = async (req, res) => {
     try {
         const transactions = await CashTransaction.find().sort({ createdAt: -1 });
         res.json(transactions);
@@ -78,7 +78,7 @@ exports.getCashTransactions = async (req, res) => {
     }
 };
 
-exports.addCashTransaction = async (req, res) => {
+const addCashTransaction = async (req, res) => {
     try {
         const { type, amount, category, description, paymentMethod } = req.body;
 
@@ -129,7 +129,7 @@ exports.addCashTransaction = async (req, res) => {
     }
 };
 
-exports.deleteCashTransaction = async (req, res) => {
+const deleteCashTransaction = async (req, res) => {
     try {
         const { id } = req.params;
         const item = await CashTransaction.findOne({ id });
@@ -156,7 +156,7 @@ exports.deleteCashTransaction = async (req, res) => {
 };
 
 // === CASH ANALYTICS ===
-exports.getCashAnalytics = async (req, res) => {
+const getCashAnalytics = async (req, res) => {
     try {
         // Real Aggregation from CashTransactions
         // 1. Daily Data (Last 7 Days)
@@ -192,7 +192,7 @@ exports.getCashAnalytics = async (req, res) => {
     }
 };
 
-exports.getCashBreakdown = async (req, res) => {
+const getCashBreakdown = async (req, res) => {
     try {
         // Need to return: { cashBalance, nonCashBalance, totalKasbon, totalPiutang }
 
@@ -218,7 +218,7 @@ exports.getCashBreakdown = async (req, res) => {
 };
 
 // === DEBTS ===
-exports.getDebts = async (req, res) => {
+const getDebts = async (req, res) => {
     try {
         const debts = await Debt.find().sort({ createdAt: -1 });
         res.json(debts);
@@ -227,7 +227,7 @@ exports.getDebts = async (req, res) => {
     }
 };
 
-exports.addDebt = async (req, res) => {
+const addDebt = async (req, res) => {
     try {
         const { type, amount } = req.body;
         const item = new Debt({
@@ -258,7 +258,7 @@ exports.addDebt = async (req, res) => {
     }
 };
 
-exports.updateDebt = async (req, res) => {
+const updateDebt = async (req, res) => {
     try {
         const item = await Debt.findOneAndUpdate({ id: req.params.id }, req.body, { new: true });
         res.json(item);
@@ -267,7 +267,7 @@ exports.updateDebt = async (req, res) => {
     }
 };
 
-exports.settleDebt = async (req, res) => {
+const settleDebt = async (req, res) => {
     try {
         const item = await Debt.findOne({ id: req.params.id });
         if (!item) return res.status(404).json({ error: 'Not found' });
@@ -297,7 +297,7 @@ exports.settleDebt = async (req, res) => {
     }
 };
 
-exports.deleteDebt = async (req, res) => {
+const deleteDebt = async (req, res) => {
     try {
         await Debt.deleteOne({ id: req.params.id });
         res.json({ ok: true });
@@ -307,7 +307,7 @@ exports.deleteDebt = async (req, res) => {
 };
 
 // === UNIFIED EXPENSE SYSTEM ===
-exports.unifiedExpense = async (req, res) => {
+const unifiedExpense = async (req, res) => {
     try {
         const { amount, category, paymentMethod, description, date, proofImage, notes, personName } = req.body;
         const numAmount = Number(amount);
@@ -427,7 +427,7 @@ exports.unifiedExpense = async (req, res) => {
 };
 
 // === PROFIT & LOSS REPORT (Global Margin System) ===
-exports.getProfitLoss = async (req, res) => {
+const getProfitLoss = async (req, res) => {
     try {
         const { startDate, endDate } = req.query;
 
@@ -525,4 +525,22 @@ exports.getProfitLoss = async (req, res) => {
         console.error('P&L Error:', err);
         res.status(500).json({ error: 'Server error: ' + err.message });
     }
+};
+
+module.exports = {
+  getExpenses,
+  addExpense,
+  getSummary,
+  getCashTransactions,
+  addCashTransaction,
+  deleteCashTransaction,
+  getCashAnalytics,
+  getCashBreakdown,
+  getDebts,
+  addDebt,
+  updateDebt,
+  settleDebt,
+  deleteDebt,
+  unifiedExpense,
+  getProfitLoss
 };
