@@ -16,6 +16,9 @@ router.get('/', TenantController.getAllTenants);
 // GET /api/tenants/:slug - Detail tenant berdasarkan slug
 router.get('/:slug', TenantController.getTenantBySlug);
 
+// GET /api/tenants/:slug/trial-status - Status trial tenant
+router.get('/:slug/trial-status', TenantController.getTrialStatus);
+
 // PATCH /api/tenants/:id/toggle - Toggle status aktif/nonaktif tenant
 router.patch('/:id/toggle', TenantController.toggleTenantStatus);
 

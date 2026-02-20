@@ -81,19 +81,27 @@ exports.registerTenant = async (req, res) => {
     // Susun dbName otomatis: superkafe_[slug_dengan_underscore]
     const dbName = `superkafe_${slug.toLowerCase().replace(/-/g, '_')}`;
 
+    // Set trial expiry: 10 hari dari sekarang
+    const trialExpiresAt = new Date();
+    trialExpiresAt.setDate(trialExpiresAt.getDate() + 10);
+
     // Simpan data tenant ke database utama
     const newTenant = await Tenant.create({
       name: name.trim(),
       slug: slug.toLowerCase(),
       dbName,
-      isActive: true
+      isActive: true,
+      status: 'trial',
+      trialExpiresAt: trialExpiresAt
     });
 
-    console.log('[TENANT] Tenant baru berhasil dibuat', {
+    console.log('[TENANT] Tenant baru berhasil dibuat dengan trial 10 hari', {
       id: newTenant._id,
       name: newTenant.name,
       slug: newTenant.slug,
       dbName: newTenant.dbName,
+      status: newTenant.status,
+      trialExpiresAt: newTenant.trialExpiresAt,
       duration: `${Date.now() - startTime}ms`
     });
 
@@ -266,6 +274,9 @@ exports.registerTenant = async (req, res) => {
         dbName: newTenant.dbName,
         email: email,
         isActive: newTenant.isActive,
+        status: newTenant.status,
+        trialExpiresAt: newTenant.trialExpiresAt,
+        trialDaysRemaining: 10,
         createdAt: newTenant.createdAt,
         requiresVerification: true
       }
@@ -399,6 +410,57 @@ exports.toggleTenantStatus = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Gagal mengubah status tenant'
+    });
+  }
+};
+
+
+/**
+ * GET /api/tenants/:slug/trial-status
+ * Mendapatkan status trial tenant
+ */
+exports.getTrialStatus = async (req, res) => {
+  try {
+    const { slug } = req.params;
+
+    const tenant = await Tenant.findOne({ slug: slug.toLowerCase() }).lean();
+
+    if (!tenant) {
+      return res.status(404).json({
+        success: false,
+        message: 'Tenant tidak ditemukan'
+      });
+    }
+
+    const now = new Date();
+    const daysRemaining = tenant.status === 'trial' 
+      ? Math.ceil((tenant.trialExpiresAt - now) / (1000 * 60 * 60 * 24))
+      : 0;
+
+    const isActive = tenant.status === 'paid' || 
+                     (tenant.status === 'trial' && now < tenant.trialExpiresAt);
+
+    res.json({
+      success: true,
+      data: {
+        status: tenant.status,
+        trialExpiresAt: tenant.trialExpiresAt,
+        daysRemaining: daysRemaining > 0 ? daysRemaining : 0,
+        isActive: isActive,
+        canAccessFeatures: isActive
+      }
+    });
+
+  } catch (error) {
+    console.error('[TENANT ERROR] Gagal mengambil status trial', {
+      error: error.message,
+      stack: error.stack,
+      slug: req.params.slug
+    });
+
+    res.status(500).json({
+      success: false,
+      message: 'Gagal mengambil status trial'
     });
   }
 };

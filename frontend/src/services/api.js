@@ -271,6 +271,7 @@ export const tenantAPI = {
     register: (data) => api.post('/tenants/register', data),
     getAll: () => api.get('/tenants'),
     getBySlug: (slug) => api.get(`/tenants/${slug}`),
+    getTrialStatus: (slug) => api.get(`/tenants/${slug}/trial-status`),
     toggleStatus: (id) => api.patch(`/tenants/${id}/toggle`),
 };
 
@@ -292,6 +293,13 @@ export const globalAuthAPI = {
     getStaffList: (tenantSlug) => api.get(`/auth/staff-list/${tenantSlug}`),
     verifyAdminPIN: (data) => api.post('/auth/verify-admin-pin', data),
     setPIN: (data) => api.post('/auth/set-pin', data),
+};
+
+// ========== PAYMENT API (Duitku Integration) ==========
+export const paymentAPI = {
+    createInvoice: (data) => api.post('/payments/create-invoice', data),
+    checkStatus: (merchantOrderId) => api.get(`/payments/status/${merchantOrderId}`),
+    getPricing: () => api.get('/payments/pricing'),
 };
 
 export default api;

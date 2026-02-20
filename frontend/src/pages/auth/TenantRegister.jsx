@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { FiShoppingBag, FiCheck, FiArrowLeft, FiAlertCircle } from 'react-icons/fi';
+import { FiShoppingBag, FiCheck, FiArrowLeft, FiAlertCircle, FiEye, FiEyeOff } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import { tenantAPI } from '../../services/api';
 
@@ -12,37 +12,73 @@ const TenantRegister = () => {
     slug: '',
     email: '',
     password: '',
+    confirmPassword: '',
     adminName: ''
   });
   const [loading, setLoading] = useState(false);
   const [slugAvailable, setSlugAvailable] = useState(null);
+  const [isSlugEdited, setIsSlugEdited] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [passwordMatch, setPasswordMatch] = useState(true);
+
+  // Fungsi slugify - convert text ke URL-friendly slug
+  const slugify = (text) => {
+    return text
+      .toLowerCase()
+      .trim()
+      .replace(/[^\w\s-]/g, '') // Hapus karakter spesial
+      .replace(/\s+/g, '-') // Ganti spasi dengan dash
+      .replace(/-+/g, '-') // Ganti multiple dash dengan single dash
+      .replace(/^-+|-+$/g, ''); // Hapus dash di awal/akhir
+  };
+
+  // Auto-sync slug dari nama kafe
+  useEffect(() => {
+    if (!isSlugEdited && formData.name) {
+      const autoSlug = slugify(formData.name);
+      setFormData(prev => ({
+        ...prev,
+        slug: autoSlug
+      }));
+      setSlugAvailable(null); // Reset availability check
+    }
+  }, [formData.name, isSlugEdited]);
+
+  // Check password match
+  useEffect(() => {
+    if (formData.confirmPassword) {
+      setPasswordMatch(formData.password === formData.confirmPassword);
+    } else {
+      setPasswordMatch(true); // Reset jika confirm password kosong
+    }
+  }, [formData.password, formData.confirmPassword]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     
     if (name === 'slug') {
-      // Auto-format slug: lowercase, replace spaces with dash
-      const formattedSlug = value.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+      // Manual edit slug - stop auto-sync
+      setIsSlugEdited(true);
+      const formattedSlug = slugify(value);
       setFormData({
         ...formData,
         slug: formattedSlug
       });
       setSlugAvailable(null); // Reset availability check
+    } else if (name === 'name') {
+      // Update nama kafe
+      setFormData({
+        ...formData,
+        name: value
+      });
+      // Auto-sync akan handle slug update via useEffect
     } else {
+      // Update field lainnya
       setFormData({
         ...formData,
         [name]: value
       });
-      
-      // Auto-generate slug from name
-      if (name === 'name' && !formData.slug) {
-        const autoSlug = value.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
-        setFormData(prev => ({
-          ...prev,
-          name: value,
-          slug: autoSlug
-        }));
-      }
     }
   };
 
@@ -67,8 +103,15 @@ const TenantRegister = () => {
 
     try {
       // Validasi input
-      if (!formData.name || !formData.slug || !formData.email || !formData.password) {
+      if (!formData.name || !formData.slug || !formData.email || !formData.password || !formData.confirmPassword) {
         toast.error('Semua field wajib diisi');
+        setLoading(false);
+        return;
+      }
+
+      // Validasi password match
+      if (formData.password !== formData.confirmPassword) {
+        toast.error('Password dan konfirmasi password tidak cocok');
         setLoading(false);
         return;
       }
@@ -91,7 +134,7 @@ const TenantRegister = () => {
       // Validasi format slug
       const slugRegex = /^[a-z0-9-]+$/;
       if (!slugRegex.test(formData.slug)) {
-        toast.error('Slug hanya boleh mengandung huruf kecil, angka, dan tanda hubung');
+        toast.error('Alamat Link hanya boleh mengandung huruf kecil, angka, dan tanda hubung');
         setLoading(false);
         return;
       }
@@ -127,7 +170,7 @@ const TenantRegister = () => {
       console.error('Register error:', error);
       
       if (error.response?.status === 409) {
-        toast.error('Slug sudah digunakan. Silakan pilih slug lain.');
+        toast.error('Alamat Link sudah digunakan. Silakan pilih yang lain.');
         setSlugAvailable(false);
       } else {
         toast.error(error.response?.data?.message || 'Registrasi gagal. Silakan coba lagi.');
@@ -194,10 +237,10 @@ const TenantRegister = () => {
               </p>
             </div>
 
-            {/* Tenant Slug */}
+            {/* Tenant Slug (Alamat Link) */}
             <div>
               <label className="block text-sm font-medium mb-2">
-                Slug Tenant
+                Alamat Link (URL)
               </label>
               <div className="relative">
                 <input
@@ -222,7 +265,10 @@ const TenantRegister = () => {
               </div>
               <div className="mt-1 space-y-1">
                 <p className="text-xs text-white/40">
-                  URL unik untuk tenant Anda (hanya huruf kecil, angka, dan tanda hubung)
+                  {isSlugEdited 
+                    ? 'URL unik untuk tenant Anda (diedit manual)'
+                    : 'Otomatis dibuat dari nama kafe (bisa diedit manual)'
+                  }
                 </p>
                 {formData.slug && (
                   <p className="text-xs text-purple-400">
@@ -231,12 +277,12 @@ const TenantRegister = () => {
                 )}
                 {slugAvailable === false && (
                   <p className="text-xs text-red-400">
-                    Slug sudah digunakan, silakan pilih yang lain
+                    Alamat Link sudah digunakan, silakan pilih yang lain
                   </p>
                 )}
                 {slugAvailable === true && (
                   <p className="text-xs text-green-400">
-                    Slug tersedia!
+                    Alamat Link tersedia!
                   </p>
                 )}
               </div>
@@ -284,19 +330,70 @@ const TenantRegister = () => {
               <label className="block text-sm font-medium mb-2">
                 Password
               </label>
-              <input
-                type="password"
-                name="password"
-                value={formData.password}
-                onChange={handleChange}
-                placeholder="Minimal 6 karakter"
-                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all placeholder:text-white/30"
-                required
-                minLength={6}
-              />
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  name="password"
+                  value={formData.password}
+                  onChange={handleChange}
+                  placeholder="Minimal 6 karakter"
+                  className="w-full px-4 py-3 pr-12 bg-white/5 border border-white/10 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all placeholder:text-white/30"
+                  required
+                  minLength={6}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute inset-y-0 right-0 pr-4 flex items-center text-white/40 hover:text-white transition-colors"
+                >
+                  {showPassword ? <FiEyeOff size={20} /> : <FiEye size={20} />}
+                </button>
+              </div>
               <p className="text-xs text-white/40 mt-1">
                 Password untuk login (minimal 6 karakter)
               </p>
+            </div>
+
+            {/* Confirm Password */}
+            <div>
+              <label className="block text-sm font-medium mb-2">
+                Konfirmasi Password
+              </label>
+              <div className="relative">
+                <input
+                  type={showConfirmPassword ? 'text' : 'password'}
+                  name="confirmPassword"
+                  value={formData.confirmPassword}
+                  onChange={handleChange}
+                  placeholder="Ketik ulang password"
+                  className={`w-full px-4 py-3 pr-12 bg-white/5 border rounded-xl focus:outline-none focus:ring-2 transition-all placeholder:text-white/30 ${
+                    passwordMatch 
+                      ? 'border-white/10 focus:ring-purple-500 focus:border-transparent' 
+                      : 'border-red-500 focus:ring-red-500 focus:border-red-500'
+                  }`}
+                  required
+                  minLength={6}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="absolute inset-y-0 right-0 pr-4 flex items-center text-white/40 hover:text-white transition-colors"
+                >
+                  {showConfirmPassword ? <FiEyeOff size={20} /> : <FiEye size={20} />}
+                </button>
+              </div>
+              {!passwordMatch && formData.confirmPassword && (
+                <p className="text-xs text-red-400 mt-1 flex items-center gap-1">
+                  <FiAlertCircle size={12} />
+                  Password tidak cocok
+                </p>
+              )}
+              {passwordMatch && formData.confirmPassword && (
+                <p className="text-xs text-green-400 mt-1 flex items-center gap-1">
+                  <FiCheck size={12} />
+                  Password cocok
+                </p>
+              )}
             </div>
 
             {/* Info Box */}
@@ -316,7 +413,7 @@ const TenantRegister = () => {
             {/* Submit Button */}
             <button
               type="submit"
-              disabled={loading || slugAvailable === false}
+              disabled={loading || slugAvailable === false || !passwordMatch}
               className="w-full py-3 bg-gradient-to-r from-purple-500 to-blue-500 rounded-xl font-semibold hover:shadow-lg hover:shadow-purple-500/50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? 'Memproses...' : 'Daftar Sekarang'}

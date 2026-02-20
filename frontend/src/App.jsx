@@ -35,6 +35,8 @@ const Laporan = lazy(() => import('./pages/admin/Laporan'));
 const Shift = lazy(() => import('./pages/admin/Shift'));
 const Pelanggan = lazy(() => import('./pages/admin/Pelanggan'));
 const Pengaturan = lazy(() => import('./pages/admin/Pengaturan'));
+const SubscriptionUpgrade = lazy(() => import('./pages/admin/SubscriptionUpgrade'));
+const SubscriptionSuccess = lazy(() => import('./pages/admin/SubscriptionSuccess'));
 const DataCenter = lazy(() => import('./pages/admin/DataCenter'));
 const FeedbackList = lazy(() => import('./pages/admin/FeedbackList'));
 const Marketing = lazy(() => import('./pages/admin/Marketing'));
@@ -147,6 +149,16 @@ function App() {
                 <Route path="pengaturan" element={
                   <ProtectedRoute allowedRoles={['admin']}>
                     <Pengaturan />
+                  </ProtectedRoute>
+                } />
+                <Route path="subscription/upgrade" element={
+                  <ProtectedRoute allowedRoles={['admin']}>
+                    <SubscriptionUpgrade />
+                  </ProtectedRoute>
+                } />
+                <Route path="subscription/success" element={
+                  <ProtectedRoute allowedRoles={['admin']}>
+                    <SubscriptionSuccess />
                   </ProtectedRoute>
                 } />
                 <Route path="data-center" element={

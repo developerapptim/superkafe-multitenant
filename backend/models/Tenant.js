@@ -23,6 +23,25 @@ const tenantSchema = new mongoose.Schema({
     type: Boolean,
     default: true
   },
+  // Trial & Subscription Fields
+  status: {
+    type: String,
+    enum: ['trial', 'paid', 'expired', 'suspended'],
+    default: 'trial'
+  },
+  trialExpiresAt: {
+    type: Date,
+    required: true,
+    default: function() {
+      // Set trial 10 hari dari sekarang
+      const now = new Date();
+      return new Date(now.getTime() + (10 * 24 * 60 * 60 * 1000));
+    }
+  },
+  subscriptionExpiresAt: {
+    type: Date,
+    default: null
+  },
   createdAt: {
     type: Date,
     default: Date.now
@@ -38,5 +57,34 @@ const tenantSchema = new mongoose.Schema({
 // Index untuk performa query
 tenantSchema.index({ slug: 1 });
 tenantSchema.index({ isActive: 1 });
+tenantSchema.index({ status: 1 });
+tenantSchema.index({ trialExpiresAt: 1 });
+
+// Virtual untuk cek apakah trial masih aktif
+tenantSchema.virtual('isTrialActive').get(function() {
+  if (this.status !== 'trial') return false;
+  return new Date() < this.trialExpiresAt;
+});
+
+// Virtual untuk hitung sisa hari trial
+tenantSchema.virtual('trialDaysRemaining').get(function() {
+  if (this.status !== 'trial') return 0;
+  const now = new Date();
+  const diff = this.trialExpiresAt - now;
+  const days = Math.ceil(diff / (1000 * 60 * 60 * 24));
+  return days > 0 ? days : 0;
+});
+
+// Method untuk cek apakah tenant bisa akses fitur
+tenantSchema.methods.canAccessFeatures = function() {
+  // Jika paid atau trial masih aktif, bisa akses
+  if (this.status === 'paid') return true;
+  if (this.status === 'trial' && new Date() < this.trialExpiresAt) return true;
+  return false;
+};
+
+// Ensure virtuals are included in JSON
+tenantSchema.set('toJSON', { virtuals: true });
+tenantSchema.set('toObject', { virtuals: true });
 
 module.exports = mongoose.model('Tenant', tenantSchema);
