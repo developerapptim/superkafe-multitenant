@@ -16,7 +16,7 @@ const jwt = require('jsonwebtoken');
  * POST /api/auth/google
  * Login/Register dengan Google
  */
-const.googleAuth = async (req, res) => {
+const googleAuth = async (req, res) => {
   try {
     const { idToken, tenantSlug } = req.body;
 
