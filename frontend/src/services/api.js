@@ -285,4 +285,13 @@ export const googleAuthAPI = {
     authenticate: (data) => api.post('/google-auth', data),
 };
 
+// ========== GLOBAL AUTH API (Modern System) ==========
+export const globalAuthAPI = {
+    globalLogin: (data) => api.post('/auth/global-login', data),
+    loginWithPIN: (data) => api.post('/auth/login-pin', data),
+    getStaffList: (tenantSlug) => api.get(`/auth/staff-list/${tenantSlug}`),
+    verifyAdminPIN: (data) => api.post('/auth/verify-admin-pin', data),
+    setPIN: (data) => api.post('/auth/set-pin', data),
+};
+
 export default api;

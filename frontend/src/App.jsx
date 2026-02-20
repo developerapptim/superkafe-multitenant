@@ -4,6 +4,7 @@ import { Suspense, lazy, useEffect } from 'react';
 import { App as CapacitorApp } from '@capacitor/app';
 import { SWRConfig } from 'swr';
 import { RefreshProvider } from './context/RefreshContext';
+import { IdleProvider } from './context/IdleContext';
 import api from './services/api';
 import Loading from './components/Loading';
 import './App.css';
@@ -13,6 +14,8 @@ import ProtectedRoute from './components/ProtectedRoute';
 
 // Landing & Auth Pages
 const LandingPage = lazy(() => import('./pages/LandingPage'));
+const GlobalLogin = lazy(() => import('./pages/auth/GlobalLogin'));
+const DeviceLogin = lazy(() => import('./pages/auth/DeviceLogin'));
 const TenantLogin = lazy(() => import('./pages/auth/TenantLogin'));
 const TenantRegister = lazy(() => import('./pages/auth/TenantRegister'));
 const OTPVerification = lazy(() => import('./pages/auth/OTPVerification'));
@@ -91,12 +94,15 @@ function App() {
       >
         <Suspense fallback={<Loading />}>
           <RefreshProvider>
-            <Routes>
+            <IdleProvider>
+              <Routes>
               {/* Landing Page */}
               <Route path="/" element={<LandingPage />} />
 
               {/* Auth Routes */}
-              <Route path="/auth/login" element={<TenantLogin />} />
+              <Route path="/auth/login" element={<GlobalLogin />} /> {/* Modern global login */}
+              <Route path="/auth/device-login" element={<DeviceLogin />} /> {/* Shared tablet login */}
+              <Route path="/auth/tenant-login" element={<TenantLogin />} /> {/* Legacy tenant login */}
               <Route path="/auth/register" element={<TenantRegister />} />
               <Route path="/auth/verify-otp" element={<OTPVerification />} />
               <Route path="/login" element={<Login />} /> {/* Legacy login */}
@@ -174,6 +180,7 @@ function App() {
               {/* 404 - Redirect to landing page */}
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
+            </IdleProvider>
           </RefreshProvider>
         </Suspense>
       </SWRConfig>
