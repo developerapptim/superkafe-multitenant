@@ -15,7 +15,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'warkop_secret_jwt';
  * POST /api/auth/global-login
  * Global login dengan email - auto-detect tenant
  */
-exports.globalLogin = async (req, res) => {
+const globalLogin = async (req, res) => {
   const startTime = Date.now();
   
   try {
