@@ -14,12 +14,11 @@ import ProtectedRoute from './components/ProtectedRoute';
 
 // Landing & Auth Pages
 const LandingPage = lazy(() => import('./pages/LandingPage'));
+const SimpleLogin = lazy(() => import('./pages/auth/SimpleLogin'));
+const SimpleRegister = lazy(() => import('./pages/auth/SimpleRegister'));
 const GlobalLogin = lazy(() => import('./pages/auth/GlobalLogin'));
 const DeviceLogin = lazy(() => import('./pages/auth/DeviceLogin'));
-const TenantLogin = lazy(() => import('./pages/auth/TenantLogin'));
-const TenantRegister = lazy(() => import('./pages/auth/TenantRegister'));
 const OTPVerification = lazy(() => import('./pages/auth/OTPVerification'));
-const Login = lazy(() => import('./pages/auth/Login'));
 
 // Admin Layout
 const AdminLayout = lazy(() => import('./pages/admin/AdminLayout'));
@@ -102,12 +101,11 @@ function App() {
               <Route path="/" element={<LandingPage />} />
 
               {/* Auth Routes */}
-              <Route path="/auth/login" element={<GlobalLogin />} /> {/* Modern global login */}
-              <Route path="/auth/device-login" element={<DeviceLogin />} /> {/* Shared tablet login */}
-              <Route path="/auth/tenant-login" element={<TenantLogin />} /> {/* Legacy tenant login */}
-              <Route path="/auth/register" element={<TenantRegister />} />
+              <Route path="/auth/login" element={<SimpleLogin />} /> {/* Unified login with Google OAuth */}
+              <Route path="/auth/register" element={<SimpleRegister />} /> {/* Unified register with Google OAuth */}
               <Route path="/auth/verify-otp" element={<OTPVerification />} />
-              <Route path="/login" element={<Login />} /> {/* Legacy login */}
+              <Route path="/auth/device-login" element={<DeviceLogin />} /> {/* Shared tablet login */}
+              <Route path="/auth/global-login" element={<GlobalLogin />} /> {/* Legacy global login */}
 
               {/* Dynamic Storefront - Customer Menu by Slug */}
               <Route path="/:slug" element={<DynamicStorefront />}>
