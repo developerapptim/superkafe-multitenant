@@ -71,8 +71,11 @@ jobs:
             echo "SMTP_PASS=$SMTP_PASS" >> backend/.env
             echo "PORT=5001" >> backend/.env
 
+            docker compose down --remove-orphans
             docker compose pull
             docker compose up -d
-            # Jalankan seeding tenant otomatis di dalam container backend
-            docker exec superkafe-backend node scripts/seedTenant.js
+
+            sleep 10
+            
+            docker compose exec backend node scripts/seedTenant.js
             docker image prune -f
