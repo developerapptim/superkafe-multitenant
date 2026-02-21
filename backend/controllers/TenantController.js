@@ -127,8 +127,10 @@ const registerTenant = async (req, res) => {
     });
 
     // Inisialisasi database tenant dan seeding data awal
+    let tenantDB; // Deklarasi di scope luar agar accessible di response
+    
     try {
-      const tenantDB = await getTenantDB(dbName);
+      tenantDB = await getTenantDB(dbName);
       
       // Seeding data awal: Buat koleksi settings dengan data default
       const SettingModel = tenantDB.model('Setting', require('../models/Setting').schema);
