@@ -1,22 +1,22 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { FiShoppingBag, FiUser, FiLock, FiArrowLeft } from 'react-icons/fi';
+import { FiShoppingBag, FiMail, FiLock, FiArrowLeft, FiEye, FiEyeOff } from 'react-icons/fi';
 import { FcGoogle } from 'react-icons/fc';
 import toast from 'react-hot-toast';
 import api from '../../services/api';
 import { loadGoogleScript } from '../../utils/googleAuth';
 
-const TenantLogin = () => {
+const SimpleLogin = () => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
-    tenant_slug: '',
-    username: '',
+    email: '',
     password: ''
   });
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [googleScriptReady, setGoogleScriptReady] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   // Load Google Sign-In script
   useEffect(() => {
@@ -43,59 +43,61 @@ const TenantLogin = () => {
 
     try {
       // Validasi input
-      if (!formData.tenant_slug || !formData.username || !formData.password) {
-        toast.error('Semua field wajib diisi');
+      if (!formData.email || !formData.password) {
+        toast.error('Email dan password wajib diisi');
         setLoading(false);
         return;
       }
 
-      // Simpan tenant_slug ke localStorage untuk axios interceptor
-      localStorage.setItem('tenant_slug', formData.tenant_slug.toLowerCase());
-
-      // Login request
-      const response = await api.post('/login', {
-        username: formData.username,
+      // Login request ke endpoint baru
+      const response = await api.post('/auth/login', {
+        email: formData.email,
         password: formData.password
       });
 
-      if (response.data.token) {
+      if (response.data.success) {
         // Simpan token dan user data
         localStorage.setItem('token', response.data.token);
         localStorage.setItem('user', JSON.stringify(response.data.user));
 
         toast.success('Login berhasil!');
-        
-        // Redirect ke admin dashboard
-        navigate('/admin/dashboard');
+
+        // Redirect berdasarkan hasCompletedSetup
+        if (response.data.user.hasCompletedSetup) {
+          // User sudah setup tenant → ke dashboard
+          localStorage.setItem('tenant_slug', response.data.user.tenantSlug);
+          setTimeout(() => {
+            navigate('/admin/dashboard');
+          }, 1000);
+        } else {
+          // User belum setup tenant → ke setup wizard
+          setTimeout(() => {
+            navigate('/setup-cafe');
+          }, 1000);
+        }
       }
     } catch (error) {
       console.error('Login error:', error);
-      
+
       // Handle email verification error
       if (error.response?.data?.requiresVerification) {
         toast.error('Email belum diverifikasi');
-        
-        // Simpan email untuk proses verifikasi
-        localStorage.setItem('pending_email', error.response.data.email);
-        
+
         // Redirect ke halaman verifikasi OTP
         setTimeout(() => {
           navigate('/auth/verify-otp', {
             state: {
-              email: error.response.data.email,
-              tenantSlug: formData.tenant_slug
+              email: formData.email
             }
           });
         }, 1500);
         return;
       }
-      
-      if (error.response?.status === 404) {
-        toast.error('Tenant tidak ditemukan atau tidak aktif');
-      } else if (error.response?.status === 401) {
-        toast.error('Username atau password salah');
+
+      if (error.response?.status === 401) {
+        toast.error('Email atau password salah');
       } else {
-        toast.error(error.response?.data?.error || error.response?.data?.message || 'Login gagal. Silakan coba lagi.');
+        toast.error(error.response?.data?.message || 'Login gagal. Silakan coba lagi.');
       }
     } finally {
       setLoading(false);
@@ -104,13 +106,6 @@ const TenantLogin = () => {
 
   const handleGoogleSignIn = () => {
     setGoogleLoading(true);
-
-    // Validasi tenant slug
-    if (!formData.tenant_slug) {
-      toast.error('Tenant slug wajib diisi terlebih dahulu');
-      setGoogleLoading(false);
-      return;
-    }
 
     // Check Google script
     if (typeof window.google === 'undefined') {
@@ -142,13 +137,9 @@ const TenantLogin = () => {
 
           console.log('[Google Auth] User info:', userInfo);
 
-          // Simpan tenant_slug untuk axios interceptor
-          localStorage.setItem('tenant_slug', formData.tenant_slug.toLowerCase());
-
-          // Kirim ke backend (endpoint lama untuk backward compatibility)
+          // Kirim ke backend (endpoint baru)
           const backendResponse = await api.post('/auth/google', {
             idToken: userInfo.sub,
-            tenantSlug: formData.tenant_slug.toLowerCase(),
             email: userInfo.email,
             name: userInfo.name,
             picture: userInfo.picture
@@ -166,17 +157,24 @@ const TenantLogin = () => {
               toast.success('Login dengan Google berhasil!');
             }
 
-            // Redirect ke dashboard
-            setTimeout(() => {
-              navigate('/admin/dashboard');
-            }, 1500);
+            // Redirect berdasarkan hasCompletedSetup
+            if (backendResponse.data.user.hasCompletedSetup) {
+              // User sudah setup tenant → ke dashboard
+              localStorage.setItem('tenant_slug', backendResponse.data.user.tenantSlug);
+              setTimeout(() => {
+                navigate('/admin/dashboard');
+              }, 1500);
+            } else {
+              // User belum setup tenant → ke setup wizard
+              setTimeout(() => {
+                navigate('/setup-cafe');
+              }, 1500);
+            }
           }
         } catch (error) {
           console.error('Backend auth error:', error);
-          
-          if (error.response?.status === 404) {
-            toast.error('Tenant tidak ditemukan');
-          } else if (error.response?.status === 401) {
+
+          if (error.response?.status === 401) {
             toast.error('Google token tidak valid');
           } else {
             toast.error(error.response?.data?.message || 'Login gagal. Silakan coba lagi.');
@@ -225,49 +223,25 @@ const TenantLogin = () => {
 
           <h1 className="text-3xl font-bold text-center mb-2">Masuk ke SuperKafe</h1>
           <p className="text-white/60 text-center mb-8">
-            Masukkan kredensial tenant Anda
+            Masukkan email dan password Anda
           </p>
 
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Tenant Slug */}
+            {/* Email */}
             <div>
               <label className="block text-sm font-medium mb-2">
-                Tenant Slug
+                Email
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                  <FiShoppingBag className="text-white/40" />
+                  <FiMail className="text-white/40" />
                 </div>
                 <input
-                  type="text"
-                  name="tenant_slug"
-                  value={formData.tenant_slug}
+                  type="email"
+                  name="email"
+                  value={formData.email}
                   onChange={handleChange}
-                  placeholder="warkop-pusat"
-                  className="w-full pl-12 pr-4 py-3 bg-white/5 border border-white/10 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all placeholder:text-white/30"
-                  required
-                />
-              </div>
-              <p className="text-xs text-white/40 mt-1">
-                Slug unik untuk tenant/cabang Anda
-              </p>
-            </div>
-
-            {/* Username */}
-            <div>
-              <label className="block text-sm font-medium mb-2">
-                Username
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                  <FiUser className="text-white/40" />
-                </div>
-                <input
-                  type="text"
-                  name="username"
-                  value={formData.username}
-                  onChange={handleChange}
-                  placeholder="admin"
+                  placeholder="admin@warkop.com"
                   className="w-full pl-12 pr-4 py-3 bg-white/5 border border-white/10 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all placeholder:text-white/30"
                   required
                 />
@@ -284,14 +258,21 @@ const TenantLogin = () => {
                   <FiLock className="text-white/40" />
                 </div>
                 <input
-                  type="password"
+                  type={showPassword ? 'text' : 'password'}
                   name="password"
                   value={formData.password}
                   onChange={handleChange}
                   placeholder="••••••••"
-                  className="w-full pl-12 pr-4 py-3 bg-white/5 border border-white/10 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all placeholder:text-white/30"
+                  className="w-full pl-12 pr-12 py-3 bg-white/5 border border-white/10 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all placeholder:text-white/30"
                   required
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute inset-y-0 right-0 pr-4 flex items-center text-white/40 hover:text-white transition-colors"
+                >
+                  {showPassword ? <FiEyeOff size={20} /> : <FiEye size={20} />}
+                </button>
               </div>
             </div>
 
@@ -318,16 +299,14 @@ const TenantLogin = () => {
             <button
               type="button"
               onClick={handleGoogleSignIn}
-              disabled={googleLoading || !googleScriptReady || !formData.tenant_slug}
+              disabled={googleLoading || !googleScriptReady}
               className="w-full py-3 px-4 bg-white text-gray-700 rounded-xl font-medium hover:bg-gray-50 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3 border border-gray-300 shadow-sm"
             >
               <FcGoogle className="w-5 h-5" />
               <span>
                 {googleLoading 
                   ? 'Memproses...' 
-                  : !formData.tenant_slug
-                    ? 'Isi Tenant Slug terlebih dahulu'
-                    : 'Masuk dengan Google'
+                  : 'Masuk dengan Google'
                 }
               </span>
             </button>
@@ -357,4 +336,4 @@ const TenantLogin = () => {
   );
 };
 
-export default TenantLogin;
+export default SimpleLogin;

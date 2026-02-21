@@ -84,8 +84,10 @@ app.use('/api/analytics', require('./routes/analyticsRoutes'));
 app.use('/api/admin/audit-logs', require('./routes/auditLogRoutes'));
 
 // New Routes (Refactored)
-app.use('/api', require('./routes/authRoutes')); // Mounts /login -> /api/login
-app.use('/api/auth', require('./routes/googleAuthRoutes')); // Google auth routes
+app.use('/api', require('./routes/authRoutes')); // Mounts /login -> /api/login (LEGACY)
+app.use('/api/auth', require('./routes/unifiedAuthRoutes')); // NEW: Unified auth (no tenant)
+app.use('/api/setup', require('./routes/setupRoutes')); // NEW: Setup wizard
+app.use('/api/auth', require('./routes/googleAuthRoutes')); // Google auth routes (LEGACY)
 app.use('/api/auth', require('./routes/globalAuthRoutes')); // Global auth routes (modern system)
 app.use('/api/data', require('./routes/dataRoutes'));
 app.use('/api/upload', require('./routes/uploadRoutes'));
