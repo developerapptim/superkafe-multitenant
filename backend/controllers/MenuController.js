@@ -13,17 +13,6 @@ const invalidateCustomerMenuCache = () => {
     customerMenuCacheTime = 0;
 };
 
-// Helper: Optimasi URL gambar Cloudinary (resize + auto quality)
-const optimizeCloudinaryUrl = (url, width = 400) => {
-    if (!url || typeof url !== 'string') return url;
-    // Hanya proses URL Cloudinary
-    if (!url.includes('res.cloudinary.com')) return url;
-    // Jangan proses jika sudah ada transformasi
-    if (url.includes('/w_') || url.includes('/c_') || url.includes('/q_')) return url;
-    // Insert transformation sebelum /v{version}/ atau /upload/
-    return url.replace(/\/upload\//, `/upload/w_${width},c_fill,q_auto,f_auto/`);
-};
-
 const getMenus = async (req, res) => {
     try {
         const items = await MenuItem.find().sort({ order: 1, category: 1, name: 1 });
@@ -167,7 +156,6 @@ const getMenusCustomer = async (req, res) => {
         const processedItems = items.map(item => {
             // Fix image mapping
             let image = item.imageUrl || null;
-            image = optimizeCloudinaryUrl(image);
 
             let status = 'AVAILABLE';
             let availableQty = 0;

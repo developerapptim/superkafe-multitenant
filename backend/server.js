@@ -43,7 +43,12 @@ app.use(express.json({ limit: '200mb' }));
 app.use(express.urlencoded({ limit: '200mb', extended: true }));
 
 // ===== STATIC FILES =====
-app.use('/uploads', express.static(path.join(__dirname, 'public', 'uploads')));
+// Serve uploads folder (images, audio, payments, etc.)
+const uploadsPath = path.join(__dirname, 'public', 'uploads');
+app.use('/uploads', express.static(uploadsPath));
+console.log(`📁 Static uploads folder: ${uploadsPath}`);
+
+// Serve admin and customer static files
 app.use('/admin', express.static(path.join(__dirname, 'public', 'admin')));
 app.use('/', express.static(path.join(__dirname, 'public', 'customer')));
 

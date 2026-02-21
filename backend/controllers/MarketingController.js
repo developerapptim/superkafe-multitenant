@@ -205,36 +205,18 @@ const createBanner = async (req, res) => {
             return res.status(400).json({ error: 'Gambar banner wajib diupload' });
         }
 
-        // Upload ke Cloudinary
-        const cloudinary = require('../utils/cloudinary');
-        const streamUpload = (buffer) => {
-            return new Promise((resolve, reject) => {
-                const stream = cloudinary.uploader.upload_stream(
-                    {
-                        folder: 'superkafe-banners',
-                        resource_type: 'image',
-                        transformation: [
-                            { width: 1200, crop: 'limit', quality: 'auto', fetch_format: 'auto' }
-                        ]
-                    },
-                    (error, result) => {
-                        if (result) resolve(result);
-                        else reject(error);
-                    }
-                );
-                stream.write(buffer);
-                stream.end();
-            });
-        };
-
-        const uploadResult = await streamUpload(req.file.buffer);
+        // File sudah disimpan oleh multer ke disk
+        // Buat URL path untuk akses public
+        const imageUrl = `/uploads/images/banners/${req.file.filename}`;
+        
+        console.log("💾 Banner saved locally:", imageUrl);
 
         const { title } = req.body;
         const lastBanner = await Banner.findOne().sort({ order: -1 });
         const nextOrder = lastBanner ? (lastBanner.order + 1) : 0;
 
         const banner = new Banner({
-            image_url: uploadResult.secure_url,
+            image_url: imageUrl,
             title: title || '',
             order: nextOrder,
         });

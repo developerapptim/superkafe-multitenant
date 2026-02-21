@@ -21,6 +21,11 @@ services:
       - mongodb-v2
     env_file:
       - ./backend/.env
+    volumes:
+      # Mount uploads folder untuk persistensi data
+      # Data akan tersimpan di host VPS dan tidak hilang saat container restart
+      # CRITICAL: Path harus match dengan WORKDIR di Dockerfile (/usr/src/app)
+      - ./backend/public/uploads:/usr/src/app/public/uploads
 
   frontend:
     container_name: superkafe-frontend

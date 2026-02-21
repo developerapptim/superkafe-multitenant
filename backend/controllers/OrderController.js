@@ -203,40 +203,18 @@ const createOrder = async (req, res) => {
             }
         }
 
-        // Attach Payment Proof (Cloudinary Stream Upload)
+        // Attach Payment Proof (LOCAL STORAGE)
         if (req.file) {
-            const cloudinary = require('../utils/cloudinary');
-            const streamUpload = (buffer) => {
-                return new Promise((resolve, reject) => {
-                    const stream = cloudinary.uploader.upload_stream(
-                        {
-                            folder: 'superkafe-payments',
-                            resource_type: 'image',
-                            transformation: [
-                                { width: 800, crop: 'limit', quality: 'auto', fetch_format: 'auto' }
-                            ]
-                        },
-                        (error, result) => {
-                            if (result) {
-                                resolve(result);
-                            } else {
-                                reject(error);
-                            }
-                        }
-                    );
-                    stream.write(buffer);
-                    stream.end();
-                });
-            };
-
             try {
-                console.log("☁️ Uploading payment proof to Cloudinary...");
-                const result = await streamUpload(req.file.buffer);
-                console.log("✅ Cloudinary Upload Success:", result.secure_url);
-                orderData.paymentProofImage = result.secure_url;
+                // File sudah disimpan oleh multer ke disk
+                // Buat URL path untuk akses public
+                const imageUrl = `/uploads/payments/${req.file.filename}`;
+                
+                console.log("💾 Payment proof saved locally:", imageUrl);
+                orderData.paymentProofImage = imageUrl;
             } catch (uploadErr) {
-                console.error("❌ Cloudinary Upload Error:", uploadErr);
-                return res.status(500).json({ error: 'Failed to upload payment proof image' });
+                console.error("❌ Payment Proof Save Error:", uploadErr);
+                return res.status(500).json({ error: 'Failed to save payment proof image' });
             }
         }
 
