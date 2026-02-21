@@ -19,6 +19,8 @@ services:
       - MONGODB_URI=mongodb://mongodb-v2:27017/superkafe_main
     depends_on:
       - mongodb-v2
+    env_file:
+      - ./backend/.env
 
   frontend:
     container_name: superkafe-frontend
