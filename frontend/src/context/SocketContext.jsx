@@ -11,21 +11,36 @@ export const SocketProvider = ({ children }) => {
     const [socket, setSocket] = useState(null);
 
     useEffect(() => {
-        // Use Vite Env for URL or fallback to window.location logic
-        // In dev: localhost:5001. In prod: relative or specific URL.
-        const socketUrl = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+        // Get API URL from environment
+        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5001/api';
+        
+        // Remove /api suffix to get base URL for socket connection
+        const baseUrl = apiUrl.replace('/api', '');
+        
+        // Determine socket URL based on environment
+        let socketUrl;
+        
+        if (import.meta.env.PROD || window.location.protocol === 'https:') {
+            // Production: Use HTTPS without port
+            // Example: https://superkafe.com
+            socketUrl = baseUrl.replace('http:', 'https:');
+            
+            // Remove port if present (e.g., :5001)
+            socketUrl = socketUrl.replace(/:\d+/, '');
+        } else {
+            // Development: Use HTTP with port
+            socketUrl = baseUrl;
+        }
 
-        // Remove /api if present in VITE_API_URL because socket connects to root
-        // Example: http://localhost:5001/api -> http://localhost:5001
-        const baseUrl = socketUrl.replace('/api', '');
+        console.log('🔌 Connecting to Socket.io at:', socketUrl);
 
-        console.log('🔌 Connecting to Socket.io at:', baseUrl);
-
-        const newSocket = io(baseUrl, {
+        const newSocket = io(socketUrl, {
             withCredentials: true,
-            transports: ['websocket', 'polling'], // Drivers
+            transports: ['websocket', 'polling'],
             reconnectionAttempts: 5,
             reconnectionDelay: 1000,
+            path: '/socket.io/', // Default path
+            secure: window.location.protocol === 'https:' // Use secure connection for HTTPS
         });
 
         newSocket.on('connect', () => {
@@ -33,7 +48,12 @@ export const SocketProvider = ({ children }) => {
         });
 
         newSocket.on('connect_error', (err) => {
-            console.error('❌ Socket connection error:', err);
+            console.error('❌ Socket connection error:', err.message);
+            console.error('   Attempted URL:', socketUrl);
+        });
+
+        newSocket.on('disconnect', (reason) => {
+            console.log('🔌 Socket disconnected:', reason);
         });
 
         setSocket(newSocket);

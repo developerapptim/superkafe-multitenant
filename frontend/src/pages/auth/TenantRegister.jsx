@@ -2,8 +2,11 @@ import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { FiShoppingBag, FiCheck, FiArrowLeft, FiAlertCircle, FiEye, FiEyeOff } from 'react-icons/fi';
+import { FcGoogle } from 'react-icons/fc';
 import toast from 'react-hot-toast';
 import { tenantAPI } from '../../services/api';
+import { loadGoogleScript } from '../../utils/googleAuth';
+import api from '../../services/api';
 
 const TenantRegister = () => {
   const navigate = useNavigate();
@@ -21,6 +24,8 @@ const TenantRegister = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [passwordMatch, setPasswordMatch] = useState(true);
+  const [googleLoading, setGoogleLoading] = useState(false);
+  const [googleScriptReady, setGoogleScriptReady] = useState(false);
 
   // Fungsi slugify - convert text ke URL-friendly slug
   const slugify = (text) => {
@@ -53,6 +58,18 @@ const TenantRegister = () => {
       setPasswordMatch(true); // Reset jika confirm password kosong
     }
   }, [formData.password, formData.confirmPassword]);
+
+  // Load Google Sign-In script
+  useEffect(() => {
+    loadGoogleScript()
+      .then(() => {
+        setGoogleScriptReady(true);
+        console.log('[Google Auth] Script ready');
+      })
+      .catch((error) => {
+        console.error('[Google Auth] Failed to load:', error);
+      });
+  }, []);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -178,6 +195,105 @@ const TenantRegister = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleGoogleSignUp = (e) => {
+    // Prevent form submission
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+
+    setGoogleLoading(true);
+
+    // Validasi slug terlebih dahulu
+    if (!formData.slug) {
+      toast.error('Alamat Link (URL) wajib diisi terlebih dahulu');
+      setGoogleLoading(false);
+      return;
+    }
+
+    // Validasi format slug
+    const slugRegex = /^[a-z0-9-]+$/;
+    if (!slugRegex.test(formData.slug)) {
+      toast.error('Alamat Link hanya boleh mengandung huruf kecil, angka, dan tanda hubung');
+      setGoogleLoading(false);
+      return;
+    }
+
+    // Check Google script
+    if (typeof window.google === 'undefined') {
+      toast.error('Google Sign-In belum siap. Silakan refresh halaman.');
+      setGoogleLoading(false);
+      return;
+    }
+
+    // Initialize Google OAuth
+    const client = window.google.accounts.oauth2.initTokenClient({
+      client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID,
+      scope: 'email profile openid',
+      callback: async (response) => {
+        try {
+          if (response.error) {
+            console.error('Google OAuth Error:', response);
+            toast.error('Pendaftaran dengan Google gagal');
+            setGoogleLoading(false);
+            return;
+          }
+
+          // Get user info from Google
+          const userInfoResponse = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+            headers: {
+              Authorization: `Bearer ${response.access_token}`
+            }
+          });
+          const userInfo = await userInfoResponse.json();
+
+          console.log('[Google Auth] User info:', userInfo);
+
+          // Kirim ke backend untuk registrasi tenant + user
+          const backendResponse = await tenantAPI.register({
+            name: formData.name || `Kafe ${userInfo.name}`,
+            slug: formData.slug,
+            email: userInfo.email,
+            adminName: userInfo.name,
+            googleId: userInfo.sub,
+            googlePicture: userInfo.picture,
+            authProvider: 'google',
+            // Password tidak dikirim untuk Google auth
+            password: null
+          });
+
+          if (backendResponse.data.success) {
+            toast.success('Registrasi dengan Google berhasil! Selamat datang!');
+            
+            // Simpan data
+            localStorage.setItem('token', backendResponse.data.token);
+            localStorage.setItem('user', JSON.stringify(backendResponse.data.user));
+            localStorage.setItem('tenant_slug', formData.slug.toLowerCase());
+            
+            // Redirect ke dashboard
+            setTimeout(() => {
+              navigate('/admin/dashboard');
+            }, 1500);
+          }
+        } catch (error) {
+          console.error('Backend registration error:', error);
+          
+          if (error.response?.status === 409) {
+            toast.error('Alamat Link sudah digunakan. Silakan pilih yang lain.');
+            setSlugAvailable(false);
+          } else {
+            toast.error(error.response?.data?.message || 'Registrasi gagal. Silakan coba lagi.');
+          }
+        } finally {
+          setGoogleLoading(false);
+        }
+      },
+    });
+
+    // Request access token
+    client.requestAccessToken();
   };
 
   return (
@@ -418,6 +534,40 @@ const TenantRegister = () => {
             >
               {loading ? 'Memproses...' : 'Daftar Sekarang'}
             </button>
+
+            {/* Divider */}
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-white/10"></div>
+              </div>
+              <div className="relative flex justify-center text-sm">
+                <span className="px-4 bg-transparent text-white/40">atau</span>
+              </div>
+            </div>
+
+            {/* Google Sign-Up Button */}
+            <button
+              type="button"
+              onClick={handleGoogleSignUp}
+              disabled={googleLoading || !googleScriptReady || !formData.slug}
+              className="w-full py-3 px-4 bg-white text-gray-700 rounded-xl font-medium hover:bg-gray-50 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3 border border-gray-300 shadow-sm"
+            >
+              <FcGoogle className="w-5 h-5" />
+              <span>
+                {googleLoading 
+                  ? 'Memproses...' 
+                  : !formData.slug
+                    ? 'Isi Alamat Link terlebih dahulu'
+                    : 'Daftar dengan Google'
+                }
+              </span>
+            </button>
+
+            {!googleScriptReady && (
+              <p className="text-xs text-white/40 text-center -mt-2">
+                Memuat Google Sign-In...
+              </p>
+            )}
           </form>
 
           {/* Login Link */}

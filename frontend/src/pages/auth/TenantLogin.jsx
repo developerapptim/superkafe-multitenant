@@ -1,9 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { FiShoppingBag, FiUser, FiLock, FiArrowLeft } from 'react-icons/fi';
+import { FcGoogle } from 'react-icons/fc';
 import toast from 'react-hot-toast';
 import api from '../../services/api';
+import { loadGoogleScript } from '../../utils/googleAuth';
 
 const TenantLogin = () => {
   const navigate = useNavigate();
@@ -13,6 +15,20 @@ const TenantLogin = () => {
     password: ''
   });
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
+  const [googleScriptReady, setGoogleScriptReady] = useState(false);
+
+  // Load Google Sign-In script
+  useEffect(() => {
+    loadGoogleScript()
+      .then(() => {
+        setGoogleScriptReady(true);
+        console.log('[Google Auth] Script ready');
+      })
+      .catch((error) => {
+        console.error('[Google Auth] Failed to load:', error);
+      });
+  }, []);
 
   const handleChange = (e) => {
     setFormData({
@@ -84,6 +100,95 @@ const TenantLogin = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleGoogleSignIn = () => {
+    setGoogleLoading(true);
+
+    // Validasi tenant slug
+    if (!formData.tenant_slug) {
+      toast.error('Tenant slug wajib diisi terlebih dahulu');
+      setGoogleLoading(false);
+      return;
+    }
+
+    // Check Google script
+    if (typeof window.google === 'undefined') {
+      toast.error('Google Sign-In belum siap. Silakan refresh halaman.');
+      setGoogleLoading(false);
+      return;
+    }
+
+    // Initialize Google OAuth
+    const client = window.google.accounts.oauth2.initTokenClient({
+      client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID,
+      scope: 'email profile openid',
+      callback: async (response) => {
+        try {
+          if (response.error) {
+            console.error('Google OAuth Error:', response);
+            toast.error('Login dengan Google gagal');
+            setGoogleLoading(false);
+            return;
+          }
+
+          // Get user info from Google
+          const userInfoResponse = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+            headers: {
+              Authorization: `Bearer ${response.access_token}`
+            }
+          });
+          const userInfo = await userInfoResponse.json();
+
+          console.log('[Google Auth] User info:', userInfo);
+
+          // Simpan tenant_slug untuk axios interceptor
+          localStorage.setItem('tenant_slug', formData.tenant_slug.toLowerCase());
+
+          // Kirim ke backend
+          const backendResponse = await api.post('/auth/google', {
+            idToken: userInfo.sub, // Google User ID
+            tenantSlug: formData.tenant_slug.toLowerCase(),
+            email: userInfo.email,
+            name: userInfo.name,
+            picture: userInfo.picture
+          });
+
+          if (backendResponse.data.success) {
+            // Simpan token dan user data
+            localStorage.setItem('token', backendResponse.data.token);
+            localStorage.setItem('user', JSON.stringify(backendResponse.data.user));
+
+            // Show success message
+            if (backendResponse.data.isNewUser) {
+              toast.success('Akun berhasil dibuat dengan Google! Selamat datang!');
+            } else {
+              toast.success('Login dengan Google berhasil!');
+            }
+
+            // Redirect ke dashboard
+            setTimeout(() => {
+              navigate('/admin/dashboard');
+            }, 1500);
+          }
+        } catch (error) {
+          console.error('Backend auth error:', error);
+          
+          if (error.response?.status === 404) {
+            toast.error('Tenant tidak ditemukan');
+          } else if (error.response?.status === 401) {
+            toast.error('Google token tidak valid');
+          } else {
+            toast.error(error.response?.data?.message || 'Login gagal. Silakan coba lagi.');
+          }
+        } finally {
+          setGoogleLoading(false);
+        }
+      },
+    });
+
+    // Request access token
+    client.requestAccessToken();
   };
 
   return (
@@ -198,6 +303,40 @@ const TenantLogin = () => {
             >
               {loading ? 'Memproses...' : 'Masuk'}
             </button>
+
+            {/* Divider */}
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-white/10"></div>
+              </div>
+              <div className="relative flex justify-center text-sm">
+                <span className="px-4 bg-transparent text-white/40">atau</span>
+              </div>
+            </div>
+
+            {/* Google Sign-In Button */}
+            <button
+              type="button"
+              onClick={handleGoogleSignIn}
+              disabled={googleLoading || !googleScriptReady || !formData.tenant_slug}
+              className="w-full py-3 px-4 bg-white text-gray-700 rounded-xl font-medium hover:bg-gray-50 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3 border border-gray-300 shadow-sm"
+            >
+              <FcGoogle className="w-5 h-5" />
+              <span>
+                {googleLoading 
+                  ? 'Memproses...' 
+                  : !formData.tenant_slug
+                    ? 'Isi Tenant Slug terlebih dahulu'
+                    : 'Masuk dengan Google'
+                }
+              </span>
+            </button>
+
+            {!googleScriptReady && (
+              <p className="text-xs text-white/40 text-center -mt-2">
+                Memuat Google Sign-In...
+              </p>
+            )}
           </form>
 
           {/* Register Link */}

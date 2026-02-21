@@ -15,7 +15,7 @@ const registerTenant = async (req, res) => {
   const startTime = Date.now();
   
   try {
-    const { name, slug, email, password, adminName } = req.body;
+    const { name, slug, email, password, adminName, authProvider, googleId, googlePicture } = req.body;
 
     // Validasi input
     if (!name || !slug) {
@@ -30,11 +30,11 @@ const registerTenant = async (req, res) => {
       });
     }
 
-    // Validasi email dan password (required untuk dynamic registration)
-    if (!email || !password) {
+    // Validasi email wajib (untuk semua jenis registrasi)
+    if (!email) {
       return res.status(400).json({
         success: false,
-        message: 'Email dan password wajib diisi'
+        message: 'Email wajib diisi'
       });
     }
 
@@ -47,12 +47,33 @@ const registerTenant = async (req, res) => {
       });
     }
 
-    // Validasi password minimal 6 karakter
-    if (password.length < 6) {
-      return res.status(400).json({
-        success: false,
-        message: 'Password minimal 6 karakter'
-      });
+    // Validasi password HANYA untuk registrasi manual (bukan Google)
+    const isGoogleAuth = authProvider === 'google';
+    
+    if (!isGoogleAuth) {
+      // Registrasi manual: password wajib
+      if (!password) {
+        return res.status(400).json({
+          success: false,
+          message: 'Password wajib diisi'
+        });
+      }
+
+      // Validasi password minimal 6 karakter
+      if (password.length < 6) {
+        return res.status(400).json({
+          success: false,
+          message: 'Password minimal 6 karakter'
+        });
+      }
+    } else {
+      // Registrasi Google: validasi googleId
+      if (!googleId) {
+        return res.status(400).json({
+          success: false,
+          message: 'Google ID wajib untuk registrasi dengan Google'
+        });
+      }
     }
 
     // Validasi format slug (hanya huruf kecil, angka, dan dash)
@@ -188,43 +209,60 @@ const registerTenant = async (req, res) => {
         settingsCount: defaultSettings.length
       });
 
-      // Generate OTP untuk email verification
-      const { generateOTP, sendOTPEmail } = require('../services/emailService');
-      const otpCode = generateOTP();
-      const otpExpiry = new Date(Date.now() + 10 * 60 * 1000); // 10 menit
+      // Generate OTP untuk email verification (hanya untuk registrasi manual)
+      let otpCode, otpExpiry;
+      
+      if (!isGoogleAuth) {
+        const { generateOTP, sendOTPEmail } = require('../services/emailService');
+        otpCode = generateOTP();
+        otpExpiry = new Date(Date.now() + 10 * 60 * 1000); // 10 menit
+      }
 
       // Seeding User Admin dengan data dari registrasi
       const { seedAdminUser } = require('../utils/seedAdminUser');
-      const adminResult = await seedAdminUser(tenantDB, name, {
+      const adminData = {
         email: email,
-        password: password,
+        password: isGoogleAuth ? null : password, // Password null untuk Google auth
         name: adminName || 'Administrator',
         username: email.split('@')[0], // Username dari email
-        isVerified: false // Belum terverifikasi
-      });
+        isVerified: isGoogleAuth ? true : false, // Google auth langsung verified
+        authProvider: isGoogleAuth ? 'google' : 'local',
+        googleId: isGoogleAuth ? googleId : undefined,
+        image: isGoogleAuth ? googlePicture : undefined
+      };
 
-      // Update admin dengan OTP code
-      const EmployeeModel = tenantDB.model('Employee', require('../models/Employee').schema);
-      await EmployeeModel.findOneAndUpdate(
-        { email: email },
-        {
-          otpCode: otpCode,
+      const adminResult = await seedAdminUser(tenantDB, name, adminData);
+
+      // Update admin dengan OTP code (hanya untuk registrasi manual)
+      if (!isGoogleAuth) {
+        const EmployeeModel = tenantDB.model('Employee', require('../models/Employee').schema);
+        await EmployeeModel.findOneAndUpdate(
+          { email: email },
+          {
+            otpCode: otpCode,
+            otpExpiry: otpExpiry
+          }
+        );
+
+        console.log('[TENANT] Admin user created with OTP', {
+          email: email,
           otpExpiry: otpExpiry
+        });
+
+        // Kirim OTP ke email
+        try {
+          const { sendOTPEmail } = require('../services/emailService');
+          await sendOTPEmail(email, otpCode, name);
+          console.log('[TENANT] OTP email sent successfully');
+        } catch (emailError) {
+          console.error('[TENANT] Failed to send OTP email:', emailError.message);
+          // Don't fail registration if email fails, user can request resend
         }
-      );
-
-      console.log('[TENANT] Admin user created with OTP', {
-        email: email,
-        otpExpiry: otpExpiry
-      });
-
-      // Kirim OTP ke email
-      try {
-        await sendOTPEmail(email, otpCode, name);
-        console.log('[TENANT] OTP email sent successfully');
-      } catch (emailError) {
-        console.error('[TENANT] Failed to send OTP email:', emailError.message);
-        // Don't fail registration if email fails, user can request resend
+      } else {
+        console.log('[TENANT] Admin user created with Google auth (no OTP needed)', {
+          email: email,
+          googleId: googleId
+        });
       }
 
       console.log('[TENANT] Database tenant berhasil diinisialisasi dengan data awal', {
@@ -264,9 +302,11 @@ const registerTenant = async (req, res) => {
     }
 
     // Response sukses
-    res.status(201).json({
+    const responseData = {
       success: true,
-      message: 'Tenant berhasil didaftarkan. Silakan cek email Anda untuk kode verifikasi.',
+      message: isGoogleAuth 
+        ? 'Tenant berhasil didaftarkan dengan Google. Selamat datang!' 
+        : 'Tenant berhasil didaftarkan. Silakan cek email Anda untuk kode verifikasi.',
       data: {
         id: newTenant._id,
         name: newTenant.name,
@@ -278,9 +318,43 @@ const registerTenant = async (req, res) => {
         trialExpiresAt: newTenant.trialExpiresAt,
         trialDaysRemaining: 10,
         createdAt: newTenant.createdAt,
-        requiresVerification: true
+        requiresVerification: !isGoogleAuth // Google auth tidak perlu verifikasi
       }
-    });
+    };
+
+    // Jika Google auth, generate JWT token dan include user data
+    if (isGoogleAuth) {
+      const jwt = require('jsonwebtoken');
+      const EmployeeModel = tenantDB.model('Employee', require('../models/Employee').schema);
+      const adminUser = await EmployeeModel.findOne({ email: email }).lean();
+
+      const token = jwt.sign(
+        {
+          id: adminUser.id,
+          email: adminUser.email,
+          role: adminUser.role,
+          tenant: slug.toLowerCase(),
+          tenantDbName: dbName
+        },
+        process.env.JWT_SECRET || 'your-secret-key',
+        { expiresIn: '7d' }
+      );
+
+      responseData.token = token;
+      responseData.user = {
+        id: adminUser.id,
+        username: adminUser.username,
+        email: adminUser.email,
+        name: adminUser.name,
+        image: adminUser.image,
+        role: adminUser.role,
+        role_access: adminUser.role_access,
+        isVerified: adminUser.isVerified,
+        authProvider: adminUser.authProvider
+      };
+    }
+
+    res.status(201).json(responseData);
 
   } catch (error) {
     const duration = Date.now() - startTime;
