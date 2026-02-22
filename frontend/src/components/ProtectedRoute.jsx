@@ -5,9 +5,22 @@ import toast from 'react-hot-toast';
 import InvalidSlug from '../pages/errors/InvalidSlug';
 import UnauthorizedAccess from '../pages/errors/UnauthorizedAccess';
 
+/**
+ * Decode JWT token and extract user info
+ * @param {string} token - JWT token
+ * @returns {object|null} Decoded token payload or null if invalid
+ */
+const decodeToken = (token) => {
+    try {
+        return jwtDecode(token);
+    } catch (error) {
+        console.error('Invalid JWT token:', error);
+        return null;
+    }
+};
+
 const ProtectedRoute = ({ children, allowedRoles, requireTenant = true }) => {
     const token = localStorage.getItem('token');
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
     const location = useLocation();
     const { tenantSlug } = useParams();
     const [error, setError] = useState(null);
@@ -22,29 +35,42 @@ const ProtectedRoute = ({ children, allowedRoles, requireTenant = true }) => {
         return <Navigate to="/login" state={{ from: location }} replace />;
     }
 
-    // 2. Check if tenant validation is required
-    if (requireTenant) {
-        let decodedToken;
-        try {
-            decodedToken = jwtDecode(token);
-        } catch (error) {
-            console.error('Invalid JWT token:', error);
-            localStorage.removeItem('token');
-            localStorage.removeItem('user');
-            toast.error('Sesi Anda tidak valid. Silakan login kembali.');
-            return <Navigate to="/login" replace />;
-        }
+    // 2. Decode JWT token to get user info
+    const decodedToken = decodeToken(token);
+    if (!decodedToken) {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        toast.error('Sesi Anda tidak valid. Silakan login kembali.');
+        return <Navigate to="/login" replace />;
+    }
 
-        // 3. Check if user has completed setup
-        if (!user.hasCompletedSetup || !decodedToken.tenant) {
-            return <Navigate to="/setup-cafe" replace />;
+    // Extract user info from JWT token (source of truth)
+    const userRole = decodedToken.role;
+    const userTenantSlug = decodedToken.tenantSlug || decodedToken.tenant;
+    const userId = decodedToken.id;
+
+    console.log('[ProtectedRoute] User info from JWT:', {
+        userId,
+        userRole,
+        userTenantSlug,
+        allowedRoles,
+        requireTenant
+    });
+
+    // 3. Check if tenant validation is required
+    if (requireTenant) {
+        // Check if user has tenant assigned
+        if (!userTenantSlug) {
+            console.warn('[ProtectedRoute] User has no tenant assigned');
+            toast.error('Akun Anda belum terhubung dengan kafe. Silakan hubungi admin.');
+            return <Navigate to="/login" replace />;
         }
 
         // 4. Validate slug format (alphanumeric with hyphens only)
         if (tenantSlug) {
             const slugPattern = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
             if (!slugPattern.test(tenantSlug)) {
-                console.error('Invalid slug format:', tenantSlug);
+                console.error('[ProtectedRoute] Invalid slug format:', tenantSlug);
                 if (!error) {
                     setError('invalid-slug');
                 }
@@ -53,12 +79,12 @@ const ProtectedRoute = ({ children, allowedRoles, requireTenant = true }) => {
         }
 
         // 5. Validate URL slug matches JWT tenant slug
-        if (tenantSlug && tenantSlug !== decodedToken.tenant) {
+        if (tenantSlug && tenantSlug !== userTenantSlug) {
             // Log potential unauthorized access attempt
-            console.warn('Slug mismatch detected:', {
+            console.warn('[ProtectedRoute] Slug mismatch detected:', {
                 urlSlug: tenantSlug,
-                jwtSlug: decodedToken.tenant,
-                userId: decodedToken.id,
+                jwtSlug: userTenantSlug,
+                userId: userId,
                 timestamp: new Date().toISOString()
             });
 
@@ -72,20 +98,32 @@ const ProtectedRoute = ({ children, allowedRoles, requireTenant = true }) => {
     }
 
     // 6. Check Authorization (Role)
-    if (allowedRoles && !allowedRoles.includes(user.role)) {
-        console.warn('Role authorization failed:', {
-            userRole: user.role,
-            allowedRoles,
-            userId: user.id,
-            timestamp: new Date().toISOString()
-        });
-
-        // If user tries to access restricted area, redirect to their main dashboard
-        if (requireTenant && user.tenantSlug) {
-            toast.error('Anda tidak memiliki izin untuk mengakses halaman ini');
-            return <Navigate to={`/${user.tenantSlug}/admin/dashboard`} replace />;
+    if (allowedRoles && allowedRoles.length > 0) {
+        if (!userRole) {
+            console.error('[ProtectedRoute] User has no role assigned:', {
+                userId,
+                allowedRoles,
+                timestamp: new Date().toISOString()
+            });
+            toast.error('Akun Anda tidak memiliki role. Silakan hubungi admin.');
+            return <Navigate to="/login" replace />;
         }
-        return <Navigate to="/admin/dashboard" replace />;
+
+        if (!allowedRoles.includes(userRole)) {
+            console.warn('[ProtectedRoute] Role authorization failed:', {
+                userRole,
+                allowedRoles,
+                userId,
+                timestamp: new Date().toISOString()
+            });
+
+            // If user tries to access restricted area, redirect to their main dashboard
+            if (requireTenant && userTenantSlug) {
+                toast.error('Anda tidak memiliki izin untuk mengakses halaman ini');
+                return <Navigate to={`/${userTenantSlug}/admin/dashboard`} replace />;
+            }
+            return <Navigate to="/admin/dashboard" replace />;
+        }
     }
 
     return children;
