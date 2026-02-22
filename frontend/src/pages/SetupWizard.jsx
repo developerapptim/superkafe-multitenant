@@ -24,6 +24,12 @@ const SetupWizard = () => {
   // Check authentication and existing tenant
   useEffect(() => {
     const checkAuth = async () => {
+      // CRITICAL: Clear tenant_slug from localStorage to prevent API calls
+      // from using a potentially conflicting slug (e.g., "setup-cafe")
+      // This ensures the setup wizard operates in a clean state
+      localStorage.removeItem('tenant_slug');
+      console.log('[SETUP WIZARD] Cleared tenant_slug from localStorage');
+
       const token = localStorage.getItem('token');
       const userStr = localStorage.getItem('user');
 
