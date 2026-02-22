@@ -9,10 +9,10 @@ const {
   uploadGeneralImage 
 } = require('../middleware/uploadMiddleware');
 const { checkApiKey } = require('../middleware/auth');
-const { resolveTenant } = require('../middleware/tenantResolver');
+const tenantResolver = require('../middleware/tenantResolver');
 
 router.use(checkApiKey);
-router.use(resolveTenant); // Add tenant resolution for namespaced uploads
+router.use(tenantResolver); // Add tenant resolution for namespaced uploads
 
 // ===== AUDIO UPLOADS =====
 // Settings Sound Upload
