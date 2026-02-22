@@ -162,12 +162,26 @@ const SimpleRegister = () => {
             localStorage.setItem('token', backendResponse.data.token);
             localStorage.setItem('user', JSON.stringify(backendResponse.data.user));
 
-            toast.success('Akun berhasil dibuat dengan Google! Selamat datang!');
+            // Show success message
+            if (backendResponse.data.isNewUser) {
+              toast.success('Akun berhasil dibuat dengan Google! Selamat datang!');
+            } else {
+              toast.success('Login dengan Google berhasil!');
+            }
 
-            // Redirect ke setup wizard (user baru pasti belum setup)
-            setTimeout(() => {
-              navigate('/setup-cafe');
-            }, 1500);
+            // Redirect berdasarkan hasCompletedSetup
+            if (backendResponse.data.user.hasCompletedSetup) {
+              // User sudah setup tenant → ke dashboard
+              localStorage.setItem('tenant_slug', backendResponse.data.user.tenantSlug);
+              setTimeout(() => {
+                navigate('/admin/dashboard');
+              }, 1500);
+            } else {
+              // User belum setup tenant → ke setup wizard
+              setTimeout(() => {
+                navigate('/setup-cafe');
+              }, 1500);
+            }
           }
         } catch (error) {
           console.error('Backend registration error:', error);

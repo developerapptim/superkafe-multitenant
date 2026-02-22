@@ -1,5 +1,6 @@
 const Tenant = require('../models/Tenant');
 const { getTenantDB } = require('../config/db');
+const { validateSlug } = require('../utils/slugValidator');
 
 /**
  * Controller untuk manajemen tenant (cabang warkop)
@@ -76,12 +77,18 @@ const registerTenant = async (req, res) => {
       }
     }
 
-    // Validasi format slug (hanya huruf kecil, angka, dan dash)
-    const slugRegex = /^[a-z0-9-]+$/;
-    if (!slugRegex.test(slug)) {
+    // Validasi slug terhadap reserved keywords dan format
+    const slugValidation = validateSlug(slug);
+    if (!slugValidation.valid) {
+      console.warn('[TENANT] Registrasi gagal: slug tidak valid', {
+        slug,
+        error: slugValidation.error,
+        ip: req.ip
+      });
+      
       return res.status(400).json({
         success: false,
-        message: 'Slug hanya boleh mengandung huruf kecil, angka, dan tanda hubung (-)'
+        message: slugValidation.error
       });
     }
 

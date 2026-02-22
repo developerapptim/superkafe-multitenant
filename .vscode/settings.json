@@ -1,4 +1,5 @@
 {
     "sqltools.connections": [],
-    "kiroAgent.configureMCP": "Disabled"
+    "kiroAgent.configureMCP": "Disabled",
+    "javascript.autoClosingTags": false
 }

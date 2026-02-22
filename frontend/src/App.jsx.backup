@@ -19,7 +19,6 @@ const SimpleRegister = lazy(() => import('./pages/auth/SimpleRegister'));
 const GlobalLogin = lazy(() => import('./pages/auth/GlobalLogin'));
 const DeviceLogin = lazy(() => import('./pages/auth/DeviceLogin'));
 const OTPVerification = lazy(() => import('./pages/auth/OTPVerification'));
-const SetupWizard = lazy(() => import('./pages/SetupWizard'));
 
 // Admin Layout
 const AdminLayout = lazy(() => import('./pages/admin/AdminLayout'));
@@ -98,25 +97,21 @@ function App() {
           <RefreshProvider>
             <IdleProvider>
               <Routes>
-              {/* ============================================ */}
-              {/* CRITICAL: Route order matters for priority! */}
-              {/* Static routes MUST come before dynamic routes */}
-              {/* ============================================ */}
-
               {/* Priority 1: Landing Page */}
               <Route path="/" element={<LandingPage />} />
 
-              {/* Priority 2: Auth Routes - Must be before dynamic routes */}
+              {/* Priority 2: Auth Routes */}
               <Route path="/auth/login" element={<SimpleLogin />} /> {/* Unified login with Google OAuth */}
               <Route path="/auth/register" element={<SimpleRegister />} /> {/* Unified register with Google OAuth */}
               <Route path="/auth/verify-otp" element={<OTPVerification />} />
               <Route path="/auth/device-login" element={<DeviceLogin />} /> {/* Shared tablet login */}
               <Route path="/auth/global-login" element={<GlobalLogin />} /> {/* Legacy global login */}
 
-              {/* Priority 3: Setup Wizard - Must be before dynamic routes */}
-              <Route path="/setup-cafe" element={<SetupWizard />} />
+              {/* Priority 3: Setup Wizard */}
+              {/* TODO: Implement SetupWizard component */}
+              {/* <Route path="/setup-cafe" element={<SetupWizard />} /> */}
 
-              {/* Priority 4: Admin Routes - Must be before dynamic routes */}
+              {/* Priority 4: Admin Routes - Protected (Admin & Kasir) */}
               <Route path="/admin" element={
                 <ProtectedRoute allowedRoles={['admin', 'kasir', 'staf']}>
                   <AdminLayout />
@@ -124,21 +119,13 @@ function App() {
               }>
                 <Route index element={<Navigate to="dashboard" replace />} />
 
-                {/* Accessible by All Roles (Admin + Kasir + Staf) */}
+                {/* Accessible by All Roles (Admin + Kasir) */}
                 <Route path="dashboard" element={<Dashboard />} />
                 <Route path="menu" element={<MenuManagement />} />
                 <Route path="kasir" element={<Kasir />} />
                 <Route path="inventaris" element={<Inventaris />} />
                 <Route path="meja" element={<Meja />} />
                 <Route path="pelanggan" element={<Pelanggan />} />
-                <Route path="feedback" element={<FeedbackList />} />
-
-                {/* Restricted to Admin + Staf */}
-                <Route path="gramasi" element={
-                  <ProtectedRoute allowedRoles={['admin', 'staf']}>
-                    <Gramasi />
-                  </ProtectedRoute>
-                } />
 
                 {/* Restricted to Admin Only */}
                 <Route path="keuangan" element={
@@ -171,9 +158,15 @@ function App() {
                     <DataCenter />
                   </ProtectedRoute>
                 } />
+                <Route path="feedback" element={<FeedbackList />} />
                 <Route path="marketing" element={
                   <ProtectedRoute allowedRoles={['admin']}>
                     <Marketing />
+                  </ProtectedRoute>
+                } />
+                <Route path="gramasi" element={
+                  <ProtectedRoute allowedRoles={['admin', 'staf']}>
+                    <Gramasi />
                   </ProtectedRoute>
                 } />
                 <Route path="laporan" element={
@@ -189,8 +182,6 @@ function App() {
               </Route>
 
               {/* Priority 5: Dynamic Tenant Storefront (LOWEST PRIORITY) */}
-              {/* IMPORTANT: This MUST be last among functional routes */}
-              {/* The /:slug pattern will match ANY single-segment path */}
               <Route path="/:slug" element={<DynamicStorefront />}>
                 <Route element={<CustomerLayout />}>
                   <Route index element={<MenuCustomer />} />

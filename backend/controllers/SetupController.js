@@ -2,6 +2,7 @@ const User = require('../models/User');
 const Tenant = require('../models/Tenant');
 const { getTenantDB } = require('../config/db');
 const jwt = require('jsonwebtoken');
+const { validateSlug } = require('../utils/slugValidator');
 
 /**
  * Setup Controller
@@ -30,12 +31,12 @@ const setupTenant = async (req, res) => {
       });
     }
 
-    // Validasi format slug
-    const slugRegex = /^[a-z0-9-]+$/;
-    if (!slugRegex.test(slug)) {
+    // Validasi slug dengan slug validator (reserved keywords + format)
+    const slugValidation = validateSlug(slug);
+    if (!slugValidation.valid) {
       return res.status(400).json({
         success: false,
-        message: 'Slug hanya boleh mengandung huruf kecil, angka, dan tanda hubung (-)'
+        message: slugValidation.error
       });
     }
 
@@ -222,13 +223,13 @@ const checkSlug = async (req, res) => {
   try {
     const { slug } = req.params;
 
-    // Validasi format slug
-    const slugRegex = /^[a-z0-9-]+$/;
-    if (!slugRegex.test(slug)) {
+    // Validasi slug dengan slug validator (reserved keywords + format)
+    const slugValidation = validateSlug(slug);
+    if (!slugValidation.valid) {
       return res.json({
         success: true,
         available: false,
-        message: 'Slug hanya boleh mengandung huruf kecil, angka, dan tanda hubung'
+        message: slugValidation.error
       });
     }
 
