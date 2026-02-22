@@ -43,10 +43,21 @@ api.interceptors.request.use((config) => {
     if (token) {
         config.headers['Authorization'] = `Bearer ${token}`;
         
-        // 4. Extract tenant slug from JWT and add to headers
+        // 4. Extract tenant info from JWT and add to headers
         const decoded = decodeJWT(token);
-        if (decoded && decoded.tenant) {
-            config.headers['x-tenant-id'] = decoded.tenant;
+        if (decoded) {
+            // Add tenant slug if available (primary identifier)
+            if (decoded.tenantSlug) {
+                config.headers['x-tenant-slug'] = decoded.tenantSlug;
+            }
+            // Add tenant ID as fallback
+            if (decoded.tenantId) {
+                config.headers['x-tenant-id'] = decoded.tenantId;
+            }
+            // Legacy support: check for 'tenant' field
+            if (decoded.tenant) {
+                config.headers['x-tenant-id'] = decoded.tenant;
+            }
         }
     }
 

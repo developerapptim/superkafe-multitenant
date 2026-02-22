@@ -6,11 +6,17 @@ User lama yang dibuat sebelum sistem multitenant tidak memiliki:
 - `tenantId` (menyebabkan error di ProtectedRoute)
 - `role` (menyebabkan role authorization failed)
 
+Error yang muncul:
+```
+[TENANT PLUGIN] No tenant context available for query
+Role authorization failed
+```
+
 ## Solusi
 
-Ada 2 cara untuk menangani legacy users:
+Ada 3 cara untuk menangani legacy users:
 
-### 1. Auto-Fix saat Login (Otomatis) ✅
+### 1. Auto-Fix saat Login (Otomatis) ✅ RECOMMENDED
 
 AuthController sudah diupdate untuk otomatis:
 - Membuat tenant default berdasarkan nama user
@@ -19,9 +25,64 @@ AuthController sudah diupdate untuk otomatis:
 
 **Tidak perlu action manual!** User lama akan otomatis ter-migrate saat login.
 
-### 2. Batch Migration Script (Manual)
+### 2. Migration via API Endpoint (Production-Ready) ✅
 
-Jika ingin migrate semua user sekaligus tanpa menunggu mereka login:
+Untuk production environment atau jika MongoDB tidak accessible langsung:
+
+#### Check Legacy Users
+```bash
+curl -X GET "https://superkafe.com/api/migration/check-legacy-users" \
+  -H "x-api-key: warkop_secret_123"
+```
+
+Response:
+```json
+{
+  "success": true,
+  "count": 3,
+  "users": [
+    {
+      "id": "...",
+      "name": "John Doe",
+      "email": "john@example.com",
+      "hasRole": false,
+      "hasTenantId": false
+    }
+  ]
+}
+```
+
+#### Run Migration
+```bash
+curl -X POST "https://superkafe.com/api/migration/legacy-users" \
+  -H "x-api-key: warkop_secret_123" \
+  -H "Content-Type: application/json"
+```
+
+Response:
+```json
+{
+  "success": true,
+  "message": "Legacy user migration completed",
+  "migrated": 3,
+  "errors": 0,
+  "total": 3,
+  "results": [
+    {
+      "userId": "...",
+      "name": "John Doe",
+      "email": "john@example.com",
+      "tenantSlug": "john-doe",
+      "role": "admin",
+      "status": "success"
+    }
+  ]
+}
+```
+
+### 3. Batch Migration Script (Local Development)
+
+Jika ingin migrate semua user sekaligus di local environment:
 
 ```bash
 cd backend
@@ -34,29 +95,52 @@ Script akan:
 3. Assign role 'admin'
 4. Update database
 
-## Output Example
+## Frontend Configuration
 
+Frontend sudah dikonfigurasi untuk mengirim tenant context di setiap request:
+
+**File: `frontend/src/services/api.js`**
+
+```javascript
+// Request interceptor otomatis menambahkan headers:
+// - x-tenant-slug: dari JWT token
+// - x-tenant-id: dari JWT token (fallback)
+// - Authorization: Bearer token
 ```
-🔄 Connecting to MongoDB...
-✅ Connected to MongoDB
 
-📊 Found 3 legacy users to migrate
-
-👤 Processing: John Doe (john@example.com)
-  ✅ Created tenant: John Doe (slug: john-doe)
-  ✅ Updated user: tenantId=true, role=admin
-
-👤 Processing: Jane Smith (jane@example.com)
-  ✅ Created tenant: Jane Smith (slug: jane-smith)
-  ✅ Updated user: tenantId=true, role=admin
-
-============================================================
-📊 Migration Summary:
-  ✅ Successfully migrated: 3
-  ❌ Errors: 0
-  📝 Total processed: 3
-============================================================
+Headers yang dikirim:
 ```
+x-api-key: warkop_secret_123
+x-tenant-slug: john-doe
+x-tenant-id: 507f1f77bcf86cd799439011
+Authorization: Bearer eyJhbGc...
+```
+
+## Verifikasi Setelah Migrasi
+
+### 1. Check User di Database
+```javascript
+db.employees.find({ 
+  tenantId: { $exists: true }, 
+  role: "admin" 
+})
+```
+
+### 2. Check Tenants
+```javascript
+db.tenants.find({ status: "trial" })
+```
+
+### 3. Test Login
+1. Login dengan user lama
+2. Check browser console untuk JWT payload
+3. Pastikan ada `tenantId` dan `tenantSlug`
+
+### 4. Check Network Headers
+Di browser DevTools > Network:
+- Pilih request API
+- Check Request Headers
+- Pastikan ada `x-tenant-slug` dan `x-tenant-id`
 
 ## Tenant Slug Generation
 
@@ -77,38 +161,56 @@ Contoh:
 - **Tenant Status**: `trial` (10 hari trial period)
 - **Tenant Name**: Nama user atau username
 
-## Verifikasi
-
-Setelah migrasi, cek di database:
-
-```javascript
-// Check user
-db.employees.find({ tenantId: { $exists: true }, role: "admin" })
-
-// Check tenants
-db.tenants.find({ status: "trial" })
-```
-
 ## Troubleshooting
 
+### Error: "No tenant context available"
+
+**Penyebab**: User belum memiliki tenantId
+
+**Solusi**:
+1. Jalankan migration via API endpoint
+2. Atau logout dan login ulang (auto-fix)
+
+### Error: "Role authorization failed"
+
+**Penyebab**: User tidak memiliki role
+
+**Solusi**:
+1. Jalankan migration via API endpoint
+2. Atau logout dan login ulang (auto-fix)
+
 ### Error: "Slug already exists"
+
 Script otomatis menambah counter. Tidak perlu action manual.
 
-### Error: "Cannot create tenant"
-Pastikan MongoDB connection string benar di `.env`:
-```
-MONGODB_URI=mongodb://localhost:27017/warkop
+### Migration API returns 401
+
+Pastikan menggunakan API key yang benar:
+```bash
+x-api-key: warkop_secret_123
 ```
 
-### User masih tidak bisa login
-1. Cek apakah user memiliki `status: 'active'`
-2. Cek apakah tenantId sudah terisi
-3. Cek apakah role sudah terisi
-4. Lihat log backend untuk detail error
+### User masih tidak bisa login setelah migrasi
+
+1. Clear browser localStorage
+2. Logout dan login ulang
+3. Check browser console untuk error
+4. Verify JWT token contains tenantId and tenantSlug
+
+## Production Deployment Checklist
+
+- [ ] Run migration check endpoint
+- [ ] Review legacy users list
+- [ ] Run migration endpoint
+- [ ] Verify all users migrated successfully
+- [ ] Test login with migrated users
+- [ ] Monitor backend logs for tenant context errors
+- [ ] Clear user sessions (optional: force re-login)
 
 ## Notes
 
-- Script aman dijalankan multiple kali (idempotent)
+- Migration API aman dijalankan multiple kali (idempotent)
 - Tidak akan membuat duplikat tenant
 - Tidak akan overwrite data yang sudah ada
 - Auto-fix di AuthController berjalan otomatis tanpa perlu script
+- Frontend otomatis mengirim tenant headers setelah login
