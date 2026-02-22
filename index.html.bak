@@ -7501,7 +7501,7 @@
     function deleteGramasi(id) {
       showConfirmModal({
         title: 'Hapus Gramasi?',
-        message: 'Apakah Anda yakin ingin menghapus data gramasi ini?',
+        message: 'Apakah Anda ywwakin ingin menghapus data gramasi ini?',
         confirmText: 'Hapus',
         type: 'danger',
         onConfirm: () => {
