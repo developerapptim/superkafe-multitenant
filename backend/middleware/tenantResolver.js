@@ -15,12 +15,12 @@ const tenantResolver = async (req, res, next) => {
   const requestId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
   
   try {
-    // Ambil tenant-id dari header
-    const tenantId = req.headers['x-tenant-id'];
+    // Ambil tenant identifier dari header (support both slug and id)
+    const tenantSlug = req.headers['x-tenant-slug'] || req.headers['x-tenant-id'];
 
-    // Validasi: tenant-id wajib ada
-    if (!tenantId) {
-      console.warn('[TENANT] Request tanpa x-tenant-id header', {
+    // Validasi: tenant identifier wajib ada
+    if (!tenantSlug) {
+      console.warn('[TENANT] Request tanpa x-tenant-slug atau x-tenant-id header', {
         requestId,
         path: req.path,
         method: req.method,
@@ -31,13 +31,13 @@ const tenantResolver = async (req, res, next) => {
       
       return res.status(400).json({
         success: false,
-        message: 'Header x-tenant-id wajib disertakan'
+        message: 'Header x-tenant-slug atau x-tenant-id wajib disertakan'
       });
     }
 
     // Cari data tenant di database utama berdasarkan slug
     const tenant = await Tenant.findOne({ 
-      slug: tenantId.toLowerCase(),
+      slug: tenantSlug.toLowerCase(),
       isActive: true 
     }).lean();
 
@@ -45,7 +45,7 @@ const tenantResolver = async (req, res, next) => {
     if (!tenant) {
       console.warn('[TENANT] Tenant tidak ditemukan atau tidak aktif', {
         requestId,
-        tenantId,
+        tenantSlug,
         path: req.path,
         method: req.method,
         ip: req.ip,
