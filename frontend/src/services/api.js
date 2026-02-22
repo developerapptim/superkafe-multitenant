@@ -76,8 +76,6 @@ api.interceptors.request.use((config) => {
     } else {
         console.log('[API] No token found in localStorage');
     }
-        }
-    }
 
     return config;
 }, (error) => {
