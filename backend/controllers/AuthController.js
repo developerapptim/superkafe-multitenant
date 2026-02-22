@@ -2,8 +2,33 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const Employee = require('../models/Employee');
 const Shift = require('../models/Shift');
+const Tenant = require('../models/Tenant');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'warkop_secret_jwt';
+
+// Helper: Generate slug dari nama
+function generateSlug(name) {
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .trim()
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .substring(0, 50);
+}
+
+// Helper: Ensure unique slug
+async function ensureUniqueSlug(baseSlug) {
+  let slug = baseSlug;
+  let counter = 1;
+  
+  while (await Tenant.findOne({ slug })) {
+    slug = `${baseSlug}-${counter}`;
+    counter++;
+  }
+  
+  return slug;
+}
 
 // Restricted roles that can only have one active session at a time
 const restrictedRoles = ['kasir', 'waiter', 'kitchen', 'barista', 'staf'];
@@ -33,6 +58,49 @@ const login = async (req, res) => {
                 requiresVerification: true,
                 email: employee.email
             });
+        }
+
+        // 1b. AUTO-FIX: Legacy User Migration (missing tenantId or role)
+        let needsUpdate = false;
+        const updates = {};
+
+        if (!employee.tenantId) {
+            console.log(`⚠️ Legacy user detected: ${employee.name} (missing tenantId)`);
+            
+            // Generate slug from user name
+            const baseSlug = generateSlug(employee.name || employee.username || 'tenant');
+            const uniqueSlug = await ensureUniqueSlug(baseSlug);
+            const dbName = `warkop_${uniqueSlug}`;
+
+            // Create tenant for this user
+            const tenant = new Tenant({
+                name: employee.name || employee.username || 'Default Tenant',
+                slug: uniqueSlug,
+                dbName: dbName,
+                status: 'trial',
+                isActive: true
+            });
+
+            await tenant.save();
+            updates.tenantId = tenant._id;
+            needsUpdate = true;
+            
+            console.log(`✅ Auto-created tenant: ${tenant.name} (slug: ${tenant.slug})`);
+        }
+
+        if (!employee.role || employee.role === '') {
+            console.log(`⚠️ Legacy user detected: ${employee.name} (missing role)`);
+            updates.role = 'admin';
+            needsUpdate = true;
+            console.log(`✅ Auto-assigned role: admin`);
+        }
+
+        // Apply updates if needed
+        if (needsUpdate) {
+            await Employee.updateOne({ _id: employee._id }, { $set: updates });
+            // Reload employee to get updated data
+            Object.assign(employee, updates);
+            console.log(`✅ Legacy user migrated: ${employee.name}`);
         }
 
         // 2. Check for "Single Active Staff" Policy (Only for restricted roles)
@@ -85,12 +153,22 @@ const login = async (req, res) => {
             return res.status(401).json({ error: 'Password atau PIN salah' });
         }
 
-        // 4. Generate Token
+        // 4. Generate Token (with tenant info)
+        let tenantSlug = null;
+        if (employee.tenantId) {
+            const tenant = await Tenant.findById(employee.tenantId);
+            if (tenant) {
+                tenantSlug = tenant.slug;
+            }
+        }
+
         const token = jwt.sign(
             {
                 id: employee.id,
                 role: employee.role,
-                name: employee.name
+                name: employee.name,
+                tenantId: employee.tenantId,
+                tenantSlug: tenantSlug
             },
             JWT_SECRET,
             { expiresIn: '24h' }
@@ -107,7 +185,9 @@ const login = async (req, res) => {
                 name: employee.name,
                 role: employee.role,
                 image: employee.image,
-                role_access: employee.role_access
+                role_access: employee.role_access,
+                tenantId: employee.tenantId,
+                tenantSlug: tenantSlug
             }
         });
     } catch (err) {
