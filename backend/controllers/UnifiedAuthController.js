@@ -490,9 +490,78 @@ const verifyOTP = async (req, res) => {
   }
 };
 
+/**
+ * POST /api/auth/resend-otp
+ * Kirim ulang OTP untuk verifikasi email
+ */
+const resendOTP = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email wajib diisi'
+      });
+    }
+
+    // Cari user
+    const user = await User.findOne({ email: email.toLowerCase() });
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User tidak ditemukan'
+      });
+    }
+
+    // Cek apakah sudah terverifikasi
+    if (user.isVerified) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email sudah terverifikasi'
+      });
+    }
+
+    // Generate OTP baru
+    const { generateOTP, sendOTPEmail } = require('../services/emailService');
+    const otpCode = generateOTP();
+    const otpExpiry = new Date(Date.now() + 10 * 60 * 1000); // 10 menit
+
+    // Update user
+    user.otpCode = otpCode;
+    user.otpExpiry = otpExpiry;
+    await user.save();
+
+    // Kirim OTP ke email
+    try {
+      await sendOTPEmail(email, otpCode, user.name);
+      console.log('[AUTH] OTP resent successfully');
+    } catch (emailError) {
+      console.error('[AUTH] Failed to resend OTP email:', emailError.message);
+      return res.status(500).json({
+        success: false,
+        message: 'Gagal mengirim email OTP'
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'Kode OTP baru telah dikirim ke email Anda'
+    });
+
+  } catch (error) {
+    console.error('[AUTH ERROR] Gagal resend OTP:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Terjadi kesalahan saat mengirim ulang OTP'
+    });
+  }
+};
+
 module.exports = {
   register,
   login,
   googleAuth,
-  verifyOTP
+  verifyOTP,
+  resendOTP
 };

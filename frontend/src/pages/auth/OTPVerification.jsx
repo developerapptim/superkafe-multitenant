@@ -14,18 +14,16 @@ const OTPVerification = () => {
   const [resending, setResending] = useState(false);
   const [countdown, setCountdown] = useState(0);
   
-  // Get data from navigation state or localStorage
-  const email = location.state?.email || localStorage.getItem('pending_email');
-  const tenantSlug = location.state?.tenantSlug || localStorage.getItem('tenant_slug');
-  const tenantName = location.state?.tenantName || '';
+  // Get data from navigation state
+  const email = location.state?.email;
 
   useEffect(() => {
-    // Redirect jika tidak ada email atau tenant slug
-    if (!email || !tenantSlug) {
+    // Redirect jika tidak ada email
+    if (!email) {
       toast.error('Data verifikasi tidak ditemukan. Silakan daftar ulang.');
       navigate('/auth/register');
     }
-  }, [email, tenantSlug, navigate]);
+  }, [email, navigate]);
 
   useEffect(() => {
     // Countdown timer untuk resend OTP
@@ -89,24 +87,19 @@ const OTPVerification = () => {
     try {
       const response = await verificationAPI.verifyOTP({
         email,
-        otpCode,
-        tenantSlug
+        otpCode
       });
 
       if (response.data.success) {
         toast.success('Email berhasil diverifikasi!');
         
-        // Clear pending data
-        localStorage.removeItem('pending_email');
+        // Save token and user data
+        localStorage.setItem('token', response.data.token);
+        localStorage.setItem('user', JSON.stringify(response.data.user));
         
-        // Redirect ke login
+        // Redirect ke setup wizard (user belum punya tenant)
         setTimeout(() => {
-          navigate('/auth/login', {
-            state: {
-              tenant_slug: tenantSlug,
-              message: 'Verifikasi berhasil! Silakan login dengan email dan password Anda.'
-            }
-          });
+          navigate('/setup-cafe');
         }, 1500);
       }
     } catch (error) {
@@ -124,8 +117,7 @@ const OTPVerification = () => {
 
     try {
       const response = await verificationAPI.resendOTP({
-        email,
-        tenantSlug
+        email
       });
 
       if (response.data.success) {

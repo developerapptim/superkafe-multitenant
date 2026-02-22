@@ -325,8 +325,8 @@ export const tenantAPI = {
 
 // ========== VERIFICATION API (Email OTP) ==========
 export const verificationAPI = {
-    verifyOTP: (data) => api.post('/verify/otp', data),
-    resendOTP: (data) => api.post('/verify/resend-otp', data),
+    verifyOTP: (data) => api.post('/auth/verify-otp', data),
+    resendOTP: (data) => api.post('/auth/resend-otp', data),
 };
 
 // ========== GOOGLE AUTH API ==========

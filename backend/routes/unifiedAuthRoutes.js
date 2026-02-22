@@ -20,4 +20,7 @@ router.post('/google', UnifiedAuthController.googleAuth);
 // POST /api/auth/verify-otp - Verify OTP
 router.post('/verify-otp', UnifiedAuthController.verifyOTP);
 
+// POST /api/auth/resend-otp - Resend OTP
+router.post('/resend-otp', UnifiedAuthController.resendOTP);
+
 module.exports = router;

@@ -1,101 +1,54 @@
 const bcrypt = require('bcryptjs');
 
 /**
- * Utility function untuk membuat user admin di database tenant
- * Digunakan oleh TenantController dan seedTenant script
+ * Utility untuk membuat admin user di tenant database
  */
-const seedAdminUser = async (tenantDB, tenantName, userData = {}) => {
+const seedAdminUser = async (tenantDB, cafeName, adminData) => {
   try {
-    console.log('[SEED ADMIN] Memulai seeding user admin...');
-    
-    // Load Employee model untuk tenant database
+    console.log('[SEED ADMIN] Membuat admin user...');
+
+    // Load Employee model
     const EmployeeModel = tenantDB.model('Employee', require('../models/Employee').schema);
-    
-    // Cek apakah admin dengan email/username sudah ada
-    const existingAdmin = await EmployeeModel.findOne({
-      $or: [
-        { username: userData.username || 'admin' },
-        { email: userData.email }
-      ]
-    });
-    
+
+    // Cek apakah admin sudah ada
+    const existingAdmin = await EmployeeModel.findOne({ email: adminData.email });
     if (existingAdmin) {
-      console.log('[SEED ADMIN] User admin sudah ada di database tenant');
-      return {
-        success: true,
-        existed: true,
-        admin: {
-          id: existingAdmin.id,
-          username: existingAdmin.username,
-          email: existingAdmin.email,
-          name: existingAdmin.name,
-          role: existingAdmin.role
-        }
-      };
+      console.log('[SEED ADMIN] Admin sudah ada, skip');
+      return existingAdmin;
     }
-    
-    // Hash password
-    let hashedPassword;
-    if (userData.password) {
-      // Password dari user input
-      hashedPassword = await bcrypt.hash(userData.password, 10);
-    } else {
-      // Password default untuk script seeding
-      const defaultPassword = 'admin123';
-      hashedPassword = await bcrypt.hash(defaultPassword, 10);
-    }
-    
-    // Generate unique ID untuk employee
+
+    // Generate employee ID
     const employeeId = `EMP-${Date.now()}`;
-    
-    // Data admin
-    const adminData = {
+
+    // Prepare admin data
+    const newAdmin = {
       id: employeeId,
-      username: userData.username || 'admin',
-      email: userData.email || null,
-      password: hashedPassword,
-      name: userData.name || 'Administrator',
+      username: adminData.username || adminData.email.split('@')[0],
+      email: adminData.email,
+      password: adminData.password, // Sudah hashed atau null (Google)
+      name: adminData.name || 'Administrator',
       role: 'admin',
       role_access: ['POS', 'Kitchen', 'Meja', 'Keuangan', 'Laporan', 'Menu', 'Pegawai', 'Pengaturan'],
-      phone: userData.phone || '',
+      phone: '',
       address: '',
       salary: 0,
       daily_rate: 0,
       status: 'active',
       is_logged_in: false,
       isActive: true,
-      isVerified: userData.isVerified || false, // Default false, perlu verifikasi email
-      authProvider: userData.authProvider || 'local',
-      googleId: userData.googleId || null
+      isVerified: adminData.isVerified || false,
+      authProvider: adminData.authProvider || 'local',
+      googleId: adminData.googleId || null,
+      image: adminData.image || null
     };
-    
-    // Buat user admin
-    const newAdmin = await EmployeeModel.create(adminData);
-    
-    console.log('[SEED ADMIN] ✓ User admin berhasil dibuat!');
-    
-    return {
-      success: true,
-      existed: false,
-      admin: {
-        id: newAdmin.id,
-        username: newAdmin.username,
-        email: newAdmin.email,
-        name: newAdmin.name,
-        role: newAdmin.role,
-        isVerified: newAdmin.isVerified
-      },
-      credentials: userData.password ? null : {
-        username: 'admin',
-        password: 'admin123' // Return plain password hanya untuk script seeding
-      }
-    };
-    
+
+    const admin = await EmployeeModel.create(newAdmin);
+    console.log('[SEED ADMIN] ✓ Admin user berhasil dibuat:', admin.email);
+
+    return admin;
+
   } catch (error) {
-    console.error('[SEED ADMIN ERROR] Gagal seeding user admin:', {
-      error: error.message,
-      stack: error.stack
-    });
+    console.error('[SEED ADMIN ERROR]', error);
     throw error;
   }
 };

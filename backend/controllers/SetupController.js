@@ -136,6 +136,17 @@ const setupTenant = async (req, res) => {
 
       console.log('[SETUP] Admin user berhasil dibuat di tenant database');
 
+      // Seed kategori dan menu default
+      const { seedDefaultMenu } = require('../utils/seedDefaultMenu');
+      const seedResult = await seedDefaultMenu(tenantDB, newTenant._id);
+      
+      if (seedResult.success) {
+        console.log('[SETUP] Menu default berhasil di-seed:', {
+          categories: seedResult.categoriesCount,
+          menuItems: seedResult.menuItemsCount
+        });
+      }
+
     } catch (dbError) {
       // Rollback: Hapus tenant jika gagal inisialisasi database
       console.error('[SETUP ERROR] Gagal inisialisasi database, rollback', {
