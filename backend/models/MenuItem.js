@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const tenantScopingPlugin = require('../plugins/tenantScopingPlugin');
 
 const MenuItemSchema = new mongoose.Schema({
     id: { type: String, required: true, unique: true },
@@ -33,5 +34,8 @@ const MenuItemSchema = new mongoose.Schema({
 //     console.log('🔍 Validating MenuItem:', this);
 //     next();
 // });
+
+// Apply tenant scoping plugin for automatic tenant isolation
+MenuItemSchema.plugin(tenantScopingPlugin);
 
 module.exports = mongoose.model('MenuItem', MenuItemSchema);

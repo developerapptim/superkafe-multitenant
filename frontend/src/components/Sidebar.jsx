@@ -1,16 +1,18 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { NavLink, useLocation } from 'react-router-dom';
 import useSWR from 'swr';
 import api from '../services/api';
 import toast from 'react-hot-toast';
 import { usePendingOrdersCount } from '../hooks/usePendingOrdersCount';
+import { useTenant } from './TenantRouter';
 
 // Fetcher
 const fetcher = url => api.get(url).then(res => res.data);
 
-// Menu items with access keys for role_access array filtering
-const menuItems = [
+// Base menu items with access keys for role_access array filtering
+// Paths will be dynamically prefixed with tenant slug
+const baseMenuItems = [
   { path: '/admin/dashboard', icon: '📊', label: 'Dashboard', section: 'dashboard', access: 'Dashboard' },
   { path: '/admin/menu', icon: '🍽️', label: 'Manajemen Menu', section: 'menu', access: 'Menu' },
   { path: '/admin/kasir', icon: '🧾', label: 'Kasir (POS)', section: 'pos', access: 'POS' },
@@ -38,6 +40,9 @@ const menuItems = [
 ];
 
 function Sidebar({ onLogout, isCollapsed, toggleSidebar }) {
+  // Get tenant context for dynamic path generation
+  const { tenantSlug } = useTenant();
+  
   const [settings, setSettings] = useState(() => {
     const saved = localStorage.getItem('appSettings');
     return saved ? JSON.parse(saved) : {
@@ -46,6 +51,27 @@ function Sidebar({ onLogout, isCollapsed, toggleSidebar }) {
       logo: 'https://res.cloudinary.com/dhjqb65mf/image/upload/v1770018588/Picsart_26-02-02_15-46-53-772_vw9xc3.png'
     };
   });
+  
+  // Generate tenant-specific menu items
+  const menuItems = useMemo(() => {
+    if (!tenantSlug) return baseMenuItems;
+    
+    return baseMenuItems.map(item => {
+      if (item.children) {
+        return {
+          ...item,
+          children: item.children.map(child => ({
+            ...child,
+            path: `/${tenantSlug}${child.path}`
+          }))
+        };
+      }
+      return {
+        ...item,
+        path: `/${tenantSlug}${item.path}`
+      };
+    });
+  }, [tenantSlug]);
 
   // Fetch settings to keep it updated
   useSWR('/settings', fetcher, {

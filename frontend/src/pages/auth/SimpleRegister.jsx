@@ -171,10 +171,10 @@ const SimpleRegister = () => {
 
             // Redirect berdasarkan hasCompletedSetup
             if (backendResponse.data.user.hasCompletedSetup) {
-              // User sudah setup tenant → ke dashboard
+              // User sudah setup tenant → ke dashboard via legacy route (will redirect to tenant-specific)
               localStorage.setItem('tenant_slug', backendResponse.data.user.tenantSlug);
               setTimeout(() => {
-                navigate('/admin/dashboard');
+                navigate('/admin');
               }, 1500);
             } else {
               // User belum setup tenant → ke setup wizard

@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const tenantScopingPlugin = require('../plugins/tenantScopingPlugin');
 
 // Customer Model
 const CustomerSchema = new mongoose.Schema({
@@ -17,5 +18,8 @@ const CustomerSchema = new mongoose.Schema({
     tags: { type: [String], default: [] },
     createdAt: { type: Date, default: Date.now }
 });
+
+// Apply tenant scoping plugin for automatic tenant isolation
+CustomerSchema.plugin(tenantScopingPlugin);
 
 module.exports = mongoose.model('Customer', CustomerSchema);

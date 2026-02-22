@@ -3,18 +3,24 @@ const Recipe = require('../models/Recipe');
 const Ingredient = require('../models/Ingredient');
 const logActivity = require('../utils/activityLogger'); // NEW: Activity Logger
 
-// ─── In-Memory Cache untuk Customer Menu ───
-let customerMenuCache = null;
-let customerMenuCacheTime = 0;
+// ─── Tenant-Scoped In-Memory Cache untuk Customer Menu ───
+// Cache is now keyed by tenantId to prevent cross-tenant cache pollution
+const customerMenuCache = new Map(); // Map<tenantId, { data, timestamp }>
 const CACHE_TTL = 5 * 60 * 1000; // 5 menit
 
-const invalidateCustomerMenuCache = () => {
-    customerMenuCache = null;
-    customerMenuCacheTime = 0;
+const invalidateCustomerMenuCache = (tenantId) => {
+    if (tenantId) {
+        customerMenuCache.delete(tenantId);
+    } else {
+        // If no tenantId provided, clear all cache (for backward compatibility)
+        customerMenuCache.clear();
+    }
 };
 
 const getMenus = async (req, res) => {
     try {
+        // Tenant scoping is automatic via plugin - no manual filtering needed
+        // All queries below will automatically filter by tenantId from tenant context
         const items = await MenuItem.find().sort({ order: 1, category: 1, name: 1 });
         const recipes = await Recipe.find();
         const ingredients = await Ingredient.find();
@@ -124,11 +130,20 @@ const getMenus = async (req, res) => {
 // ─── GET /api/menu/customer — Endpoint ringan untuk halaman customer ───
 const getMenusCustomer = async (req, res) => {
     try {
-        // Cek cache
-        if (customerMenuCache && (Date.now() - customerMenuCacheTime < CACHE_TTL)) {
-            return res.json(customerMenuCache);
+        // Get tenantId from request context for cache key
+        const tenantId = req.tenant?.id?.toString();
+        
+        if (!tenantId) {
+            return res.status(400).json({ error: 'Tenant context not available' });
         }
 
+        // Cek cache (tenant-specific)
+        const cached = customerMenuCache.get(tenantId);
+        if (cached && (Date.now() - cached.timestamp < CACHE_TTL)) {
+            return res.json(cached.data);
+        }
+
+        // Tenant scoping is automatic via plugin
         const items = await MenuItem.find()
             .select('id name price imageUrl is_active category categoryId label base_price is_bundle order use_stock_check')
             .sort({ order: 1, category: 1, name: 1 })
@@ -204,9 +219,11 @@ const getMenusCustomer = async (req, res) => {
             };
         });
 
-        // Simpan ke cache
-        customerMenuCache = processedItems;
-        customerMenuCacheTime = Date.now();
+        // Simpan ke cache (tenant-specific)
+        customerMenuCache.set(tenantId, {
+            data: processedItems,
+            timestamp: Date.now()
+        });
 
         res.json(processedItems);
     } catch (err) {
@@ -217,6 +234,7 @@ const getMenusCustomer = async (req, res) => {
 
 const getMenuById = async (req, res) => {
     try {
+        // Tenant scoping is automatic via plugin
         const item = await MenuItem.findOne({ id: req.params.id });
         if (!item) return res.status(404).json({ error: 'Not found' });
 
@@ -242,7 +260,7 @@ const createMenu = async (req, res) => {
         }
 
         // 1. Create Menu Item
-        // If body is flat (legacy), handle it
+        // TenantId will be automatically set by the plugin
         const menuItemData = {
             ...data,
             // Ensure ID is generated if not sent (frontend usually sends it)
@@ -251,13 +269,17 @@ const createMenu = async (req, res) => {
 
         const item = new MenuItem(menuItemData);
         await item.save();
-        invalidateCustomerMenuCache();
+        
+        // Invalidate cache for this tenant
+        const tenantId = req.tenant?.id?.toString();
+        invalidateCustomerMenuCache(tenantId);
 
         // 2. Create Recipe if ingredients provided
         if (data.ingredients && Array.isArray(data.ingredients)) {
             const recipe = new Recipe({
                 menuId: item.id,
                 ingredients: data.ingredients
+                // TenantId will be automatically set by the plugin
             });
             await recipe.save();
         }
@@ -279,13 +301,14 @@ const updateMenu = async (req, res) => {
             updateData.imageUrl = updateData.image;
         }
 
+        // Tenant scoping is automatic via plugin - only updates items in current tenant
         const item = await MenuItem.findOneAndUpdate({ id: req.params.id }, updateData, { new: true });
-        invalidateCustomerMenuCache();
-
-        // Also update recipe if provided?
-        // User often hits specific /api/recipes endpoint, but let's support it here too if needed.
-
+        
         if (!item) return res.status(404).json({ error: 'Not found' });
+
+        // Invalidate cache for this tenant
+        const tenantId = req.tenant?.id?.toString();
+        invalidateCustomerMenuCache(tenantId);
 
         await logActivity({ req, action: 'UPDATE_MENU', module: 'MENU', description: `Updated menu: ${item.name}`, metadata: { menuId: item.id, changes: req.body } });
 
@@ -299,9 +322,13 @@ const updateMenu = async (req, res) => {
 
 const deleteMenu = async (req, res) => {
     try {
+        // Tenant scoping is automatic via plugin - only deletes items in current tenant
         await MenuItem.deleteOne({ id: req.params.id });
         await Recipe.deleteOne({ menuId: req.params.id }); // Logic for cascading delete
-        invalidateCustomerMenuCache();
+        
+        // Invalidate cache for this tenant
+        const tenantId = req.tenant?.id?.toString();
+        invalidateCustomerMenuCache(tenantId);
 
         await logActivity({ req, action: 'DELETE_MENU', module: 'MENU', description: `Deleted menu ID: ${req.params.id}`, metadata: { menuId: req.params.id } });
 
@@ -315,6 +342,7 @@ const deleteMenu = async (req, res) => {
 // Recipe Specific Endpoints
 const getRecipes = async (req, res) => {
     try {
+        // Tenant scoping is automatic via plugin
         const recipes = await Recipe.find();
         res.json(recipes);
     } catch (err) {
@@ -332,6 +360,7 @@ const updateRecipe = async (req, res) => {
             return res.status(400).json({ error: 'Menu ID is required' });
         }
 
+        // Tenant scoping is automatic via plugin - only updates recipes in current tenant
         const item = await Recipe.findOneAndUpdate(
             { menuId: targetMenuId },
             { ingredients },
@@ -354,6 +383,7 @@ const reorderMenus = async (req, res) => {
             return res.status(400).json({ error: 'Invalid data' });
         }
 
+        // Tenant scoping is automatic via plugin - only updates items in current tenant
         const bulkOps = items.map((id, index) => ({
             updateOne: {
                 filter: { id: id },
@@ -362,7 +392,10 @@ const reorderMenus = async (req, res) => {
         }));
 
         await MenuItem.bulkWrite(bulkOps);
-        invalidateCustomerMenuCache();
+        
+        // Invalidate cache for this tenant
+        const tenantId = req.tenant?.id?.toString();
+        invalidateCustomerMenuCache(tenantId);
 
         await logActivity({ req, action: 'REORDER_MENU', module: 'MENU', description: 'Reordered menu items' });
 

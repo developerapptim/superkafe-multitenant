@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const tenantScopingPlugin = require('../plugins/tenantScopingPlugin');
 
 // Shift Model
 const ShiftSchema = new mongoose.Schema({
@@ -31,5 +32,8 @@ const ShiftSchema = new mongoose.Schema({
 });
 
 ShiftSchema.index({ status: 1, endTime: -1, startTime: -1 });
+
+// Apply tenant scoping plugin for automatic tenant isolation
+ShiftSchema.plugin(tenantScopingPlugin);
 
 module.exports = mongoose.model('Shift', ShiftSchema);

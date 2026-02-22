@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const tenantScopingPlugin = require('../plugins/tenantScopingPlugin');
 
 const AttendanceSchema = new mongoose.Schema({
     id: { type: String, required: true, unique: true },
@@ -11,5 +12,8 @@ const AttendanceSchema = new mongoose.Schema({
     workDuration: Number, // In minutes/hours
     createdAt: { type: Date, default: Date.now }
 });
+
+// Apply tenant scoping plugin for automatic tenant isolation
+AttendanceSchema.plugin(tenantScopingPlugin);
 
 module.exports = mongoose.models.Attendance || mongoose.model('Attendance', AttendanceSchema);

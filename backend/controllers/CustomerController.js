@@ -3,6 +3,7 @@ const Order = require('../models/Order');
 
 const searchCustomers = async (req, res) => {
     try {
+        // Tenant scoping is automatic via plugin
         const { q } = req.query;
         if (!q) return res.json([]);
 
@@ -24,6 +25,7 @@ const searchCustomers = async (req, res) => {
 
 const getCustomers = async (req, res) => {
     try {
+        // Tenant scoping is automatic via plugin
         const { page = 1, limit = 50, sort = 'name' } = req.query;
         // Basic implementation
         const customers = await Customer.find()
@@ -43,6 +45,7 @@ const getCustomers = async (req, res) => {
 
 const upsertCustomer = async (req, res) => {
     try {
+        // Tenant scoping is automatic via plugin
         const { id, name, phone, email, address, notes, tags } = req.body;
 
         // Check if exists
@@ -67,7 +70,7 @@ const upsertCustomer = async (req, res) => {
             await customer.save();
             return res.json(customer);
         } else {
-            // Create
+            // Create - TenantId will be automatically set by the plugin
             customer = new Customer({
                 id: id || `cust_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
                 name,
@@ -88,6 +91,7 @@ const upsertCustomer = async (req, res) => {
 
 const getAnalytics = async (req, res) => {
     try {
+        // Tenant scoping is automatic via plugin
         const { id } = req.params;
         const customer = await Customer.findOne({ id });
         if (!customer) return res.status(404).json({ error: 'Customer not found' });
@@ -231,6 +235,7 @@ const getCustomerPoints = async (req, res) => {
         const normalizedPhone = phone.replace(/\D/g, '');
 
         // Find customer by phone
+        // Tenant scoping is automatic via plugin
         let customer = await Customer.findOne({
             $or: [
                 { phone: normalizedPhone },
@@ -241,6 +246,7 @@ const getCustomerPoints = async (req, res) => {
 
         // Auto-create if not found
         if (!customer) {
+            // TenantId will be automatically set by the plugin
             customer = new Customer({
                 id: `cust_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
                 name: 'Pelanggan',
@@ -254,6 +260,7 @@ const getCustomerPoints = async (req, res) => {
         }
 
         // Get recent point activities from orders
+        // Tenant scoping is automatic via plugin
         const recentOrders = await Order.find({
             $or: [
                 { phone: normalizedPhone },

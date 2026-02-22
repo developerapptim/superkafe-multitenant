@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const tenantScopingPlugin = require('../plugins/tenantScopingPlugin');
 
 // Model Voucher untuk kode diskon
 const VoucherSchema = new mongoose.Schema({
@@ -12,5 +13,8 @@ const VoucherSchema = new mongoose.Schema({
     valid_until: { type: Date, required: true },
     is_active: { type: Boolean, default: true },
 }, { timestamps: true });
+
+// Apply tenant scoping plugin for automatic tenant isolation
+VoucherSchema.plugin(tenantScopingPlugin);
 
 module.exports = mongoose.model('Voucher', VoucherSchema);

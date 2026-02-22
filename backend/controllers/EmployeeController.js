@@ -6,6 +6,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'change_this_secret';
 
 const getEmployees = async (req, res) => {
     try {
+        // Tenant scoping is automatic via plugin
         const employees = await Employee.find({ status: { $ne: 'inactive' } }).select('-password');
         res.json(employees);
     } catch (err) {
@@ -24,6 +25,7 @@ const createEmployee = async (req, res) => {
 
         // Check exists ONLY if username is provided
         if (username) {
+            // Tenant scoping is automatic via plugin
             const exists = await Employee.findOne({ username });
             if (exists) {
                 if (exists.status === 'active' || exists.isActive) {
@@ -57,6 +59,7 @@ const createEmployee = async (req, res) => {
             role_access: role_access || [],
             status: 'active',
             isActive: true
+            // TenantId will be automatically set by the plugin
         });
 
         await newEmployee.save();
@@ -74,6 +77,7 @@ const createEmployee = async (req, res) => {
 
 const updateEmployee = async (req, res) => {
     try {
+        // Tenant scoping is automatic via plugin - only updates employees in current tenant
         const { id } = req.params;
         const updates = req.body;
 
@@ -99,6 +103,7 @@ const updateEmployee = async (req, res) => {
 
 const deleteEmployee = async (req, res) => {
     try {
+        // Tenant scoping is automatic via plugin - only deletes employees in current tenant
         const { id } = req.params;
 
         // Soft delete: Change status to 'inactive' so history remains
@@ -119,6 +124,7 @@ const deleteEmployee = async (req, res) => {
 
 const login = async (req, res) => {
     try {
+        // Tenant scoping is automatic via plugin
         const { username, password } = req.body;
 
         // Find employee
@@ -155,6 +161,7 @@ const login = async (req, res) => {
 
 const fixData = async (req, res) => {
     try {
+        // Tenant scoping is automatic via plugin
         console.log('🔧 Starting Data Repair...');
         const employees = await Employee.find({});
         let fixedCount = 0;

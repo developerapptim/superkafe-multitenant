@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const tenantScopingPlugin = require('../plugins/tenantScopingPlugin');
 
 const ReservationSchema = new mongoose.Schema({
     id: { type: String, required: true, unique: true },
@@ -15,5 +16,8 @@ const ReservationSchema = new mongoose.Schema({
     tableNumbers: [{ type: String }], // Array of table numbers
     createdBy: { type: String, enum: ['customer', 'staff'], default: 'customer' }
 }, { timestamps: true });
+
+// Apply tenant scoping plugin for automatic tenant isolation
+ReservationSchema.plugin(tenantScopingPlugin);
 
 module.exports = mongoose.models.Reservation || mongoose.model('Reservation', ReservationSchema);

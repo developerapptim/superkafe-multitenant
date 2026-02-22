@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const tenantScopingPlugin = require('../plugins/tenantScopingPlugin');
 
 // StockHistory Model (expanded for restock moving average)
 const StockHistorySchema = new mongoose.Schema({
@@ -18,5 +19,8 @@ const StockHistorySchema = new mongoose.Schema({
     time: String,
     timestamp: { type: Number, default: Date.now }
 });
+
+// Apply tenant scoping plugin for automatic tenant isolation
+StockHistorySchema.plugin(tenantScopingPlugin);
 
 module.exports = mongoose.model('StockHistory', StockHistorySchema);

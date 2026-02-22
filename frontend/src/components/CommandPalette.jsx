@@ -1,10 +1,12 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { employeesAPI, menuAPI, customersAPI, inventoryAPI } from '../services/api';
+import { useTenant } from './TenantRouter';
 
 const CommandPalette = ({ isOpen, onClose }) => {
     const navigate = useNavigate();
+    const { tenantSlug } = useTenant();
     const [search, setSearch] = useState('');
     const [results, setResults] = useState([]);
     const [isSearching, setIsSearching] = useState(false);
@@ -41,8 +43,8 @@ const CommandPalette = ({ isOpen, onClose }) => {
     const userRole = user?.role || 'staf';
     const userRoleAccess = user?.role_access || [];
 
-    // Unified Menu Actions with Role Access (Static Navigation)
-    const navActions = [
+    // Base navigation actions (without tenant slug prefix)
+    const baseNavActions = [
         { id: 'dashboard', name: 'Dashboard', icon: '📊', url: '/admin/dashboard', access: 'Dashboard', type: 'Navigasi', keywords: ['home', 'utama', 'statistik'] },
         { id: 'menu', name: 'Manajemen Menu', icon: '🍽️', url: '/admin/menu', access: 'Menu', type: 'Navigasi', keywords: ['makanan', 'minuman', 'produk'] },
         { id: 'kasir', name: 'Kasir (POS)', icon: '🧾', url: '/admin/kasir', access: 'POS', type: 'Navigasi', keywords: ['jual', 'bayar', 'transaksi'] },
@@ -57,6 +59,16 @@ const CommandPalette = ({ isOpen, onClose }) => {
         { id: 'pengaturan', name: 'Pengaturan Umum', icon: '⚙️', url: '/admin/pengaturan', access: 'Settings', roles: ['admin', 'owner'], type: 'Navigasi', keywords: ['system'] },
         { id: 'datacenter', name: 'Pusat Data', icon: '🗄️', url: '/admin/data-center', access: 'Settings', roles: ['admin', 'owner'], type: 'Navigasi', keywords: ['backup'] }
     ];
+
+    // Generate tenant-specific navigation actions
+    const navActions = useMemo(() => {
+        if (!tenantSlug) return baseNavActions;
+        
+        return baseNavActions.map(action => ({
+            ...action,
+            url: `/${tenantSlug}${action.url}`
+        }));
+    }, [tenantSlug]);
 
     // Check Access Helper
     const checkAccess = (action) => {
@@ -109,7 +121,7 @@ const CommandPalette = ({ isOpen, onClose }) => {
                                 icon: '👤',
                                 type: 'Pegawai',
                                 detail: e.role,
-                                url: '/admin/pegawai'
+                                url: tenantSlug ? `/${tenantSlug}/admin/pegawai` : '/admin/pegawai'
                             }));
                         }).catch(() => []));
                     }
@@ -126,7 +138,7 @@ const CommandPalette = ({ isOpen, onClose }) => {
                                 icon: '☕',
                                 type: 'Menu',
                                 detail: `Stok: ${m.available_qty || '∞'}`,
-                                url: '/admin/menu'
+                                url: tenantSlug ? `/${tenantSlug}/admin/menu` : '/admin/menu'
                             }));
                         }).catch(() => []));
                     }
@@ -143,7 +155,7 @@ const CommandPalette = ({ isOpen, onClose }) => {
                                 icon: '❤️',
                                 type: 'Pelanggan',
                                 detail: c.phone || 'No Phone',
-                                url: '/admin/pelanggan'
+                                url: tenantSlug ? `/${tenantSlug}/admin/pelanggan` : '/admin/pelanggan'
                             }));
                         }).catch(() => []));
                     }
@@ -160,7 +172,7 @@ const CommandPalette = ({ isOpen, onClose }) => {
                                 icon: '📦',
                                 type: 'Inventaris',
                                 detail: `${i.stock} ${i.unit}`,
-                                url: '/admin/inventaris'
+                                url: tenantSlug ? `/${tenantSlug}/admin/inventaris` : '/admin/inventaris'
                             }));
                         }).catch(() => []));
                     }

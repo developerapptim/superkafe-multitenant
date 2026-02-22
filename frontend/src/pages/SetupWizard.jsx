@@ -49,7 +49,8 @@ const SetupWizard = () => {
         // Redirect to dashboard if user already has tenant
         if (user.tenantSlug) {
           toast.info('Anda sudah memiliki tenant');
-          navigate('/admin/dashboard');
+          // Use legacy /admin route which will redirect to tenant-specific route
+          navigate('/admin');
           return;
         }
 
@@ -189,9 +190,12 @@ const SetupWizard = () => {
 
         toast.success(response.data.message || 'Setup berhasil! Selamat datang!');
 
-        // Redirect to dashboard
+        // Extract tenant slug from response and redirect to tenant-specific dashboard
+        const tenantSlug = response.data.tenant.slug;
+        
+        // Redirect to tenant-specific dashboard
         setTimeout(() => {
-          navigate('/admin/dashboard');
+          navigate(`/${tenantSlug}/admin/dashboard`);
         }, 1500);
       }
     } catch (error) {

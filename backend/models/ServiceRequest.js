@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const tenantScopingPlugin = require('../plugins/tenantScopingPlugin');
 
 const ServiceRequestSchema = new mongoose.Schema({
     table_number: {
@@ -25,5 +26,8 @@ const ServiceRequestSchema = new mongoose.Schema({
         expires: 86400 // 24 hours
     }
 });
+
+// Apply tenant scoping plugin for automatic tenant isolation
+ServiceRequestSchema.plugin(tenantScopingPlugin);
 
 module.exports = mongoose.model('ServiceRequest', ServiceRequestSchema);

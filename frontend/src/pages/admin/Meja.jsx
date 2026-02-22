@@ -8,11 +8,13 @@ import { QRCodeSVG } from 'qrcode.react';
 import api, { tablesAPI, reservationsAPI } from '../../services/api';
 import toast from 'react-hot-toast';
 import { useRefresh } from '../../context/RefreshContext';
+import { useTenant } from '../../components/TenantRouter';
 
 const fetcher = url => api.get(url).then(res => res.data);
 
 function Meja() {
     const navigate = useNavigate();
+    const { tenantSlug } = useTenant();
     // SWR Data Fetching with auto-refresh every 30s
     const { data: tablesData, error: swrError } = useSWR('/tables', fetcher, { refreshInterval: 30000 });
     const tables = useMemo(() => {
@@ -671,7 +673,8 @@ function Meja() {
                                     <button
                                         onClick={() => {
                                             setShowOrderPreview(false);
-                                            navigate(`/kasir?meja=${previewData?.table?.number}`);
+                                            const kasirPath = tenantSlug ? `/${tenantSlug}/admin/kasir?meja=${previewData?.table?.number}` : `/kasir?meja=${previewData?.table?.number}`;
+                                            navigate(kasirPath);
                                         }}
                                         className="py-3 rounded-xl bg-gradient-to-r from-purple-500 to-blue-500 font-medium hover:from-purple-600 hover:to-blue-600 flex items-center justify-center gap-2"
                                     >

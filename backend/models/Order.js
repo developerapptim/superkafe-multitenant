@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const tenantScopingPlugin = require('../plugins/tenantScopingPlugin');
 
 // Order Model
 const OrderSchema = new mongoose.Schema({
@@ -38,5 +39,8 @@ const OrderSchema = new mongoose.Schema({
 OrderSchema.index({ status: 1, timestamp: -1 }); // Most critical for report filtering
 OrderSchema.index({ paymentMethod: 1 }); // For payment stats
 OrderSchema.index({ customerPhone: 1 }); // For retention analysis
+
+// Apply tenant scoping plugin for automatic tenant isolation
+OrderSchema.plugin(tenantScopingPlugin);
 
 module.exports = mongoose.model('Order', OrderSchema);

@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const tenantScopingPlugin = require('../plugins/tenantScopingPlugin');
 
 // Generic Setting Model for flexible keys
 const SettingSchema = new mongoose.Schema({
@@ -7,5 +8,8 @@ const SettingSchema = new mongoose.Schema({
     description: String,
     updatedAt: { type: Date, default: Date.now }
 });
+
+// Apply tenant scoping plugin for automatic tenant isolation
+SettingSchema.plugin(tenantScopingPlugin);
 
 module.exports = mongoose.models.Setting || mongoose.model('Setting', SettingSchema);

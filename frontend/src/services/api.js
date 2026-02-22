@@ -1,5 +1,24 @@
 import axios from 'axios';
 
+/**
+ * Decode JWT token payload without external dependencies
+ * @param {string} token - JWT token string
+ * @returns {object|null} Decoded payload or null if invalid
+ */
+function decodeJWT(token) {
+    try {
+        const parts = token.split('.');
+        if (parts.length !== 3) return null;
+        
+        const payload = parts[1];
+        const decoded = atob(payload.replace(/-/g, '+').replace(/_/g, '/'));
+        return JSON.parse(decoded);
+    } catch (error) {
+        console.error('Failed to decode JWT:', error);
+        return null;
+    }
+}
+
 // Create axios instance with dynamic baseURL for development & production
 const api = axios.create({
     baseURL: import.meta.env.VITE_API_URL || (import.meta.env.DEV ? `http://${window.location.hostname}:5001/api` : ''),
@@ -23,11 +42,13 @@ api.interceptors.request.use((config) => {
     const token = localStorage.getItem('token');
     if (token) {
         config.headers['Authorization'] = `Bearer ${token}`;
+        
+        // 4. Extract tenant slug from JWT and add to headers
+        const decoded = decodeJWT(token);
+        if (decoded && decoded.tenant) {
+            config.headers['x-tenant-id'] = decoded.tenant;
+        }
     }
-
-    // 4. Add Tenant ID untuk multitenant support
-    const tenantSlug = localStorage.getItem('tenant_slug') || 'warkop-pusat';
-    config.headers['x-tenant-id'] = tenantSlug;
 
     return config;
 }, (error) => {

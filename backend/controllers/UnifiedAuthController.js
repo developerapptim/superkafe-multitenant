@@ -156,14 +156,40 @@ const login = async (req, res) => {
       });
     }
 
+    // If user has completed setup, fetch tenant info and employee data
+    let tokenPayload = {
+      userId: user._id,
+      email: user.email,
+      hasCompletedSetup: user.hasCompletedSetup,
+      tenantSlug: user.tenantSlug
+    };
+
+    if (user.hasCompletedSetup && user.tenantId) {
+      // Fetch tenant info
+      const tenant = await Tenant.findById(user.tenantId);
+      if (tenant) {
+        // Get tenant DB and employee data
+        const tenantDB = await getTenantDB(tenant.dbName);
+        const EmployeeModel = tenantDB.model('Employee', require('../models/Employee').schema);
+        const employee = await EmployeeModel.findOne({ email: user.email }).lean();
+
+        if (employee) {
+          tokenPayload = {
+            id: employee._id.toString(),
+            email: employee.email,
+            role: employee.role,
+            tenant: tenant.slug,
+            tenantId: tenant._id.toString(),
+            tenantDbName: tenant.dbName,
+            userId: user._id.toString()
+          };
+        }
+      }
+    }
+
     // Generate JWT token
     const token = jwt.sign(
-      {
-        userId: user._id,
-        email: user.email,
-        hasCompletedSetup: user.hasCompletedSetup,
-        tenantSlug: user.tenantSlug
-      },
+      tokenPayload,
       process.env.JWT_SECRET || 'your-secret-key',
       { expiresIn: '7d' }
     );
@@ -286,14 +312,40 @@ const googleAuth = async (req, res) => {
       });
     }
 
+    // If user has completed setup, fetch tenant info and employee data
+    let tokenPayload = {
+      userId: user._id,
+      email: user.email,
+      hasCompletedSetup: user.hasCompletedSetup,
+      tenantSlug: user.tenantSlug
+    };
+
+    if (user.hasCompletedSetup && user.tenantId) {
+      // Fetch tenant info
+      const tenant = await Tenant.findById(user.tenantId);
+      if (tenant) {
+        // Get tenant DB and employee data
+        const tenantDB = await getTenantDB(tenant.dbName);
+        const EmployeeModel = tenantDB.model('Employee', require('../models/Employee').schema);
+        const employee = await EmployeeModel.findOne({ email: user.email }).lean();
+
+        if (employee) {
+          tokenPayload = {
+            id: employee._id.toString(),
+            email: employee.email,
+            role: employee.role,
+            tenant: tenant.slug,
+            tenantId: tenant._id.toString(),
+            tenantDbName: tenant.dbName,
+            userId: user._id.toString()
+          };
+        }
+      }
+    }
+
     // Generate JWT token
     const token = jwt.sign(
-      {
-        userId: user._id,
-        email: user.email,
-        hasCompletedSetup: user.hasCompletedSetup,
-        tenantSlug: user.tenantSlug
-      },
+      tokenPayload,
       process.env.JWT_SECRET || 'your-secret-key',
       { expiresIn: '7d' }
     );
@@ -376,14 +428,40 @@ const verifyOTP = async (req, res) => {
       email: user.email
     });
 
+    // If user has completed setup, fetch tenant info and employee data
+    let tokenPayload = {
+      userId: user._id,
+      email: user.email,
+      hasCompletedSetup: user.hasCompletedSetup,
+      tenantSlug: user.tenantSlug
+    };
+
+    if (user.hasCompletedSetup && user.tenantId) {
+      // Fetch tenant info
+      const tenant = await Tenant.findById(user.tenantId);
+      if (tenant) {
+        // Get tenant DB and employee data
+        const tenantDB = await getTenantDB(tenant.dbName);
+        const EmployeeModel = tenantDB.model('Employee', require('../models/Employee').schema);
+        const employee = await EmployeeModel.findOne({ email: user.email }).lean();
+
+        if (employee) {
+          tokenPayload = {
+            id: employee._id.toString(),
+            email: employee.email,
+            role: employee.role,
+            tenant: tenant.slug,
+            tenantId: tenant._id.toString(),
+            tenantDbName: tenant.dbName,
+            userId: user._id.toString()
+          };
+        }
+      }
+    }
+
     // Generate JWT token
     const token = jwt.sign(
-      {
-        userId: user._id,
-        email: user.email,
-        hasCompletedSetup: user.hasCompletedSetup,
-        tenantSlug: user.tenantSlug
-      },
+      tokenPayload,
       process.env.JWT_SECRET || 'your-secret-key',
       { expiresIn: '7d' }
     );

@@ -9,6 +9,7 @@ const OperationalExpense = require('../models/OperationalExpenses');
 // Kept if other parts use it, but generic generic CashTransaction is preferred.
 const getExpenses = async (req, res) => {
     try {
+        // Tenant scoping is automatic via plugin
         const { startDate, endDate, category } = req.query;
         let query = {};
         if (startDate || endDate) {
@@ -26,6 +27,7 @@ const getExpenses = async (req, res) => {
 
 const addExpense = async (req, res) => {
     try {
+        // TenantId will be automatically set by the plugin
         const { category, amount, description, paymentMethod, date } = req.body;
         const newExpense = new Expense({
             id: `exp_${Date.now()}`,
@@ -50,6 +52,7 @@ const addExpense = async (req, res) => {
 
 const getSummary = async (req, res) => {
     try {
+        // Tenant scoping is automatic via plugin
         const startOfMonth = new Date();
         startOfMonth.setDate(1);
         startOfMonth.setHours(0, 0, 0, 0);
@@ -71,6 +74,7 @@ const getSummary = async (req, res) => {
 // === CASH TRANSACTION CRUD (New for /api/cash-transactions) ===
 const getCashTransactions = async (req, res) => {
     try {
+        // Tenant scoping is automatic via plugin
         const transactions = await CashTransaction.find().sort({ createdAt: -1 });
         res.json(transactions);
     } catch (err) {
@@ -80,6 +84,7 @@ const getCashTransactions = async (req, res) => {
 
 const addCashTransaction = async (req, res) => {
     try {
+        // TenantId will be automatically set by the plugin
         const { type, amount, category, description, paymentMethod } = req.body;
 
         const newItem = new CashTransaction({
@@ -97,6 +102,7 @@ const addCashTransaction = async (req, res) => {
 
         // Update Active Shift if Cash
         if (newItem.paymentMethod === 'cash') {
+            // Tenant scoping is automatic via plugin
             const activeShift = await Shift.findOne({ status: 'OPEN' }); // Check 'OPEN' or 'active' (Shift model usually uses 'endTime: null')
             // Let's assume endTime: null is the check based on OrderController
             // But ShiftController usually manages this. 
@@ -131,6 +137,7 @@ const addCashTransaction = async (req, res) => {
 
 const deleteCashTransaction = async (req, res) => {
     try {
+        // Tenant scoping is automatic via plugin - only deletes transactions in current tenant
         const { id } = req.params;
         const item = await CashTransaction.findOne({ id });
 
@@ -158,6 +165,7 @@ const deleteCashTransaction = async (req, res) => {
 // === CASH ANALYTICS ===
 const getCashAnalytics = async (req, res) => {
     try {
+        // Tenant scoping is automatic via plugin
         // Real Aggregation from CashTransactions
         // 1. Daily Data (Last 7 Days)
         const sevenDaysAgo = new Date();
@@ -194,6 +202,7 @@ const getCashAnalytics = async (req, res) => {
 
 const getCashBreakdown = async (req, res) => {
     try {
+        // Tenant scoping is automatic via plugin
         // Need to return: { cashBalance, nonCashBalance, totalKasbon, totalPiutang }
 
         // 1. Shift Balance (Current Cash)
@@ -220,6 +229,7 @@ const getCashBreakdown = async (req, res) => {
 // === DEBTS ===
 const getDebts = async (req, res) => {
     try {
+        // Tenant scoping is automatic via plugin
         const debts = await Debt.find().sort({ createdAt: -1 });
         res.json(debts);
     } catch (err) {
@@ -229,6 +239,7 @@ const getDebts = async (req, res) => {
 
 const addDebt = async (req, res) => {
     try {
+        // TenantId will be automatically set by the plugin
         const { type, amount } = req.body;
         const item = new Debt({
             ...req.body,
@@ -238,6 +249,7 @@ const addDebt = async (req, res) => {
 
         // If Kasbon (Employee Loan), money leaves Cash drawer
         if (type === 'kasbon') {
+            // Tenant scoping is automatic via plugin
             const shift = await Shift.findOne({ endTime: null });
             if (shift) {
                 shift.currentCash = (shift.currentCash || 0) - Number(amount);
@@ -260,6 +272,7 @@ const addDebt = async (req, res) => {
 
 const updateDebt = async (req, res) => {
     try {
+        // Tenant scoping is automatic via plugin - only updates debts in current tenant
         const item = await Debt.findOneAndUpdate({ id: req.params.id }, req.body, { new: true });
         res.json(item);
     } catch (err) {
@@ -269,6 +282,7 @@ const updateDebt = async (req, res) => {
 
 const settleDebt = async (req, res) => {
     try {
+        // Tenant scoping is automatic via plugin
         const item = await Debt.findOne({ id: req.params.id });
         if (!item) return res.status(404).json({ error: 'Not found' });
 
@@ -299,6 +313,7 @@ const settleDebt = async (req, res) => {
 
 const deleteDebt = async (req, res) => {
     try {
+        // Tenant scoping is automatic via plugin - only deletes debts in current tenant
         await Debt.deleteOne({ id: req.params.id });
         res.json({ ok: true });
     } catch (err) {
@@ -454,6 +469,7 @@ const getProfitLoss = async (req, res) => {
 
         // 1. Calculate Gross Sales & COGS (HPP) from Orders
         // Only count PAID or DONE orders
+        // Tenant scoping is automatic via plugin
         const orders = await Order.find({
             ...orderDateFilter,
             $or: [{ status: 'done' }, { paymentStatus: 'paid' }]

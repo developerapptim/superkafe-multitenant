@@ -111,5 +111,76 @@ app.use('/api/service-request', require('./routes/serviceRequestRoutes'));
 app.use('/api/reservations', require('./routes/reservationRoutes'));
 app.use('/api', require('./routes/marketingRoutes')); // Marketing: vouchers, banners, apply-voucher
 
+// ===== GLOBAL ERROR HANDLER =====
+// This must be after all routes to catch errors from route handlers
+app.use((err, req, res, next) => {
+  const requestId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  
+  // Handle tenant scoping errors
+  if (err.code === 'TENANT_MISMATCH') {
+    console.error('[TENANT SCOPING ERROR] Cross-tenant modification attempt', {
+      requestId,
+      severity: 'HIGH',
+      error: {
+        message: err.message,
+        code: err.code
+      },
+      tenant: req.tenant?.slug || 'unknown',
+      userId: req.user?.id || 'unauthenticated',
+      path: req.path,
+      method: req.method,
+      ip: req.ip,
+      userAgent: req.headers['user-agent'],
+      timestamp: new Date().toISOString()
+    });
+    
+    return res.status(err.statusCode || 403).json({
+      success: false,
+      message: 'Unauthorized access to tenant data'
+    });
+  }
+  
+  // Handle validation errors
+  if (err.name === 'ValidationError') {
+    console.warn('[VALIDATION ERROR]', {
+      requestId,
+      error: err.message,
+      tenant: req.tenant?.slug || 'unknown',
+      path: req.path,
+      timestamp: new Date().toISOString()
+    });
+    
+    return res.status(400).json({
+      success: false,
+      message: err.message
+    });
+  }
+  
+  // Handle all other errors
+  console.error('[UNHANDLED ERROR]', {
+    requestId,
+    severity: 'ERROR',
+    error: {
+      message: err.message,
+      name: err.name,
+      code: err.code,
+      stack: err.stack
+    },
+    tenant: req.tenant?.slug || 'unknown',
+    userId: req.user?.id || 'unauthenticated',
+    path: req.path,
+    method: req.method,
+    ip: req.ip,
+    userAgent: req.headers['user-agent'],
+    timestamp: new Date().toISOString()
+  });
+  
+  // Send generic error message to client (don't leak stack trace)
+  res.status(err.statusCode || 500).json({
+    success: false,
+    message: err.statusCode ? err.message : 'Terjadi kesalahan pada server'
+  });
+});
+
 const PORT = process.env.PORT || 5001;
 server.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`)); // Listen on server, not app

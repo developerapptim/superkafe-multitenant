@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const tenantScopingPlugin = require('../plugins/tenantScopingPlugin');
 
 const CashTransactionSchema = new mongoose.Schema({
     id: { type: String, required: true, unique: true },
@@ -13,5 +14,8 @@ const CashTransactionSchema = new mongoose.Schema({
 });
 
 CashTransactionSchema.index({ type: 1, createdAt: -1 });
+
+// Apply tenant scoping plugin for automatic tenant isolation
+CashTransactionSchema.plugin(tenantScopingPlugin);
 
 module.exports = mongoose.models.CashTransaction || mongoose.model('CashTransaction', CashTransactionSchema);

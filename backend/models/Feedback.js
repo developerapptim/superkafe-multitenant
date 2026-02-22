@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const tenantScopingPlugin = require('../plugins/tenantScopingPlugin');
 
 const FeedbackSchema = new mongoose.Schema({
     name: {
@@ -20,5 +21,8 @@ const FeedbackSchema = new mongoose.Schema({
         default: Date.now
     }
 });
+
+// Apply tenant scoping plugin for automatic tenant isolation
+FeedbackSchema.plugin(tenantScopingPlugin);
 
 module.exports = mongoose.model('Feedback', FeedbackSchema);

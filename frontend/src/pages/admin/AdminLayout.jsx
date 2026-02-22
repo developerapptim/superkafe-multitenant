@@ -72,7 +72,7 @@ function AdminLayout() {
         localStorage.removeItem('token');
         localStorage.removeItem('user');
         toast.success('Berhasil keluar');
-        navigate('/login');
+        navigate('/auth/login');
     };
 
     const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);

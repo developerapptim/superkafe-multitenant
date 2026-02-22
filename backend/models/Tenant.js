@@ -55,7 +55,11 @@ const tenantSchema = new mongoose.Schema({
 });
 
 // Index untuk performa query
-tenantSchema.index({ slug: 1 });
+// Case-insensitive unique index for slug to prevent duplicates like "Cafe-Kopi" and "cafe-kopi"
+tenantSchema.index({ slug: 1 }, { 
+  unique: true, 
+  collation: { locale: 'en', strength: 2 } 
+});
 tenantSchema.index({ isActive: 1 });
 tenantSchema.index({ status: 1 });
 tenantSchema.index({ trialExpiresAt: 1 });

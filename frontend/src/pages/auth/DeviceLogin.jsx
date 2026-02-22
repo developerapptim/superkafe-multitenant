@@ -78,9 +78,9 @@ const DeviceLogin = () => {
 
         toast.success(`Selamat datang, ${user.name}!`);
         
-        // Redirect ke admin dashboard
+        // Redirect ke admin dashboard via legacy route (will redirect to tenant-specific)
         setTimeout(() => {
-          navigate('/admin/dashboard');
+          navigate('/admin');
         }, 500);
       }
     } catch (error) {

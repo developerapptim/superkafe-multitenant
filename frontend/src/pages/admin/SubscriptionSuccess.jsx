@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { FiCheckCircle } from 'react-icons/fi';
 import confetti from 'canvas-confetti';
+import { useTenant } from '../../components/TenantRouter';
 
 /**
  * Subscription Success Page
@@ -10,6 +11,7 @@ import confetti from 'canvas-confetti';
  */
 const SubscriptionSuccess = () => {
   const navigate = useNavigate();
+  const { tenantSlug } = useTenant();
 
   useEffect(() => {
     // Trigger confetti animation - lebih meriah!
@@ -47,7 +49,8 @@ const SubscriptionSuccess = () => {
 
     // Redirect ke dashboard setelah 5 detik
     const timer = setTimeout(() => {
-      navigate('/admin/dashboard');
+      const dashboardPath = tenantSlug ? `/${tenantSlug}/admin/dashboard` : '/admin/dashboard';
+      navigate(dashboardPath);
     }, 5000);
 
     return () => {
@@ -93,7 +96,10 @@ const SubscriptionSuccess = () => {
 
         {/* Action Button */}
         <button
-          onClick={() => navigate('/admin/dashboard')}
+          onClick={() => {
+            const dashboardPath = tenantSlug ? `/${tenantSlug}/admin/dashboard` : '/admin/dashboard';
+            navigate(dashboardPath);
+          }}
           className="w-full py-3 bg-gradient-to-r from-purple-500 to-blue-500 text-white font-semibold rounded-xl hover:shadow-lg hover:shadow-purple-500/50 transition-all"
         >
           Kembali ke Dashboard

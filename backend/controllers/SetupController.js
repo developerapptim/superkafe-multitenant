@@ -173,6 +173,7 @@ const setupTenant = async (req, res) => {
         email: adminUser.email,
         role: adminUser.role,
         tenant: newTenant.slug,
+        tenantId: newTenant._id.toString(),
         tenantDbName: dbName,
         userId: user._id
       },

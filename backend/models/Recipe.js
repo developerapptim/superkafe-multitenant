@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const tenantScopingPlugin = require('../plugins/tenantScopingPlugin');
 
 // Recipe Model (for auto-depletion & HPP)
 const RecipeSchema = new mongoose.Schema({
@@ -9,5 +10,8 @@ const RecipeSchema = new mongoose.Schema({
     }],
     last_updated: { type: Date, default: Date.now }
 });
+
+// Apply tenant scoping plugin for automatic tenant isolation
+RecipeSchema.plugin(tenantScopingPlugin);
 
 module.exports = mongoose.model('Recipe', RecipeSchema);

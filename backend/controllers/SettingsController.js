@@ -3,6 +3,7 @@ const Settings = require('../models/Settings');
 
 const getSettings = async (req, res) => {
     try {
+        // Tenant scoping is automatic via plugin
         const settings = await Setting.find();
         // Convert array to object key-value for easier frontend consumption
         const settingsMap = {};
@@ -17,6 +18,7 @@ const getSettings = async (req, res) => {
 
 const getPublicSettings = async (req, res) => {
     try {
+        // Tenant scoping is automatic via plugin
         // Get key-value settings (branding)
         const settings = await Setting.find({ key: { $in: ['businessName', 'tagline', 'logo', 'showLogo'] } });
         const settingsMap = {};
@@ -78,6 +80,7 @@ const updateSettings = async (req, res) => {
 
 const addUnit = async (req, res) => {
     try {
+        // Tenant scoping is automatic via plugin
         const { unit } = req.body;
         if (!unit) return res.status(400).json({ error: 'Unit name is required' });
 
@@ -105,6 +108,7 @@ const addUnit = async (req, res) => {
 
 const removeUnit = async (req, res) => {
     try {
+        // Tenant scoping is automatic via plugin
         const { unitName } = req.params;
 
         let setting = await Setting.findOne({ key: 'customUnits' });

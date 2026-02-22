@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const tenantScopingPlugin = require('../plugins/tenantScopingPlugin');
 
 const OperationalExpenseSchema = new mongoose.Schema({
     id: { type: String, required: true, unique: true },
@@ -32,5 +33,8 @@ const OperationalExpenseSchema = new mongoose.Schema({
 OperationalExpenseSchema.index({ date: -1 });
 OperationalExpenseSchema.index({ category: 1 });
 OperationalExpenseSchema.index({ isDeleted: 1 });
+
+// Apply tenant scoping plugin for automatic tenant isolation
+OperationalExpenseSchema.plugin(tenantScopingPlugin);
 
 module.exports = mongoose.model('OperationalExpense', OperationalExpenseSchema);

@@ -17,8 +17,11 @@ const uploadMenuImage = async (req, res) => {
       });
     }
 
-    // File sudah disimpan oleh multer ke disk
-    const imageUrl = `/uploads/images/menu/${req.file.filename}`;
+    // Get tenant ID from request context
+    const tenantId = req.tenant?.id || 'default';
+    
+    // File is saved by multer to disk with tenant namespace
+    const imageUrl = `/uploads/images/menu/${tenantId}/${req.file.filename}`;
     
     console.log('[IMAGE] Menu image uploaded:', imageUrl);
 
@@ -51,7 +54,10 @@ const uploadProfileImage = async (req, res) => {
       });
     }
 
-    const imageUrl = `/uploads/images/profiles/${req.file.filename}`;
+    // Get tenant ID from request context
+    const tenantId = req.tenant?.id || 'default';
+    
+    const imageUrl = `/uploads/images/profiles/${tenantId}/${req.file.filename}`;
     
     console.log('[IMAGE] Profile image uploaded:', imageUrl);
 
@@ -84,7 +90,10 @@ const uploadGeneralImage = async (req, res) => {
       });
     }
 
-    const imageUrl = `/uploads/images/general/${req.file.filename}`;
+    // Get tenant ID from request context
+    const tenantId = req.tenant?.id || 'default';
+    
+    const imageUrl = `/uploads/images/general/${tenantId}/${req.file.filename}`;
     
     console.log('[IMAGE] General image uploaded:', imageUrl);
 
@@ -123,12 +132,20 @@ const deleteImage = async (req, res) => {
       });
     }
 
+    // Get tenant ID from request context for namespaced categories
+    const tenantId = req.tenant?.id || 'default';
+
     // Build file path
     let filePath;
     if (category === 'payments') {
+      // Payments are not tenant-namespaced (yet)
       filePath = path.join(__dirname, '../public/uploads/payments', filename);
-    } else {
+    } else if (category === 'banners') {
+      // Banners are not tenant-namespaced (yet)
       filePath = path.join(__dirname, '../public/uploads/images', category, filename);
+    } else {
+      // Menu, profiles, and general images are tenant-namespaced
+      filePath = path.join(__dirname, '../public/uploads/images', category, tenantId, filename);
     }
 
     // Check if file exists

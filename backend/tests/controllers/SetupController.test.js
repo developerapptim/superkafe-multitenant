@@ -5,6 +5,7 @@
  */
 
 const { validateSlug } = require('../../utils/slugValidator');
+const jwt = require('jsonwebtoken');
 
 // Mock dependencies
 jest.mock('../../models/User');
@@ -211,6 +212,106 @@ describe('SetupController - Slug Validation Integration', () => {
         available: false,
         message: expect.stringContaining('direservasi sistem')
       });
+    });
+  });
+
+  describe('JWT Token Generation', () => {
+    it('should include tenant, tenantId, and tenantDbName in JWT token after successful setup', async () => {
+      const mockUser = {
+        _id: 'user-123',
+        email: 'test@example.com',
+        password: 'hashed-password',
+        name: 'Test User',
+        hasCompletedSetup: false,
+        tenantId: null,
+        tenantSlug: null,
+        save: jest.fn().mockResolvedValue(true)
+      };
+
+      const mockTenant = {
+        _id: 'tenant-123',
+        name: 'Test Cafe',
+        slug: 'test-cafe',
+        dbName: 'superkafe_test_cafe',
+        isActive: true,
+        status: 'trial',
+        trialExpiresAt: new Date()
+      };
+
+      const mockEmployee = {
+        _id: 'employee-123',
+        id: 'employee-123',
+        email: 'test@example.com',
+        role: 'admin',
+        username: 'test',
+        name: 'Test User'
+      };
+
+      const mockTenantDB = {
+        model: jest.fn().mockImplementation((name, schema) => {
+          if (name === 'Setting') {
+            return {
+              insertMany: jest.fn().mockResolvedValue([])
+            };
+          }
+          if (name === 'Employee') {
+            return {
+              findOne: jest.fn().mockReturnValue({
+                lean: jest.fn().mockResolvedValue(mockEmployee)
+              })
+            };
+          }
+          return {};
+        })
+      };
+
+      // Mock dependencies
+      User.findById = jest.fn().mockResolvedValue(mockUser);
+      Tenant.findOne = jest.fn().mockResolvedValue(null);
+      Tenant.create = jest.fn().mockResolvedValue(mockTenant);
+      
+      const { getTenantDB } = require('../../config/db');
+      getTenantDB.mockResolvedValue(mockTenantDB);
+
+      // Mock seedAdminUser
+      jest.mock('../../utils/seedAdminUser', () => ({
+        seedAdminUser: jest.fn().mockResolvedValue(true)
+      }));
+
+      // Mock JWT sign
+      jwt.sign = jest.fn().mockReturnValue('mock-jwt-token');
+
+      req.body = {
+        cafeName: 'Test Cafe',
+        slug: 'test-cafe',
+        adminName: 'Test Admin'
+      };
+
+      await setupTenant(req, res);
+
+      // Verify JWT was called with correct payload including tenant info
+      expect(jwt.sign).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: mockEmployee.id,
+          email: mockEmployee.email,
+          role: mockEmployee.role,
+          tenant: mockTenant.slug,
+          tenantId: mockTenant._id.toString(),
+          tenantDbName: mockTenant.dbName,
+          userId: mockUser._id
+        }),
+        expect.any(String),
+        expect.any(Object)
+      );
+
+      // Verify response includes token
+      expect(res.status).toHaveBeenCalledWith(201);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: true,
+          token: 'mock-jwt-token'
+        })
+      );
     });
   });
 });

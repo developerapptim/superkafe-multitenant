@@ -95,6 +95,7 @@ const getReportData = async (req, res) => {
         const prevEndTs = prevEndDate.getTime();
 
         // --- PIPELINES ---
+        // Tenant scoping is automatic via plugin - all queries below automatically filter by tenantId
 
         // 1. Main Stats & Payment Analysis (Single Pipeline)
         const mainStatsPromise = Order.aggregate([

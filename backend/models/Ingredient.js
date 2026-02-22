@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const tenantScopingPlugin = require('../plugins/tenantScopingPlugin');
 
 const IngredientSchema = new mongoose.Schema({
     id: { type: String, required: true, unique: true },
@@ -34,5 +35,8 @@ const IngredientSchema = new mongoose.Schema({
 });
 
 IngredientSchema.index({ nama: 1, stok: 1 });
+
+// Apply tenant scoping plugin for automatic tenant isolation
+IngredientSchema.plugin(tenantScopingPlugin);
 
 module.exports = mongoose.model('Ingredient', IngredientSchema);

@@ -7,6 +7,7 @@ const logActivity = require('../utils/activityLogger'); // NEW: Activity Logger
 
 const getInventory = async (req, res) => {
     try {
+        // Tenant scoping is automatic via plugin - all queries automatically filter by tenantId
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 20;
         const skip = (page - 1) * limit;
@@ -62,6 +63,7 @@ const getInventory = async (req, res) => {
 
 const getInventoryStats = async (req, res) => {
     try {
+        // Tenant scoping is automatic via plugin
         const stats = await Ingredient.aggregate([
             {
                 $group: {
@@ -96,6 +98,7 @@ const getInventoryStats = async (req, res) => {
 
 const getInventoryById = async (req, res) => {
     try {
+        // Tenant scoping is automatic via plugin
         const item = await Ingredient.findOne({ id: req.params.id });
         if (!item) return res.status(404).json({ error: 'Not found' });
         res.json(item);
@@ -106,6 +109,7 @@ const getInventoryById = async (req, res) => {
 
 const addInventory = async (req, res) => {
     try {
+        // TenantId will be automatically set by the plugin
         const item = new Ingredient(req.body);
         await item.save();
         await logActivity({ req, action: 'ADD_ITEM', module: 'INVENTORY', description: `Added item: ${item.nama}`, metadata: { itemId: item.id } });
@@ -117,6 +121,7 @@ const addInventory = async (req, res) => {
 
 const updateInventory = async (req, res) => {
     try {
+        // Tenant scoping is automatic via plugin - only updates items in current tenant
         const { id } = req.params;
         const updates = { ...req.body };
 
@@ -176,6 +181,7 @@ const updateInventory = async (req, res) => {
 
 const deleteInventory = async (req, res) => {
     try {
+        // Tenant scoping is automatic via plugin - only deletes items in current tenant
         const { id } = req.params;
 
         // 1. Find ALL recipes using this ingredient
@@ -225,6 +231,7 @@ const deleteInventory = async (req, res) => {
 
 const restockIngredient = async (req, res) => {
     try {
+        // Tenant scoping is automatic via plugin
         // 1. Inputs
         const { id, amount, totalPrice, conversionRate } = req.body;
         // amount: Qty Beli (e.g., 2), conversionRate: (e.g., 1000g per pack), totalPrice: (e.g., 50000)
@@ -311,6 +318,7 @@ const restockIngredient = async (req, res) => {
 
 const updateStock = async (req, res) => {
     try {
+        // Tenant scoping is automatic via plugin
         const { id } = req.params;
         const { qty, note } = req.body; // qty can be positive (add) or negative (adjust)
 
@@ -361,6 +369,7 @@ const updateStock = async (req, res) => {
 
 const getStockHistory = async (req, res) => {
     try {
+        // Tenant scoping is automatic via plugin
         const items = await StockHistory.find().sort({ timestamp: -1 });
         res.json(items);
     } catch (err) {
@@ -371,6 +380,7 @@ const getStockHistory = async (req, res) => {
 
 const getHistoryByIngredientId = async (req, res) => {
     try {
+        // Tenant scoping is automatic via plugin
         const { id } = req.params;
         const history = await StockHistory.find({ ing_id: id }).sort({ timestamp: -1 });
         res.json(history);
@@ -382,6 +392,7 @@ const getHistoryByIngredientId = async (req, res) => {
 
 const addStockHistory = async (req, res) => {
     try {
+        // TenantId will be automatically set by the plugin
         const item = new StockHistory(req.body);
         await item.save();
         res.status(201).json(item);
@@ -394,6 +405,7 @@ const addStockHistory = async (req, res) => {
 // New: Top Usage for Inventory Dashboard
 const getTopUsage = async (req, res) => {
     try {
+        // Tenant scoping is automatic via plugin
         // Aggregate 'out' types from StockHistory
         const usage = await StockHistory.aggregate([
             { $match: { type: 'out' } },
@@ -419,6 +431,7 @@ const getTopUsage = async (req, res) => {
 // GRAMASI CRUD
 const getGramasi = async (req, res) => {
     try {
+        // Tenant scoping is automatic via plugin
         const items = await Gramasi.find();
         res.json(items);
     } catch (err) {
@@ -428,6 +441,7 @@ const getGramasi = async (req, res) => {
 
 const addGramasi = async (req, res) => {
     try {
+        // TenantId will be automatically set by the plugin
         const item = new Gramasi(req.body);
         await item.save();
         res.status(201).json(item);
@@ -438,6 +452,7 @@ const addGramasi = async (req, res) => {
 
 const addGramasiBulk = async (req, res) => {
     try {
+        // TenantId will be automatically set by the plugin for each item
         const items = req.body;
         const result = await Gramasi.insertMany(items);
         res.status(201).json(result);
@@ -448,6 +463,7 @@ const addGramasiBulk = async (req, res) => {
 
 const deleteGramasi = async (req, res) => {
     try {
+        // Tenant scoping is automatic via plugin - only deletes items in current tenant
         await Gramasi.deleteOne({ id: req.params.id });
         res.json({ ok: true });
     } catch (err) {

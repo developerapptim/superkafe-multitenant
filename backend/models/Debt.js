@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const tenantScopingPlugin = require('../plugins/tenantScopingPlugin');
 
 const DebtSchema = new mongoose.Schema({
     id: { type: String, required: true, unique: true },
@@ -13,5 +14,8 @@ const DebtSchema = new mongoose.Schema({
 });
 
 DebtSchema.index({ status: 1, type: 1 });
+
+// Apply tenant scoping plugin for automatic tenant isolation
+DebtSchema.plugin(tenantScopingPlugin);
 
 module.exports = mongoose.models.Debt || mongoose.model('Debt', DebtSchema);

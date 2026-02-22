@@ -137,9 +137,20 @@ exports.uploadBanner = multer({
     }
 });
 
-// 6. Menu Image Storage (NEW - LOCAL DISK)
+// 6. Menu Image Storage (NEW - LOCAL DISK - TENANT NAMESPACED)
 const menuImageStorage = multer.diskStorage({
-    destination: (req, file, cb) => cb(null, directories.images.menu),
+    destination: (req, file, cb) => {
+        // Use tenant ID from request context for namespacing
+        const tenantId = req.tenant?.id || 'default';
+        const tenantDir = path.join(directories.images.menu, tenantId);
+        
+        // Create tenant-specific directory if it doesn't exist
+        if (!fs.existsSync(tenantDir)) {
+            fs.mkdirSync(tenantDir, { recursive: true });
+        }
+        
+        cb(null, tenantDir);
+    },
     filename: (req, file, cb) => {
         const uniqueName = generateUniqueFilename(file.originalname, 'menu');
         cb(null, uniqueName);
@@ -159,9 +170,20 @@ exports.uploadMenuImage = multer({
     }
 });
 
-// 7. Profile Image Storage (NEW - LOCAL DISK)
+// 7. Profile Image Storage (NEW - LOCAL DISK - TENANT NAMESPACED)
 const profileImageStorage = multer.diskStorage({
-    destination: (req, file, cb) => cb(null, directories.images.profiles),
+    destination: (req, file, cb) => {
+        // Use tenant ID from request context for namespacing
+        const tenantId = req.tenant?.id || 'default';
+        const tenantDir = path.join(directories.images.profiles, tenantId);
+        
+        // Create tenant-specific directory if it doesn't exist
+        if (!fs.existsSync(tenantDir)) {
+            fs.mkdirSync(tenantDir, { recursive: true });
+        }
+        
+        cb(null, tenantDir);
+    },
     filename: (req, file, cb) => {
         const uniqueName = generateUniqueFilename(file.originalname, 'profile');
         cb(null, uniqueName);
@@ -181,9 +203,20 @@ exports.uploadProfileImage = multer({
     }
 });
 
-// 8. General Image Storage (NEW - LOCAL DISK)
+// 8. General Image Storage (NEW - LOCAL DISK - TENANT NAMESPACED)
 const generalImageStorage = multer.diskStorage({
-    destination: (req, file, cb) => cb(null, directories.images.general),
+    destination: (req, file, cb) => {
+        // Use tenant ID from request context for namespacing
+        const tenantId = req.tenant?.id || 'default';
+        const tenantDir = path.join(directories.images.general, tenantId);
+        
+        // Create tenant-specific directory if it doesn't exist
+        if (!fs.existsSync(tenantDir)) {
+            fs.mkdirSync(tenantDir, { recursive: true });
+        }
+        
+        cb(null, tenantDir);
+    },
     filename: (req, file, cb) => {
         const uniqueName = generateUniqueFilename(file.originalname, 'image');
         cb(null, uniqueName);
@@ -201,4 +234,3 @@ exports.uploadGeneralImage = multer({
         }
     }
 });
-

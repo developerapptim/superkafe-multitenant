@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const tenantScopingPlugin = require('../plugins/tenantScopingPlugin');
 
 // Settings Model (singleton)
 const SettingsSchema = new mongoose.Schema({
@@ -41,5 +42,8 @@ const SettingsSchema = new mongoose.Schema({
 
     updatedAt: { type: Date, default: Date.now }
 });
+
+// Apply tenant scoping plugin for automatic tenant isolation
+SettingsSchema.plugin(tenantScopingPlugin);
 
 module.exports = mongoose.model('Settings', SettingsSchema);

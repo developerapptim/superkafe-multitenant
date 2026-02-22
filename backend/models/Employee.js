@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const tenantScopingPlugin = require('../plugins/tenantScopingPlugin');
 
 // Employee Model
 const EmployeeSchema = new mongoose.Schema({
@@ -28,5 +29,8 @@ const EmployeeSchema = new mongoose.Schema({
     authProvider: { type: String, enum: ['local', 'google'], default: 'local' },
     createdAt: { type: Date, default: Date.now }
 });
+
+// Apply tenant scoping plugin for automatic tenant isolation
+EmployeeSchema.plugin(tenantScopingPlugin);
 
 module.exports = mongoose.model('Employee', EmployeeSchema);

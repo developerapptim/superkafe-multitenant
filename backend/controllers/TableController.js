@@ -3,6 +3,7 @@ const Order = require('../models/Order');
 
 const getTables = async (req, res) => {
     try {
+        // Tenant scoping is automatic via plugin
         const tables = await Table.find().sort({ number: 1 });
         res.json(tables);
     } catch (err) {
@@ -12,6 +13,7 @@ const getTables = async (req, res) => {
 
 const addTable = async (req, res) => {
     try {
+        // Tenant scoping is automatic via plugin
         const { number, capacity, location } = req.body;
 
         // Check duplicate
@@ -23,6 +25,7 @@ const addTable = async (req, res) => {
             number,
             capacity: capacity || 4,
             location: location || 'indoor'
+            // TenantId will be automatically set by the plugin
         });
 
         await newTable.save();
@@ -34,6 +37,7 @@ const addTable = async (req, res) => {
 
 const updateStatus = async (req, res) => {
     try {
+        // Tenant scoping is automatic via plugin - only updates tables in current tenant
         const { id } = req.params;
         const { status, currentOrderId } = req.body; // status: 'available', 'occupied', 'reserved', 'dirty'
 
@@ -67,6 +71,7 @@ const updateStatus = async (req, res) => {
 
 const moveTable = async (req, res) => {
     try {
+        // Tenant scoping is automatic via plugin
         const { fromId, toId } = req.params;
 
         const fromTable = await Table.findOne({ id: fromId });
@@ -82,6 +87,7 @@ const moveTable = async (req, res) => {
 
         // Find active orders at the source table
         const today = new Date().toISOString().split('T')[0];
+        // Tenant scoping is automatic via plugin
         const ordersToMove = await Order.find({
             tableNumber: fromTable.number,
             status: { $nin: ['done', 'cancel'] },
@@ -123,6 +129,7 @@ const moveTable = async (req, res) => {
 
 const cleanTable = async (req, res) => {
     try {
+        // Tenant scoping is automatic via plugin
         let table = await Table.findOne({ id: req.params.id });
         if (!table) {
             table = await Table.findOne({ number: req.params.id });
@@ -145,6 +152,7 @@ const cleanTable = async (req, res) => {
 
 const deleteTable = async (req, res) => {
     try {
+        // Tenant scoping is automatic via plugin - only deletes tables in current tenant
         const { id } = req.params;
 
         // Try deleting by custom 'id' first

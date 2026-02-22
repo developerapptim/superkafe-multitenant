@@ -15,6 +15,7 @@ const Table = require('../models/Table');
 async function deductStockForOrder(order) {
     console.log(`📉 [DEDUCT] Starting stock deduction for Order: ${order.id}`);
 
+    // Tenant scoping is automatic via plugin - all queries automatically filter by tenantId
     const recipes = await Recipe.find();
     const ingredients = await Ingredient.find();
     const allMenuItems = await MenuItem.find();
@@ -105,6 +106,7 @@ async function deductStockForOrder(order) {
 async function revertStockForOrder(order) {
     console.log(`📈 [REVERT] Starting stock reversion for Order: ${order.id}`);
 
+    // Tenant scoping is automatic via plugin
     const recipes = await Recipe.find();
     const ingredients = await Ingredient.find();
 
@@ -162,6 +164,7 @@ async function revertStockForOrder(order) {
 
 const checkPhone = async (req, res) => {
     try {
+        // Tenant scoping is automatic via plugin
         const { phone } = req.body;
         const orders = await Order.find({
             customerPhone: phone,
@@ -226,6 +229,7 @@ const createOrder = async (req, res) => {
 
         // 1. Calculate HPP ONLY (Stock deduction moved to 'process' status)
         console.log("1️⃣ Starting HPP Calculation (No Stock Deduction at Creation)");
+        // Tenant scoping is automatic via plugin
         const recipes = await Recipe.find();
         const ingredients = await Ingredient.find();
 
@@ -279,6 +283,7 @@ const createOrder = async (req, res) => {
         // Handle voucher: increment used_count if voucher was applied
         if (orderData.voucherCode) {
             try {
+                // Tenant scoping is automatic via plugin
                 await Voucher.findOneAndUpdate(
                     { code: orderData.voucherCode.toUpperCase() },
                     { $inc: { used_count: 1 } }
@@ -295,6 +300,7 @@ const createOrder = async (req, res) => {
             items: enrichedItems,
             timestamp: Date.now(),
             stockDeducted: false, // Stock will be deducted when status changes to 'process'
+            // TenantId will be automatically set by the plugin
             voucherCode: orderData.voucherCode || null,
             voucherDiscount: Number(orderData.voucherDiscount) || 0,
             subtotal: Number(orderData.subtotal) || orderData.total,
@@ -304,6 +310,7 @@ const createOrder = async (req, res) => {
         console.log("✅ Order Saved Successfully");
 
         if (newOrder.status === 'done' || newOrder.paymentStatus === 'paid') {
+            // Tenant scoping is automatic via plugin
             const activeShift = await Shift.findOne({ endTime: null });
             if (activeShift) {
                 if (newOrder.paymentMethod === 'cash') {
@@ -339,6 +346,7 @@ const createOrder = async (req, res) => {
             try {
                 // Find table by number (or id if you store id in tableNumber, but schema says number)
                 // In your frontend, you send table.number as value.
+                // Tenant scoping is automatic via plugin
                 const table = await Table.findOne({ number: newOrder.tableNumber.toString() }); // Force string comparison
                 if (table) {
                     console.log(`   - Table Found: ${table.number} (ID: ${table.id})`);
@@ -365,6 +373,7 @@ const createOrder = async (req, res) => {
         console.log("4️⃣ Extending Customer Logic");
         if (newOrder.customerPhone || (newOrder.customerName && newOrder.customerName !== 'Pelanggan Baru')) {
             console.log("🔍 Processing Customer Logic");
+            // Tenant scoping is automatic via plugin
             let customer = null;
             const query = [];
 
@@ -483,6 +492,7 @@ const createOrder = async (req, res) => {
 
 const getOrders = async (req, res) => {
     try {
+        // Tenant scoping is automatic via plugin
         const { startDate, endDate, status, limit, page } = req.query;
         let query = {};
 
@@ -541,6 +551,7 @@ const getOrders = async (req, res) => {
 
 const deleteOrder = async (req, res) => {
     try {
+        // Tenant scoping is automatic via plugin - only deletes orders in current tenant
         const orderId = req.params.id;
         const order = await Order.findOne({ id: orderId });
 
@@ -578,6 +589,7 @@ const deleteOrder = async (req, res) => {
 
 const getOrderById = async (req, res) => {
     try {
+        // Tenant scoping is automatic via plugin
         const order = await Order.findOne({ id: req.params.id });
         if (!order) return res.status(404).json({ error: 'Order not found' });
         res.json(order);
@@ -589,6 +601,7 @@ const getOrderById = async (req, res) => {
 
 const updateOrderStatus = async (req, res) => {
     try {
+        // Tenant scoping is automatic via plugin - only updates orders in current tenant
         const { status, paymentStatus } = req.body;
         const order = await Order.findOne({ id: req.params.id });
 
@@ -648,6 +661,7 @@ const updateOrderStatus = async (req, res) => {
 };
 const payOrder = async (req, res) => {
     try {
+        // Tenant scoping is automatic via plugin
         const { paymentMethod, note } = req.body;
         const order = await Order.findOne({ id: req.params.id });
 
@@ -661,6 +675,7 @@ const payOrder = async (req, res) => {
         if (note) order.note = note;
 
         // 2. Update Shift (Record Sales)
+        // Tenant scoping is automatic via plugin
         const activeShift = await Shift.findOne({ endTime: null });
         if (activeShift) {
             // Link Order to Shift ID (for reporting)
@@ -746,6 +761,7 @@ const payOrder = async (req, res) => {
 // Get orders for today (public/customer usage to sync status)
 const getTodayOrders = async (req, res) => {
     try {
+        // Tenant scoping is automatic via plugin
         const startOfDay = new Date();
         startOfDay.setHours(0, 0, 0, 0);
 
@@ -767,6 +783,7 @@ const getTodayOrders = async (req, res) => {
 // Get Pending Orders Count (Today Only) - Sync with POS Frontend Logic
 const getPendingCount = async (req, res) => {
     try {
+        // Tenant scoping is automatic via plugin
         // Exact same logic as Frontend Kasir.jsx
         const today = new Date().toISOString().split('T')[0];
 
@@ -799,6 +816,7 @@ const getPendingCount = async (req, res) => {
 // Merge Orders Feature
 const mergeOrders = async (req, res) => {
     try {
+        // Tenant scoping is automatic via plugin - only merges orders in current tenant
         const { orderIds, mergedCustomerName, mergedTableNumber, mergedBy } = req.body;
 
         // Validation
