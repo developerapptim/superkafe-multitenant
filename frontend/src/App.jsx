@@ -12,6 +12,7 @@ import './App.css';
 // Auth & Protected Routes
 import ProtectedRoute from './components/ProtectedRoute';
 import LegacyAdminRedirect from './components/LegacyAdminRedirect';
+import TenantRouter from './components/TenantRouter';
 
 // Error Pages
 const InvalidSlug = lazy(() => import('./pages/errors/InvalidSlug'));
@@ -133,7 +134,9 @@ function App() {
               {/* Priority 5: Tenant-Specific Admin Routes - Must be before dynamic storefront */}
               <Route path="/:tenantSlug/admin" element={
                 <ProtectedRoute allowedRoles={['admin', 'kasir', 'staf']} requireTenant={true}>
-                  <AdminLayout />
+                  <TenantRouter>
+                    <AdminLayout />
+                  </TenantRouter>
                 </ProtectedRoute>
               }>
                 <Route index element={<Navigate to="dashboard" replace />} />
