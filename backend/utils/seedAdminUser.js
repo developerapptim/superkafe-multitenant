@@ -3,7 +3,7 @@ const bcrypt = require('bcryptjs');
 /**
  * Utility untuk membuat admin user di tenant database
  */
-const seedAdminUser = async (tenantDB, cafeName, adminData) => {
+const seedAdminUser = async (tenantDB, cafeName, adminData, tenantId) => {
   try {
     console.log('[SEED ADMIN] Membuat admin user...');
 
@@ -39,7 +39,8 @@ const seedAdminUser = async (tenantDB, cafeName, adminData) => {
       isVerified: adminData.isVerified || false,
       authProvider: adminData.authProvider || 'local',
       googleId: adminData.googleId || null,
-      image: adminData.image || null
+      image: adminData.image || null,
+      tenantId: tenantId // Tambahkan tenantId
     };
 
     const admin = await EmployeeModel.create(newAdmin);

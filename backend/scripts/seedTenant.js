@@ -129,7 +129,8 @@ const seedTenant = async () => {
           daily_rate: 0,
           status: 'active',
           is_logged_in: false,
-          isActive: true
+          isActive: true,
+          tenantId: tenant._id // Tambahkan tenantId
         };
         
         // Buat user admin

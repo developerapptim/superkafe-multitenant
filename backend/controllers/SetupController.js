@@ -101,18 +101,18 @@ const setupTenant = async (req, res) => {
       const SettingModel = tenantDB.model('Setting', require('../models/Setting').schema);
       
       const defaultSettings = [
-        { key: 'store_name', value: cafeName, description: 'Nama toko/warkop' },
-        { key: 'store_address', value: '', description: 'Alamat toko' },
-        { key: 'store_phone', value: '', description: 'Nomor telepon toko' },
-        { key: 'currency', value: 'IDR', description: 'Mata uang yang digunakan' },
-        { key: 'timezone', value: 'Asia/Jakarta', description: 'Zona waktu' },
-        { key: 'tax_rate', value: 0, description: 'Persentase pajak' },
-        { key: 'service_charge', value: 0, description: 'Biaya layanan' },
-        { key: 'loyalty_settings', value: { enabled: false, pointsPerRupiah: 0.01, minPointsForReward: 100 }, description: 'Konfigurasi program loyalitas' },
-        { key: 'notification_sound', value: '/sounds/notif.mp3', description: 'File suara notifikasi' },
-        { key: 'units', value: ['pcs', 'kg', 'liter', 'porsi'], description: 'Unit satuan yang tersedia' },
-        { key: 'initialized', value: true, description: 'Status inisialisasi database' },
-        { key: 'initialized_at', value: new Date().toISOString(), description: 'Waktu inisialisasi database' }
+        { key: 'store_name', value: cafeName, description: 'Nama toko/warkop', tenantId: newTenant._id },
+        { key: 'store_address', value: '', description: 'Alamat toko', tenantId: newTenant._id },
+        { key: 'store_phone', value: '', description: 'Nomor telepon toko', tenantId: newTenant._id },
+        { key: 'currency', value: 'IDR', description: 'Mata uang yang digunakan', tenantId: newTenant._id },
+        { key: 'timezone', value: 'Asia/Jakarta', description: 'Zona waktu', tenantId: newTenant._id },
+        { key: 'tax_rate', value: 0, description: 'Persentase pajak', tenantId: newTenant._id },
+        { key: 'service_charge', value: 0, description: 'Biaya layanan', tenantId: newTenant._id },
+        { key: 'loyalty_settings', value: { enabled: false, pointsPerRupiah: 0.01, minPointsForReward: 100 }, description: 'Konfigurasi program loyalitas', tenantId: newTenant._id },
+        { key: 'notification_sound', value: '/sounds/notif.mp3', description: 'File suara notifikasi', tenantId: newTenant._id },
+        { key: 'units', value: ['pcs', 'kg', 'liter', 'porsi'], description: 'Unit satuan yang tersedia', tenantId: newTenant._id },
+        { key: 'initialized', value: true, description: 'Status inisialisasi database', tenantId: newTenant._id },
+        { key: 'initialized_at', value: new Date().toISOString(), description: 'Waktu inisialisasi database', tenantId: newTenant._id }
       ];
 
       await SettingModel.insertMany(defaultSettings);
@@ -132,7 +132,7 @@ const setupTenant = async (req, res) => {
         image: user.image
       };
 
-      await seedAdminUser(tenantDB, cafeName, adminData);
+      await seedAdminUser(tenantDB, cafeName, adminData, newTenant._id);
 
       console.log('[SETUP] Admin user berhasil dibuat di tenant database');
 
