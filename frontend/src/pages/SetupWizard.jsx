@@ -24,12 +24,6 @@ const SetupWizard = () => {
   // Check authentication and existing tenant
   useEffect(() => {
     const checkAuth = async () => {
-      // CRITICAL: Clear tenant_slug from localStorage to prevent API calls
-      // from using a potentially conflicting slug (e.g., "setup-cafe")
-      // This ensures the setup wizard operates in a clean state
-      localStorage.removeItem('tenant_slug');
-      console.log('[SETUP WIZARD] Cleared tenant_slug from localStorage');
-
       const token = localStorage.getItem('token');
       const userStr = localStorage.getItem('user');
 
@@ -44,20 +38,34 @@ const SetupWizard = () => {
         const user = JSON.parse(userStr);
         
         // Set default admin name from user (only once)
-        setInitialAdminName(user.name || '');
+        if (user && user.name) {
+          setInitialAdminName(user.name);
+        }
 
         // Redirect to dashboard if user already has tenant
-        if (user.tenantSlug) {
+        if (user && user.tenantSlug) {
           toast.info('Anda sudah memiliki tenant');
-          // Use legacy /admin route which will redirect to tenant-specific route
-          navigate('/admin');
+          // Store tenant slug before redirect
+          localStorage.setItem('tenant_slug', user.tenantSlug);
+          // Redirect to tenant-specific dashboard
+          navigate(`/${user.tenantSlug}/admin/dashboard`);
           return;
+        }
+
+        // IMPORTANT: Only clear tenant_slug if user doesn't have a tenant yet
+        // This prevents issues when user is setting up their first tenant
+        const existingSlug = localStorage.getItem('tenant_slug');
+        if (existingSlug && !user.tenantSlug) {
+          localStorage.removeItem('tenant_slug');
+          console.log('[SETUP WIZARD] Cleared stale tenant_slug from localStorage');
         }
 
         setCheckingAuth(false);
       } catch (error) {
         console.error('Auth check error:', error);
         toast.error('Terjadi kesalahan, silakan login kembali');
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
         navigate('/auth/login?returnUrl=/setup-cafe');
       }
     };
@@ -73,7 +81,7 @@ const SetupWizard = () => {
         adminName: initialAdminName
       }));
     }
-  }, [initialAdminName]);
+  }, [initialAdminName, formData.adminName]);
 
   // Debounced slug availability check
   useEffect(() => {
