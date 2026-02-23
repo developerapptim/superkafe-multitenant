@@ -234,10 +234,10 @@ const SimpleLogin = () => {
           >
             <FiArrowLeft />
             <span>Kembali</span>
-        </Link>
+          </Link>
 
-        {/* Login Card */}
-        <div className="bg-white border border-gray-200 rounded-3xl p-8 shadow-xl">
+          {/* Login Card */}
+          <div className="bg-white border border-gray-200 rounded-3xl p-8 shadow-xl">
           {/* Logo */}
           <div className="flex items-center justify-center mb-8">
             <img 
@@ -356,6 +356,7 @@ const SimpleLogin = () => {
               </Link>
             </p>
           </div>
+        </div>
         </motion.div>
       )}
     </div>
