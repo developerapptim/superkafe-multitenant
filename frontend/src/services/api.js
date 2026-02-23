@@ -49,32 +49,20 @@ api.interceptors.request.use((config) => {
             // Add tenant slug if available (primary identifier)
             if (decoded.tenantSlug) {
                 config.headers['x-tenant-slug'] = decoded.tenantSlug;
-                console.log('[API] Added x-tenant-slug:', decoded.tenantSlug);
             }
             // Add tenant ID as fallback
-            if (decoded.tenantId) {
+            else if (decoded.tenantId) {
                 config.headers['x-tenant-id'] = decoded.tenantId;
-                console.log('[API] Added x-tenant-id:', decoded.tenantId);
             }
             // Legacy support: check for 'tenant' field
-            if (decoded.tenant && !decoded.tenantSlug) {
+            else if (decoded.tenant) {
                 config.headers['x-tenant-slug'] = decoded.tenant;
-                console.log('[API] Added x-tenant-slug (legacy):', decoded.tenant);
             }
-
-            // Log if no tenant info found in token
-            if (!decoded.tenantSlug && !decoded.tenantId && !decoded.tenant) {
-                console.warn('[API] No tenant info found in JWT token:', {
-                    url: config.url,
-                    method: config.method,
-                    tokenPayload: decoded
-                });
+            // Log warning only if no tenant info found (reduced noise)
+            else {
+                console.warn('[API] No tenant info in JWT for:', config.url);
             }
-        } else {
-            console.error('[API] Failed to decode JWT token');
         }
-    } else {
-        console.log('[API] No token found in localStorage');
     }
 
     return config;

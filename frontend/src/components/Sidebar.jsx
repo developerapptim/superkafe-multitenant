@@ -54,7 +54,13 @@ function Sidebar({ onLogout, isCollapsed, toggleSidebar }) {
   
   // Generate tenant-specific menu items
   const menuItems = useMemo(() => {
-    if (!tenantSlug) return baseMenuItems;
+    // Fallback: use localStorage tenant_slug if useTenant() returns undefined
+    const effectiveTenantSlug = tenantSlug || localStorage.getItem('tenant_slug');
+    
+    if (!effectiveTenantSlug) {
+      console.warn('[Sidebar] No tenant slug available, using base paths');
+      return baseMenuItems;
+    }
     
     return baseMenuItems.map(item => {
       if (item.children) {
@@ -62,13 +68,13 @@ function Sidebar({ onLogout, isCollapsed, toggleSidebar }) {
           ...item,
           children: item.children.map(child => ({
             ...child,
-            path: `/${tenantSlug}${child.path}`
+            path: `/${effectiveTenantSlug}${child.path}`
           }))
         };
       }
       return {
         ...item,
-        path: `/${tenantSlug}${item.path}`
+        path: `/${effectiveTenantSlug}${item.path}`
       };
     });
   }, [tenantSlug]);
@@ -88,48 +94,58 @@ function Sidebar({ onLogout, isCollapsed, toggleSidebar }) {
     }
   });
 
-  // Safe User Parsing
+  // Safe User Parsing with loading state
+  const [userLoaded, setUserLoaded] = useState(false);
   let user = {};
   try {
-    user = JSON.parse(localStorage.getItem('user') || '{}');
+    const userStr = localStorage.getItem('user');
+    if (userStr) {
+      user = JSON.parse(userStr);
+      if (!userLoaded) setUserLoaded(true);
+    }
   } catch (err) {
     console.error('Error parsing user data:', err);
   }
   const userRole = user?.role || 'staf';
   const userRoleAccess = user?.role_access || [];
-  // console.log('Sidebar User:', user, 'Role:', userRole, 'Access:', userRoleAccess);
+  
   const location = useLocation();
   const [expanded, setExpanded] = useState({ settings: true });
 
   // Filter items based on role_access array
   // Admin (role_access: ['*']) has full access
   // Staf has limited access based on their role_access array
-  const filteredItems = menuItems.filter(item => {
-    // 1. Safe Navigation: Check user existence
-    if (!user) return false;
-
-    // 2. Admin/Owner Bypass
-    if (userRole === 'admin' || userRole === 'owner' || userRoleAccess?.includes('*')) {
-      return true;
+  const filteredItems = useMemo(() => {
+    // Don't filter if user data not loaded yet
+    if (!userLoaded || !user) {
+      console.log('[Sidebar] User data not loaded yet, showing all items');
+      return menuItems;
     }
 
-    // 3. Granular Access Check (using Optional Chaining)
-    if (item.access && userRoleAccess?.includes(item.access)) {
-      return true;
-    }
+    return menuItems.filter(item => {
+      // 1. Admin/Owner Bypass
+      if (userRole === 'admin' || userRole === 'owner' || userRoleAccess?.includes('*')) {
+        return true;
+      }
 
-    // 4. Role Restriction for specific items
-    if (item.roles && !item.roles.includes(userRole)) {
+      // 2. Granular Access Check
+      if (item.access && userRoleAccess?.includes(item.access)) {
+        return true;
+      }
+
+      // 3. Role Restriction for specific items
+      if (item.roles && !item.roles.includes(userRole)) {
+        return false;
+      }
+
+      // 4. Default Access (Public)
+      if (!item.roles && !item.access) {
+        return true;
+      }
+
       return false;
-    }
-
-    // 5. Default Access (Public)
-    if (!item.roles && !item.access) {
-      return true;
-    }
-
-    return false;
-  });
+    });
+  }, [menuItems, userLoaded, user, userRole, userRoleAccess]);
 
   const [showCloseShiftModal, setShowCloseShiftModal] = useState(false);
   const [endCash, setEndCash] = useState('');
