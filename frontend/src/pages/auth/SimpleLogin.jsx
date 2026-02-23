@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { FiShoppingBag, FiMail, FiLock, FiArrowLeft, FiEye, FiEyeOff } from 'react-icons/fi';
+import { FiMail, FiLock, FiArrowLeft, FiEye, FiEyeOff } from 'react-icons/fi';
 import { FcGoogle } from 'react-icons/fc';
 import toast from 'react-hot-toast';
 import api from '../../services/api';
@@ -17,6 +17,7 @@ const SimpleLogin = () => {
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [googleScriptReady, setGoogleScriptReady] = useState(false);
+  const [googleScriptFailed, setGoogleScriptFailed] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [checkingSession, setCheckingSession] = useState(true);
 
@@ -44,15 +45,37 @@ const SimpleLogin = () => {
   useEffect(() => {
     if (checkingSession) return; // Don't load Google script if redirecting
     
+    console.log('[Google Auth] Loading Google script...');
+    
+    // Set timeout untuk fallback jika Google SDK gagal dimuat
+    const timeoutId = setTimeout(() => {
+      if (!googleScriptReady) {
+        console.warn('[Google Auth] Script loading timeout after 5 seconds');
+        setGoogleScriptFailed(true);
+        toast.error('Google Sign-In gagal dimuat. Silakan gunakan login email/password.', {
+          duration: 4000
+        });
+      }
+    }, 5000);
+    
     loadGoogleScript()
       .then(() => {
+        clearTimeout(timeoutId);
         setGoogleScriptReady(true);
+        setGoogleScriptFailed(false);
         console.log('[Google Auth] Script ready');
       })
       .catch((error) => {
+        clearTimeout(timeoutId);
         console.error('[Google Auth] Failed to load:', error);
+        setGoogleScriptFailed(true);
+        toast.error('Google Sign-In tidak tersedia. Gunakan login email/password.', {
+          duration: 4000
+        });
       });
-  }, []);
+    
+    return () => clearTimeout(timeoutId);
+  }, [checkingSession]); // Remove googleScriptReady from dependencies to prevent infinite loop
 
   const handleChange = (e) => {
     setFormData({
@@ -332,14 +355,22 @@ const SimpleLogin = () => {
               <span>
                 {googleLoading 
                   ? 'Memproses...' 
+                  : googleScriptFailed
+                  ? 'Google Sign-In Tidak Tersedia'
                   : 'Masuk dengan Google'
                 }
               </span>
             </button>
 
-            {!googleScriptReady && (
+            {!googleScriptReady && !googleScriptFailed && (
               <p className="text-xs text-gray-500 text-center -mt-2">
                 Memuat Google Sign-In...
+              </p>
+            )}
+            
+            {googleScriptFailed && (
+              <p className="text-xs text-red-500 text-center -mt-2">
+                Google Sign-In gagal dimuat. Gunakan login email/password.
               </p>
             )}
           </form>

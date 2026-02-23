@@ -41,7 +41,15 @@ const baseMenuItems = [
 
 function Sidebar({ onLogout, isCollapsed, toggleSidebar }) {
   // Get tenant context for dynamic path generation
-  const { tenantSlug } = useTenant();
+  // Wrap in try-catch to handle cases where TenantRouter is not available
+  let tenantSlug = null;
+  try {
+    const tenantContext = useTenant();
+    tenantSlug = tenantContext?.tenantSlug;
+  } catch (err) {
+    console.warn('[Sidebar] TenantRouter context not available, using localStorage fallback');
+    tenantSlug = localStorage.getItem('tenant_slug');
+  }
   
   const [settings, setSettings] = useState(() => {
     const saved = localStorage.getItem('appSettings');
@@ -57,12 +65,18 @@ function Sidebar({ onLogout, isCollapsed, toggleSidebar }) {
     // Fallback: use localStorage tenant_slug if useTenant() returns undefined
     const effectiveTenantSlug = tenantSlug || localStorage.getItem('tenant_slug');
     
+    console.log('[Sidebar] Generating menu items:', {
+      tenantSlug,
+      effectiveTenantSlug,
+      baseMenuItemsCount: baseMenuItems.length
+    });
+    
     if (!effectiveTenantSlug) {
       console.warn('[Sidebar] No tenant slug available, using base paths');
       return baseMenuItems;
     }
     
-    return baseMenuItems.map(item => {
+    const generated = baseMenuItems.map(item => {
       if (item.children) {
         return {
           ...item,
@@ -77,6 +91,9 @@ function Sidebar({ onLogout, isCollapsed, toggleSidebar }) {
         path: `/${effectiveTenantSlug}${item.path}`
       };
     });
+    
+    console.log('[Sidebar] Generated menu items:', generated.length);
+    return generated;
   }, [tenantSlug]);
 
   // Fetch settings to keep it updated
@@ -97,17 +114,33 @@ function Sidebar({ onLogout, isCollapsed, toggleSidebar }) {
   // Safe User Parsing with loading state
   const [userLoaded, setUserLoaded] = useState(false);
   let user = {};
+  let userRole = 'staf';
+  let userRoleAccess = [];
+  
   try {
     const userStr = localStorage.getItem('user');
     if (userStr) {
       user = JSON.parse(userStr);
+      userRole = user?.role || 'admin'; // Default to admin if no role
+      userRoleAccess = user?.role_access || ['*']; // Default to full access if no role_access
       if (!userLoaded) setUserLoaded(true);
     }
   } catch (err) {
     console.error('Error parsing user data:', err);
+    // Default to admin access on error
+    userRole = 'admin';
+    userRoleAccess = ['*'];
   }
-  const userRole = user?.role || 'staf';
-  const userRoleAccess = user?.role_access || [];
+  
+  // Debug logging
+  console.log('[Sidebar Debug]', {
+    tenantSlug,
+    userLoaded,
+    userRole,
+    userRoleAccess,
+    menuItemsCount: menuItems.length,
+    user
+  });
   
   const location = useLocation();
   const [expanded, setExpanded] = useState({ settings: true });
@@ -122,7 +155,7 @@ function Sidebar({ onLogout, isCollapsed, toggleSidebar }) {
       return menuItems;
     }
 
-    return menuItems.filter(item => {
+    const filtered = menuItems.filter(item => {
       // 1. Admin/Owner Bypass
       if (userRole === 'admin' || userRole === 'owner' || userRoleAccess?.includes('*')) {
         return true;
@@ -145,6 +178,15 @@ function Sidebar({ onLogout, isCollapsed, toggleSidebar }) {
 
       return false;
     });
+    
+    console.log('[Sidebar] Filtered items:', {
+      totalMenuItems: menuItems.length,
+      filteredCount: filtered.length,
+      userRole,
+      userRoleAccess
+    });
+    
+    return filtered;
   }, [menuItems, userLoaded, user, userRole, userRoleAccess]);
 
   const [showCloseShiftModal, setShowCloseShiftModal] = useState(false);
