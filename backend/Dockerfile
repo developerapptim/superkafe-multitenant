@@ -7,7 +7,7 @@ COPY package.json package-lock.json ./
 # Install production dependencies only
 # Using NODE_ENV=production makes npm skip devDependencies automatically
 ENV NODE_ENV=production
-RUN npm ci --production
+RUN npm ci --production || (echo "=== NPM CI FAILED - Dumping debug log ===" && cat /root/.npm/_logs/*-debug-*.log && exit 1)
 
 # Copy application code
 COPY . .
