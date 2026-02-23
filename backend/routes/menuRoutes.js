@@ -2,6 +2,10 @@ const express = require('express');
 const router = express.Router();
 const MenuController = require('../controllers/MenuController');
 const { checkApiKey, checkJwt } = require('../middleware/auth');
+const tenantResolver = require('../middleware/tenantResolver');
+
+// Apply tenantResolver to ALL routes in this file
+router.use(tenantResolver);
 
 // Public GET for Menu (frontend needs it often, but usually protected by API key anyway)
 // Assuming API key is required globally
