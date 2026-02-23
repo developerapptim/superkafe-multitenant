@@ -27,7 +27,19 @@ let fallbackContext = null;
 function setTenantContext(tenant) {
   try {
     tenantContext.enterWith(tenant);
+    // Also set fallback for reliability
+    fallbackContext = tenant;
+    
+    console.log('[TENANT CONTEXT] Context set successfully', {
+      tenantId: tenant.id,
+      tenantSlug: tenant.slug,
+      timestamp: new Date().toISOString()
+    });
   } catch (error) {
+    console.error('[TENANT CONTEXT] Failed to set context with AsyncLocalStorage', {
+      error: error.message,
+      tenant: tenant.slug
+    });
     // Fallback for environments where AsyncLocalStorage doesn't work
     fallbackContext = tenant;
   }
@@ -39,7 +51,19 @@ function setTenantContext(tenant) {
  */
 function getTenantContext() {
   const context = tenantContext.getStore();
-  return context || fallbackContext;
+  const result = context || fallbackContext;
+  
+  // DEBUG: Log when context is retrieved
+  if (!result) {
+    console.warn('[TENANT CONTEXT] No context available when getTenantContext() called', {
+      hasAsyncContext: !!context,
+      hasFallback: !!fallbackContext,
+      timestamp: new Date().toISOString(),
+      stack: new Error().stack.split('\n').slice(1, 4).join('\n')
+    });
+  }
+  
+  return result;
 }
 
 /**

@@ -15,7 +15,16 @@ const tenantResolver = async (req, res, next) => {
   const requestId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
   
   try {
+    // DEBUG: Log all headers to verify what's being received
+    console.log('[TENANT DEBUG] Incoming headers:', {
+      requestId,
+      headers: req.headers,
+      path: req.path,
+      method: req.method
+    });
+
     // Ambil tenant identifier dari header (support both slug and id)
+    // Express automatically converts headers to lowercase
     const tenantSlug = req.headers['x-tenant-slug'] || req.headers['x-tenant-id'];
 
     // Validasi: tenant identifier wajib ada
@@ -26,6 +35,7 @@ const tenantResolver = async (req, res, next) => {
         method: req.method,
         ip: req.ip,
         userAgent: req.headers['user-agent'],
+        allHeaders: Object.keys(req.headers),
         timestamp: new Date().toISOString()
       });
       
@@ -96,6 +106,18 @@ const tenantResolver = async (req, res, next) => {
 
     // Set tenant context for AsyncLocalStorage (used by Mongoose plugin)
     setTenantContext(req.tenant);
+
+    // DEBUG: Verify context was set correctly
+    const { getTenantContext } = require('../utils/tenantContext');
+    const verifyContext = getTenantContext();
+    console.log('[TENANT DEBUG] Context verification:', {
+      requestId,
+      contextSet: !!verifyContext,
+      contextId: verifyContext?.id,
+      contextSlug: verifyContext?.slug,
+      expectedId: tenant._id.toString(),
+      expectedSlug: tenant.slug
+    });
 
     const duration = Date.now() - startTime;
     console.log('[TENANT] Resolved successfully', {
