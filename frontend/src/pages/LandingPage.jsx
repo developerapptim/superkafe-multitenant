@@ -4,9 +4,27 @@ import HeroSlider from '../components/landing/HeroSlider';
 import FeatureCard from '../components/landing/FeatureCard';
 import PricingCard from '../components/landing/PricingCard';
 import LandingNavbar from '../components/landing/LandingNavbar';
+import { checkActiveSession, getDashboardUrl } from '../utils/authHelper';
 
 const LandingPage = () => {
   const navigate = useNavigate();
+
+  // Handle login button click with session check
+  const handleLoginClick = () => {
+    const session = checkActiveSession();
+    
+    if (session) {
+      const dashboardUrl = getDashboardUrl();
+      if (dashboardUrl) {
+        console.log('[LANDING] Active session found, redirecting to dashboard');
+        navigate(dashboardUrl);
+        return;
+      }
+    }
+    
+    // No active session, go to login page
+    navigate('/auth/login');
+  };
 
   const slides = [
     {

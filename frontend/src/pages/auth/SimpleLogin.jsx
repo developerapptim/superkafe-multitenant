@@ -6,6 +6,7 @@ import { FcGoogle } from 'react-icons/fc';
 import toast from 'react-hot-toast';
 import api from '../../services/api';
 import { loadGoogleScript } from '../../utils/googleAuth';
+import { checkActiveSession, getDashboardUrl } from '../../utils/authHelper';
 
 const SimpleLogin = () => {
   const navigate = useNavigate();
@@ -17,9 +18,32 @@ const SimpleLogin = () => {
   const [googleLoading, setGoogleLoading] = useState(false);
   const [googleScriptReady, setGoogleScriptReady] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [checkingSession, setCheckingSession] = useState(true);
+
+  // Check for active session on mount
+  useEffect(() => {
+    const session = checkActiveSession();
+    
+    if (session) {
+      console.log('[SIMPLE LOGIN] Active session detected, redirecting to dashboard');
+      const dashboardUrl = getDashboardUrl();
+      
+      if (dashboardUrl) {
+        toast.success('Sesi aktif ditemukan, mengarahkan ke dashboard...');
+        setTimeout(() => {
+          navigate(dashboardUrl, { replace: true });
+        }, 500);
+        return;
+      }
+    }
+    
+    setCheckingSession(false);
+  }, [navigate]);
 
   // Load Google Sign-In script
   useEffect(() => {
+    if (checkingSession) return; // Don't load Google script if redirecting
+    
     loadGoogleScript()
       .then(() => {
         setGoogleScriptReady(true);
@@ -191,19 +215,25 @@ const SimpleLogin = () => {
 
   return (
     <div className="min-h-screen bg-white flex items-center justify-center p-4">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="relative z-10 w-full max-w-md"
-      >
-        {/* Back Button */}
-        <Link
-          to="/"
-          className="inline-flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6 transition-colors"
+      {checkingSession ? (
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-8 h-8 border-4 border-amber-700 border-t-transparent rounded-full animate-spin"></div>
+          <p className="text-gray-600">Memeriksa sesi...</p>
+        </div>
+      ) : (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="relative z-10 w-full max-w-md"
         >
-          <FiArrowLeft />
-          <span>Kembali</span>
+          {/* Back Button */}
+          <Link
+            to="/"
+            className="inline-flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6 transition-colors"
+          >
+            <FiArrowLeft />
+            <span>Kembali</span>
         </Link>
 
         {/* Login Card */}
@@ -326,8 +356,8 @@ const SimpleLogin = () => {
               </Link>
             </p>
           </div>
-        </div>
-      </motion.div>
+        </motion.div>
+      )}
     </div>
   );
 };

@@ -1,6 +1,27 @@
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
+import { checkActiveSession, getDashboardUrl } from '../../utils/authHelper';
 
 const LandingNavbar = () => {
+  const navigate = useNavigate();
+
+  const handleLoginClick = (e) => {
+    e.preventDefault();
+    
+    const session = checkActiveSession();
+    
+    if (session) {
+      const dashboardUrl = getDashboardUrl();
+      if (dashboardUrl) {
+        console.log('[NAVBAR] Active session found, redirecting to dashboard');
+        navigate(dashboardUrl);
+        return;
+      }
+    }
+    
+    // No active session, go to login page
+    navigate('/auth/login');
+  };
+
   return (
     <nav className="bg-white shadow-sm sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -16,18 +37,18 @@ const LandingNavbar = () => {
             </span>
           </div>
           <div className="flex items-center space-x-4">
-            <Link
-              to="/auth/login"
+            <button
+              onClick={handleLoginClick}
               className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors"
             >
               Login
-            </Link>
-            <Link
-              to="/auth/register"
+            </button>
+            <button
+              onClick={() => navigate('/auth/register')}
               className="px-6 py-2 text-sm font-medium bg-gradient-to-r from-amber-700 to-amber-800 text-white rounded-lg hover:shadow-lg hover:shadow-amber-700/50 transition-all"
             >
               Daftar
-            </Link>
+            </button>
           </div>
         </div>
       </div>
