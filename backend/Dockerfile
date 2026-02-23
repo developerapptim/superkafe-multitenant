@@ -9,10 +9,12 @@ COPY package.json package-lock.json ./
 
 # Clean install production dependencies
 ENV NODE_ENV=production
-RUN npm ci --omit=dev --ignore-scripts || \
-    (echo "=== NPM CI FAILED - Dumping debug log ===" && \
-     find /root/.npm/_logs -name "*-debug-*.log" -exec cat {} \; && \
-     exit 1)
+RUN npm ci --omit=dev --ignore-scripts || { \
+    echo "=== NPM CI FAILED - Dumping debug logs ==="; \
+    ls -la /root/.npm/_logs/ || echo "No logs directory found"; \
+    cat /root/.npm/_logs/*.log 2>/dev/null || echo "No log files found"; \
+    exit 1; \
+}
 
 # Copy application code
 COPY . .
