@@ -117,9 +117,9 @@ const DeviceLogin = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center">
-        <div className="text-white text-center">
-          <div className="w-16 h-16 border-4 border-purple-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="text-gray-900 text-center">
+          <div className="w-16 h-16 border-4 border-amber-700 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
           <p>Memuat...</p>
         </div>
       </div>
@@ -127,23 +127,19 @@ const DeviceLogin = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 text-white p-4">
-      {/* Animated Background */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-purple-500/20 rounded-full blur-3xl animate-pulse"></div>
-        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-blue-500/20 rounded-full blur-3xl animate-pulse delay-1000"></div>
-      </div>
-
-      <div className="relative z-10 max-w-6xl mx-auto">
+    <div className="min-h-screen bg-white p-4">
+      <div className="max-w-6xl mx-auto">
         {/* Header */}
         <div className="text-center mb-8">
           <div className="flex items-center justify-center mb-4">
-            <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-blue-500 rounded-2xl flex items-center justify-center">
-              <FiShoppingBag className="w-8 h-8" />
-            </div>
+            <img 
+              src="https://res.cloudinary.com/dhjqb65mf/image/upload/v1771859487/SuperKafe_i51g7i.png" 
+              alt="SuperKafe Logo" 
+              className="h-16 w-auto"
+            />
           </div>
-          <h1 className="text-3xl font-bold mb-2">{tenantName}</h1>
-          <p className="text-white/60">Pilih staff atau login sebagai admin</p>
+          <h1 className="text-3xl font-bold mb-2 text-gray-900">{tenantName}</h1>
+          <p className="text-gray-600">Pilih staff atau login sebagai admin</p>
         </div>
 
         <AnimatePresence mode="wait">
@@ -164,11 +160,11 @@ const DeviceLogin = () => {
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
                     onClick={() => handleStaffSelect(staff)}
-                    className="backdrop-blur-xl bg-white/10 border border-white/20 rounded-2xl p-6 hover:bg-white/20 transition-all"
+                    className="bg-white border border-gray-200 rounded-2xl p-6 hover:border-amber-700 hover:shadow-lg transition-all"
                   >
                     <div className="flex flex-col items-center gap-3">
                       {/* Avatar */}
-                      <div className="w-20 h-20 rounded-full bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center text-2xl font-bold">
+                      <div className="w-20 h-20 rounded-full bg-gradient-to-br from-amber-700 to-amber-800 flex items-center justify-center text-2xl font-bold text-white">
                         {staff.image ? (
                           <img
                             src={staff.image}
@@ -182,8 +178,8 @@ const DeviceLogin = () => {
                       
                       {/* Name */}
                       <div className="text-center">
-                        <p className="font-semibold">{staff.name}</p>
-                        <p className="text-xs text-white/60 capitalize">{staff.role}</p>
+                        <p className="font-semibold text-gray-900">{staff.name}</p>
+                        <p className="text-xs text-gray-600 capitalize">{staff.role}</p>
                       </div>
                     </div>
                   </motion.button>
@@ -195,7 +191,7 @@ const DeviceLogin = () => {
                 <motion.button
                   whileTap={{ scale: 0.98 }}
                   onClick={handleAdminLogin}
-                  className="flex items-center justify-center gap-2 px-6 py-3 backdrop-blur-xl bg-white/10 border border-white/20 rounded-xl hover:bg-white/20 transition-all"
+                  className="flex items-center justify-center gap-2 px-6 py-3 bg-white border border-gray-200 rounded-xl hover:border-amber-700 hover:shadow-lg transition-all text-gray-900"
                 >
                   <FiShield />
                   <span>Login Admin</span>
@@ -204,7 +200,7 @@ const DeviceLogin = () => {
                 <motion.button
                   whileTap={{ scale: 0.98 }}
                   onClick={handleUnbindDevice}
-                  className="flex items-center justify-center gap-2 px-6 py-3 backdrop-blur-xl bg-red-500/10 border border-red-500/20 rounded-xl hover:bg-red-500/20 transition-all text-red-400"
+                  className="flex items-center justify-center gap-2 px-6 py-3 bg-white border border-red-200 rounded-xl hover:border-red-500 hover:shadow-lg transition-all text-red-600"
                 >
                   <FiLogOut />
                   <span>Unbind Device</span>
@@ -221,9 +217,9 @@ const DeviceLogin = () => {
               className="max-w-md mx-auto"
             >
               {/* Selected Staff Info */}
-              <div className="backdrop-blur-xl bg-white/10 border border-white/20 rounded-2xl p-6 mb-6">
+              <div className="bg-white border border-gray-200 rounded-2xl p-6 mb-6 shadow-lg">
                 <div className="flex items-center gap-4">
-                  <div className="w-16 h-16 rounded-full bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center text-xl font-bold flex-shrink-0">
+                  <div className="w-16 h-16 rounded-full bg-gradient-to-br from-amber-700 to-amber-800 flex items-center justify-center text-xl font-bold flex-shrink-0 text-white">
                     {selectedStaff.image ? (
                       <img
                         src={selectedStaff.image}
@@ -235,8 +231,8 @@ const DeviceLogin = () => {
                     )}
                   </div>
                   <div className="flex-1">
-                    <p className="font-semibold text-lg">{selectedStaff.name}</p>
-                    <p className="text-sm text-white/60 capitalize">{selectedStaff.role}</p>
+                    <p className="font-semibold text-lg text-gray-900">{selectedStaff.name}</p>
+                    <p className="text-sm text-gray-600 capitalize">{selectedStaff.role}</p>
                   </div>
                 </div>
               </div>
@@ -253,7 +249,7 @@ const DeviceLogin = () => {
               <motion.button
                 whileTap={{ scale: 0.98 }}
                 onClick={handleBack}
-                className="w-full mt-4 py-3 backdrop-blur-xl bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 transition-all"
+                className="w-full mt-4 py-3 bg-white border border-gray-200 rounded-xl hover:border-amber-700 hover:shadow-lg transition-all text-gray-900"
               >
                 Kembali
               </motion.button>

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { FiShoppingBag, FiMail, FiArrowLeft, FiRefreshCw } from 'react-icons/fi';
+import { FiMail, FiArrowLeft, FiRefreshCw } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import { verificationAPI } from '../../services/api';
 
@@ -134,13 +134,7 @@ const OTPVerification = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 text-white flex items-center justify-center p-4">
-      {/* Animated Background */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-purple-500/20 rounded-full blur-3xl animate-pulse"></div>
-        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-blue-500/20 rounded-full blur-3xl animate-pulse delay-1000"></div>
-      </div>
-
+    <div className="min-h-screen bg-white flex items-center justify-center p-4">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -150,26 +144,26 @@ const OTPVerification = () => {
         {/* Back Button */}
         <Link
           to="/auth/register"
-          className="inline-flex items-center gap-2 text-white/60 hover:text-white mb-6 transition-colors"
+          className="inline-flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6 transition-colors"
         >
           <FiArrowLeft />
           <span>Kembali</span>
         </Link>
 
         {/* Verification Card */}
-        <div className="backdrop-blur-xl bg-white/10 border border-white/20 rounded-3xl p-8 shadow-2xl">
+        <div className="bg-white border border-gray-200 rounded-3xl p-8 shadow-xl">
           {/* Icon */}
           <div className="flex items-center justify-center mb-6">
-            <div className="w-20 h-20 bg-gradient-to-br from-purple-500 to-blue-500 rounded-2xl flex items-center justify-center">
-              <FiMail className="w-10 h-10" />
+            <div className="w-20 h-20 bg-gradient-to-br from-amber-700 to-amber-800 rounded-2xl flex items-center justify-center">
+              <FiMail className="w-10 h-10 text-white" />
             </div>
           </div>
 
-          <h1 className="text-3xl font-bold text-center mb-2">Verifikasi Email</h1>
-          <p className="text-white/60 text-center mb-2">
+          <h1 className="text-3xl font-bold text-center mb-2 text-gray-900">Verifikasi Email</h1>
+          <p className="text-gray-600 text-center mb-2">
             Masukkan kode OTP 6 digit yang telah dikirim ke:
           </p>
-          <p className="text-purple-400 text-center font-medium mb-8">
+          <p className="text-amber-700 text-center font-medium mb-8">
             {email}
           </p>
 
@@ -186,14 +180,14 @@ const OTPVerification = () => {
                   onChange={(e) => handleOtpChange(index, e.target.value)}
                   onKeyDown={(e) => handleKeyDown(index, e)}
                   onPaste={handlePaste}
-                  className="w-12 h-14 text-center text-2xl font-bold bg-white/5 border border-white/10 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                  className="w-12 h-14 text-center text-2xl font-bold bg-gray-50 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-700 focus:border-transparent transition-all text-gray-900"
                   autoFocus={index === 0}
                 />
               ))}
             </div>
 
             {/* Info */}
-            <div className="backdrop-blur-md bg-blue-500/10 border border-blue-500/30 rounded-xl p-4 text-sm text-white/70">
+            <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-sm text-gray-700">
               <p>⏰ Kode OTP berlaku selama 10 menit</p>
               <p className="mt-1">📧 Cek folder spam jika tidak menerima email</p>
             </div>
@@ -202,7 +196,7 @@ const OTPVerification = () => {
             <button
               type="submit"
               disabled={loading || otp.join('').length !== 6}
-              className="w-full py-3 bg-gradient-to-r from-purple-500 to-blue-500 rounded-xl font-semibold hover:shadow-lg hover:shadow-purple-500/50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full py-3 bg-gradient-to-r from-amber-700 to-amber-800 text-white rounded-xl font-semibold hover:shadow-lg hover:shadow-amber-700/50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? 'Memverifikasi...' : 'Verifikasi'}
             </button>
@@ -210,13 +204,13 @@ const OTPVerification = () => {
 
           {/* Resend OTP */}
           <div className="mt-6 text-center">
-            <p className="text-white/60 text-sm mb-2">
+            <p className="text-gray-600 text-sm mb-2">
               Tidak menerima kode?
             </p>
             <button
               onClick={handleResendOTP}
               disabled={resending || countdown > 0}
-              className="inline-flex items-center gap-2 text-purple-400 hover:text-purple-300 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="inline-flex items-center gap-2 text-amber-700 hover:text-amber-800 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <FiRefreshCw className={resending ? 'animate-spin' : ''} />
               {countdown > 0 ? `Kirim ulang (${countdown}s)` : 'Kirim ulang kode'}

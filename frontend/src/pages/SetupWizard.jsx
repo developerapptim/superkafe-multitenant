@@ -216,23 +216,17 @@ const SetupWizard = () => {
   // Show loading while checking auth
   if (checkingAuth) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 text-white flex items-center justify-center">
+      <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
-          <FiLoader className="w-8 h-8 animate-spin" />
-          <p className="text-white/60">Memuat...</p>
+          <FiLoader className="w-8 h-8 animate-spin text-amber-700" />
+          <p className="text-gray-600">Memuat...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 text-white flex items-center justify-center p-4">
-      {/* Animated Background */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-purple-500/20 rounded-full blur-3xl animate-pulse"></div>
-        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-blue-500/20 rounded-full blur-3xl animate-pulse delay-1000"></div>
-      </div>
-
+    <div className="min-h-screen bg-white flex items-center justify-center p-4">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -240,28 +234,30 @@ const SetupWizard = () => {
         className="relative z-10 w-full max-w-md"
       >
         {/* Setup Card */}
-        <div className="backdrop-blur-xl bg-white/10 border border-white/20 rounded-3xl p-8 shadow-2xl">
+        <div className="bg-white border border-gray-200 rounded-3xl p-8 shadow-xl">
           {/* Logo */}
           <div className="flex items-center justify-center mb-8">
-            <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-blue-500 rounded-2xl flex items-center justify-center">
-              <FiShoppingBag className="w-8 h-8" />
-            </div>
+            <img 
+              src="https://res.cloudinary.com/dhjqb65mf/image/upload/v1771859487/SuperKafe_i51g7i.png" 
+              alt="SuperKafe Logo" 
+              className="h-16 w-auto"
+            />
           </div>
 
-          <h1 className="text-3xl font-bold text-center mb-2">Setup Kafe Anda</h1>
-          <p className="text-white/60 text-center mb-8">
+          <h1 className="text-3xl font-bold text-center mb-2 text-gray-900">Setup Kafe Anda</h1>
+          <p className="text-gray-600 text-center mb-8">
             Lengkapi informasi berikut untuk memulai
           </p>
 
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Cafe Name */}
             <div>
-              <label className="block text-sm font-medium mb-2">
-                Nama Kafe <span className="text-red-400">*</span>
+              <label className="block text-sm font-medium mb-2 text-gray-700">
+                Nama Kafe <span className="text-red-600">*</span>
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                  <FiShoppingBag className="text-white/40" />
+                  <FiShoppingBag className="text-gray-400" />
                 </div>
                 <input
                   type="text"
@@ -269,7 +265,7 @@ const SetupWizard = () => {
                   value={formData.cafeName}
                   onChange={handleChange}
                   placeholder="Warkop Kopi Kenangan"
-                  className="w-full pl-12 pr-4 py-3 bg-white/5 border border-white/10 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all placeholder:text-white/30"
+                  className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-700 focus:border-transparent transition-all placeholder:text-gray-400"
                   required
                 />
               </div>
@@ -277,12 +273,12 @@ const SetupWizard = () => {
 
             {/* Slug */}
             <div>
-              <label className="block text-sm font-medium mb-2">
-                URL Slug <span className="text-red-400">*</span>
+              <label className="block text-sm font-medium mb-2 text-gray-700">
+                URL Slug <span className="text-red-600">*</span>
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                  <FiLink className="text-white/40" />
+                  <FiLink className="text-gray-400" />
                 </div>
                 <input
                   type="text"
@@ -290,12 +286,12 @@ const SetupWizard = () => {
                   value={formData.slug}
                   onChange={handleChange}
                   placeholder="warkop-kopi-kenangan"
-                  className={`w-full pl-12 pr-12 py-3 bg-white/5 border rounded-xl focus:outline-none focus:ring-2 transition-all placeholder:text-white/30 ${
+                  className={`w-full pl-12 pr-12 py-3 bg-gray-50 border rounded-xl focus:outline-none focus:ring-2 transition-all placeholder:text-gray-400 ${
                     slugStatus.available === true
                       ? 'border-green-500 focus:ring-green-500'
                       : slugStatus.available === false
                       ? 'border-red-500 focus:ring-red-500'
-                      : 'border-white/10 focus:ring-purple-500 focus:border-transparent'
+                      : 'border-gray-300 focus:ring-amber-700 focus:border-transparent'
                   }`}
                   required
                   minLength={3}
@@ -303,38 +299,38 @@ const SetupWizard = () => {
                 />
                 <div className="absolute inset-y-0 right-0 pr-4 flex items-center">
                   {slugStatus.checking ? (
-                    <FiLoader className="text-white/40 animate-spin" />
+                    <FiLoader className="text-gray-400 animate-spin" />
                   ) : slugStatus.available === true ? (
-                    <FiCheck className="text-green-400" />
+                    <FiCheck className="text-green-500" />
                   ) : slugStatus.available === false ? (
-                    <FiX className="text-red-400" />
+                    <FiX className="text-red-500" />
                   ) : null}
                 </div>
               </div>
               {slugStatus.message && (
                 <p className={`text-xs mt-1 ${
                   slugStatus.available === true
-                    ? 'text-green-400'
+                    ? 'text-green-600'
                     : slugStatus.available === false
-                    ? 'text-red-400'
-                    : 'text-white/40'
+                    ? 'text-red-600'
+                    : 'text-gray-500'
                 }`}>
                   {slugStatus.message}
                 </p>
               )}
-              <p className="text-xs text-white/40 mt-1">
+              <p className="text-xs text-gray-500 mt-1">
                 URL kafe Anda: {window.location.origin}/{formData.slug || 'slug-anda'}
               </p>
             </div>
 
             {/* Admin Name */}
             <div>
-              <label className="block text-sm font-medium mb-2">
+              <label className="block text-sm font-medium mb-2 text-gray-700">
                 Nama Admin (Opsional)
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                  <FiUser className="text-white/40" />
+                  <FiUser className="text-gray-400" />
                 </div>
                 <input
                   type="text"
@@ -342,10 +338,10 @@ const SetupWizard = () => {
                   value={formData.adminName}
                   onChange={handleChange}
                   placeholder="Nama Anda"
-                  className="w-full pl-12 pr-4 py-3 bg-white/5 border border-white/10 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all placeholder:text-white/30"
+                  className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-700 focus:border-transparent transition-all placeholder:text-gray-400"
                 />
               </div>
-              <p className="text-xs text-white/40 mt-1">
+              <p className="text-xs text-gray-500 mt-1">
                 Kosongkan untuk menggunakan nama akun Anda
               </p>
             </div>
@@ -354,7 +350,7 @@ const SetupWizard = () => {
             <button
               type="submit"
               disabled={loading || slugStatus.checking || slugStatus.available === false || !formData.cafeName || !formData.slug}
-              className="w-full py-3 bg-gradient-to-r from-purple-500 to-blue-500 rounded-xl font-semibold hover:shadow-lg hover:shadow-purple-500/50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full py-3 bg-gradient-to-r from-amber-700 to-amber-800 text-white rounded-xl font-semibold hover:shadow-lg hover:shadow-amber-700/50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? (
                 <span className="flex items-center justify-center gap-2">
@@ -368,8 +364,8 @@ const SetupWizard = () => {
           </form>
 
           {/* Info */}
-          <div className="mt-6 p-4 bg-blue-500/10 border border-blue-500/20 rounded-xl">
-            <p className="text-xs text-blue-200">
+          <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-xl">
+            <p className="text-xs text-blue-800">
               <strong>Info:</strong> Anda akan mendapatkan trial gratis selama 10 hari untuk mencoba semua fitur SuperKafe.
             </p>
           </div>

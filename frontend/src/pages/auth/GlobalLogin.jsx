@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { FiShoppingBag, FiMail, FiLock, FiArrowLeft } from 'react-icons/fi';
+import { FiMail, FiLock, FiArrowLeft } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import api from '../../services/api';
 
@@ -92,13 +92,7 @@ const GlobalLogin = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 text-white flex items-center justify-center p-4">
-      {/* Animated Background */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-purple-500/20 rounded-full blur-3xl animate-pulse"></div>
-        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-blue-500/20 rounded-full blur-3xl animate-pulse delay-1000"></div>
-      </div>
-
+    <div className="min-h-screen bg-white flex items-center justify-center p-4">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -108,35 +102,37 @@ const GlobalLogin = () => {
         {/* Back Button */}
         <Link
           to="/"
-          className="inline-flex items-center gap-2 text-white/60 hover:text-white mb-6 transition-colors"
+          className="inline-flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6 transition-colors"
         >
           <FiArrowLeft />
           <span>Kembali</span>
         </Link>
 
         {/* Login Card */}
-        <div className="backdrop-blur-xl bg-white/10 border border-white/20 rounded-3xl p-8 shadow-2xl">
+        <div className="bg-white border border-gray-200 rounded-3xl p-8 shadow-xl">
           {/* Logo */}
           <div className="flex items-center justify-center mb-8">
-            <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-blue-500 rounded-2xl flex items-center justify-center">
-              <FiShoppingBag className="w-8 h-8" />
-            </div>
+            <img 
+              src="https://res.cloudinary.com/dhjqb65mf/image/upload/v1771859487/SuperKafe_i51g7i.png" 
+              alt="SuperKafe Logo" 
+              className="h-16 w-auto"
+            />
           </div>
 
-          <h1 className="text-3xl font-bold text-center mb-2">Masuk ke SuperKafe</h1>
-          <p className="text-white/60 text-center mb-8">
+          <h1 className="text-3xl font-bold text-center mb-2 text-gray-900">Masuk ke SuperKafe</h1>
+          <p className="text-gray-600 text-center mb-8">
             Masukkan email dan password Anda
           </p>
 
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Email */}
             <div>
-              <label className="block text-sm font-medium mb-2">
+              <label className="block text-sm font-medium mb-2 text-gray-700">
                 Email
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                  <FiMail className="text-white/40" />
+                  <FiMail className="text-gray-400" />
                 </div>
                 <input
                   type="email"
@@ -144,24 +140,24 @@ const GlobalLogin = () => {
                   value={formData.email}
                   onChange={handleChange}
                   placeholder="admin@warkop.com"
-                  className="w-full pl-12 pr-4 py-3 bg-white/5 border border-white/10 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all placeholder:text-white/30"
+                  className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-700 focus:border-transparent transition-all placeholder:text-gray-400"
                   required
                   autoComplete="email"
                 />
               </div>
-              <p className="text-xs text-white/40 mt-1">
+              <p className="text-xs text-gray-500 mt-1">
                 Sistem akan otomatis mendeteksi tenant Anda
               </p>
             </div>
 
             {/* Password */}
             <div>
-              <label className="block text-sm font-medium mb-2">
+              <label className="block text-sm font-medium mb-2 text-gray-700">
                 Password
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                  <FiLock className="text-white/40" />
+                  <FiLock className="text-gray-400" />
                 </div>
                 <input
                   type="password"
@@ -169,7 +165,7 @@ const GlobalLogin = () => {
                   value={formData.password}
                   onChange={handleChange}
                   placeholder="••••••••"
-                  className="w-full pl-12 pr-4 py-3 bg-white/5 border border-white/10 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all placeholder:text-white/30"
+                  className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-700 focus:border-transparent transition-all placeholder:text-gray-400"
                   required
                   autoComplete="current-password"
                 />
@@ -180,7 +176,7 @@ const GlobalLogin = () => {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-3 bg-gradient-to-r from-purple-500 to-blue-500 rounded-xl font-semibold hover:shadow-lg hover:shadow-purple-500/50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full py-3 bg-gradient-to-r from-amber-700 to-amber-800 text-white rounded-xl font-semibold hover:shadow-lg hover:shadow-amber-700/50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? 'Memproses...' : 'Masuk'}
             </button>
@@ -191,18 +187,18 @@ const GlobalLogin = () => {
             <div className="text-center">
               <Link
                 to="/auth/device-login"
-                className="text-purple-400 hover:text-purple-300 text-sm font-medium transition-colors"
+                className="text-amber-700 hover:text-amber-800 text-sm font-medium transition-colors"
               >
                 Login dari Tablet Terdaftar
               </Link>
             </div>
             
             <div className="text-center">
-              <p className="text-white/60 text-sm">
+              <p className="text-gray-600 text-sm">
                 Belum punya akun?{' '}
                 <Link
                   to="/auth/register"
-                  className="text-purple-400 hover:text-purple-300 font-medium transition-colors"
+                  className="text-amber-700 hover:text-amber-800 font-medium transition-colors"
                 >
                   Daftar Sekarang
                 </Link>

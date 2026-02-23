@@ -36,7 +36,7 @@ const Numpad = ({ value, onChange, maxLength = 6, onSubmit }) => {
   return (
     <div className="w-full max-w-sm mx-auto">
       {/* PIN Display */}
-      <div className="mb-6 backdrop-blur-xl bg-white/10 border border-white/20 rounded-2xl p-6">
+      <div className="mb-6 bg-white border border-gray-200 rounded-2xl p-6 shadow-lg">
         <div className="flex justify-center gap-3">
           {[...Array(maxLength)].map((_, index) => (
             <motion.div
@@ -45,8 +45,8 @@ const Numpad = ({ value, onChange, maxLength = 6, onSubmit }) => {
               animate={{ scale: value.length > index ? 1 : 0.8 }}
               className={`w-12 h-12 rounded-xl flex items-center justify-center text-2xl font-bold transition-all ${
                 value.length > index
-                  ? 'bg-gradient-to-br from-purple-500 to-blue-500 text-white shadow-lg'
-                  : 'bg-white/5 border border-white/10 text-white/30'
+                  ? 'bg-gradient-to-br from-amber-700 to-amber-800 text-white shadow-lg'
+                  : 'bg-gray-50 border border-gray-300 text-gray-400'
               }`}
             >
               {value.length > index ? '●' : '○'}
@@ -55,7 +55,7 @@ const Numpad = ({ value, onChange, maxLength = 6, onSubmit }) => {
         </div>
         
         {/* PIN Length Indicator */}
-        <div className="mt-4 text-center text-sm text-white/60">
+        <div className="mt-4 text-center text-sm text-gray-600">
           {value.length} / {maxLength} digit
         </div>
       </div>
@@ -77,11 +77,10 @@ const Numpad = ({ value, onChange, maxLength = 6, onSubmit }) => {
                 else if (isBackspace) handleBackspace();
               }}
               className={`
-                h-16 rounded-xl font-semibold text-xl transition-all
-                backdrop-blur-xl border
+                h-16 rounded-xl font-semibold text-xl transition-all border
                 ${isNumber
-                  ? 'bg-white/10 border-white/20 text-white hover:bg-white/20'
-                  : 'bg-white/5 border-white/10 text-white/60 hover:bg-white/10'
+                  ? 'bg-white border-gray-200 text-gray-900 hover:border-amber-700 hover:shadow-lg'
+                  : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100'
                 }
                 active:scale-95
               `}
@@ -98,7 +97,7 @@ const Numpad = ({ value, onChange, maxLength = 6, onSubmit }) => {
           whileTap={{ scale: 0.98 }}
           onClick={handleSubmit}
           disabled={value.length < 4}
-          className="w-full mt-4 py-4 bg-gradient-to-r from-purple-500 to-blue-500 rounded-xl font-semibold text-white hover:shadow-lg hover:shadow-purple-500/50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full mt-4 py-4 bg-gradient-to-r from-amber-700 to-amber-800 text-white rounded-xl font-semibold hover:shadow-lg hover:shadow-amber-700/50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
         >
           Masuk
         </motion.button>
