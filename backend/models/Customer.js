@@ -19,6 +19,9 @@ const CustomerSchema = new mongoose.Schema({
     createdAt: { type: Date, default: Date.now }
 });
 
+// Tenant-scoped compound indexes for optimal query performance
+CustomerSchema.index({ tenantId: 1, createdAt: -1 }); // Time-based queries per tenant
+
 // Apply tenant scoping plugin for automatic tenant isolation
 CustomerSchema.plugin(tenantScopingPlugin);
 

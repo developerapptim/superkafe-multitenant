@@ -1,4 +1,5 @@
 const { AsyncLocalStorage } = require('async_hooks');
+const logger = require('./logger');
 
 /**
  * Tenant Context Storage using AsyncLocalStorage
@@ -22,23 +23,30 @@ let fallbackContext = null;
  * @param {string} tenant.id - Tenant ID (ObjectId as string)
  * @param {string} tenant.slug - Tenant slug
  * @param {string} tenant.name - Tenant name
- * @param {string} tenant.dbName - Tenant database name
+ * @param {string} tenant.dbName - Tenant database name (always 'superkafe_v2' in unified architecture)
  */
 function setTenantContext(tenant) {
+  if (!tenant || !tenant.id || !tenant.slug) {
+    logger.error('TENANT_CONTEXT', 'Invalid tenant data provided to setTenantContext', {
+      hasId: !!tenant?.id,
+      hasSlug: !!tenant?.slug,
+      event: 'CONTEXT_INIT_FAILED'
+    });
+    throw new Error('Invalid tenant data: id and slug are required');
+  }
+
   try {
     tenantContext.enterWith(tenant);
     // Also set fallback for reliability
     fallbackContext = tenant;
     
-    console.log('[TENANT CONTEXT] Context set successfully', {
-      tenantId: tenant.id,
-      tenantSlug: tenant.slug,
-      timestamp: new Date().toISOString()
-    });
+    // Log tenant context initialization with structured logging
+    logger.logTenantContextInit(tenant, tenant.correlationId);
   } catch (error) {
-    console.error('[TENANT CONTEXT] Failed to set context with AsyncLocalStorage', {
+    logger.error('TENANT_CONTEXT', 'Failed to set context with AsyncLocalStorage', {
       error: error.message,
-      tenant: tenant.slug
+      tenantSlug: tenant.slug,
+      event: 'CONTEXT_INIT_ERROR'
     });
     // Fallback for environments where AsyncLocalStorage doesn't work
     fallbackContext = tenant;
@@ -53,12 +61,22 @@ function getTenantContext() {
   const context = tenantContext.getStore();
   const result = context || fallbackContext;
   
-  // DEBUG: Log when context is retrieved
-  if (!result) {
-    console.warn('[TENANT CONTEXT] No context available when getTenantContext() called', {
+  // Enhanced logging when context is retrieved
+  if (result) {
+    // Only log in debug mode to avoid excessive logging
+    if (process.env.LOG_LEVEL === 'debug') {
+      logger.debug('TENANT_CONTEXT', 'Context retrieved', {
+        tenantId: result.id,
+        tenantSlug: result.slug,
+        source: context ? 'AsyncLocalStorage' : 'fallback',
+        event: 'CONTEXT_RETRIEVED'
+      });
+    }
+  } else {
+    logger.warn('TENANT_CONTEXT', 'No context available when getTenantContext() called', {
       hasAsyncContext: !!context,
       hasFallback: !!fallbackContext,
-      timestamp: new Date().toISOString(),
+      event: 'CONTEXT_MISSING',
       stack: new Error().stack.split('\n').slice(1, 4).join('\n')
     });
   }
@@ -73,6 +91,21 @@ function getTenantContext() {
  * @returns {*} Result of the function
  */
 function runWithTenantContext(tenant, fn) {
+  if (!tenant || !tenant.id || !tenant.slug) {
+    logger.error('TENANT_CONTEXT', 'Invalid tenant data provided to runWithTenantContext', {
+      hasId: !!tenant?.id,
+      hasSlug: !!tenant?.slug,
+      event: 'RUN_WITH_CONTEXT_FAILED'
+    });
+    throw new Error('Invalid tenant data: id and slug are required');
+  }
+
+  logger.debug('TENANT_CONTEXT', 'Running function with tenant context', {
+    tenantId: tenant.id,
+    tenantSlug: tenant.slug,
+    event: 'RUN_WITH_CONTEXT'
+  });
+
   return tenantContext.run(tenant, fn);
 }
 

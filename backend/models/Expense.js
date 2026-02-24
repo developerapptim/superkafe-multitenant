@@ -12,6 +12,9 @@ const ExpenseSchema = new mongoose.Schema({
     shiftId: String // Optional: Link to specific shift
 }, { timestamps: true });
 
+// Tenant-scoped compound indexes for optimal query performance
+ExpenseSchema.index({ tenantId: 1, createdAt: -1 }); // Time-based queries per tenant
+
 // Apply tenant scoping plugin for automatic tenant isolation
 ExpenseSchema.plugin(tenantScopingPlugin);
 

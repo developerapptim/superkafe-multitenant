@@ -17,6 +17,10 @@ const ReservationSchema = new mongoose.Schema({
     createdBy: { type: String, enum: ['customer', 'staff'], default: 'customer' }
 }, { timestamps: true });
 
+// Tenant-scoped compound indexes for optimal query performance
+ReservationSchema.index({ tenantId: 1, createdAt: -1 }); // Time-based queries per tenant
+ReservationSchema.index({ tenantId: 1, status: 1 }); // Status-based queries per tenant
+
 // Apply tenant scoping plugin for automatic tenant isolation
 ReservationSchema.plugin(tenantScopingPlugin);
 

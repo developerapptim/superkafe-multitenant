@@ -1,7 +1,8 @@
-const { getTenantDB } = require('../config/db');
 const Tenant = require('../models/Tenant');
+const Employee = require('../models/Employee');
 const jwt = require('jsonwebtoken');
 const { OAuth2Client } = require('google-auth-library');
+const { runWithTenantContext } = require('../utils/tenantContext');
 
 /**
  * Google Auth Controller untuk Multitenant
@@ -98,78 +99,84 @@ const googleAuth = async (req, res) => {
       });
     }
 
-    // Koneksi ke database tenant
-    const tenantDB = await getTenantDB(tenant.dbName);
-    const EmployeeModel = tenantDB.model('Employee', require('../models/Employee').schema);
+    // Find or create user using tenant context
+    const result = await runWithTenantContext(
+      { id: tenant._id.toString(), slug: tenant.slug, name: tenant.name, dbName: 'superkafe_v2' },
+      async () => {
+        // PENGECEKAN AKUN: Cari user berdasarkan email atau Google ID
+        let user = await Employee.findOne({
+          $or: [
+            { googleId: googleUser.sub },
+            { email: googleUser.email }
+          ]
+        });
 
-    // PENGECEKAN AKUN: Cari user berdasarkan email atau Google ID
-    let user = await EmployeeModel.findOne({
-      $or: [
-        { googleId: googleUser.sub },
-        { email: googleUser.email }
-      ]
-    });
+        let isNewUser = false;
 
-    let isNewUser = false;
+        if (user) {
+          // ✅ AUTO-LOGIN: Email sudah terdaftar
+          console.log('[GOOGLE AUTH] ✅ Auto-Login - Email sudah terdaftar:', {
+            email: user.email,
+            name: user.name,
+            tenant: tenantSlug
+          });
 
-    if (user) {
-      // ✅ AUTO-LOGIN: Email sudah terdaftar
-      console.log('[GOOGLE AUTH] ✅ Auto-Login - Email sudah terdaftar:', {
-        email: user.email,
-        name: user.name,
-        tenant: tenantSlug
-      });
+          // Update Google ID dan foto profil jika belum ada
+          let needsUpdate = false;
+          
+          if (!user.googleId) {
+            user.googleId = googleUser.sub;
+            user.authProvider = 'google';
+            user.isVerified = true;
+            needsUpdate = true;
+          }
 
-      // Update Google ID dan foto profil jika belum ada
-      let needsUpdate = false;
-      
-      if (!user.googleId) {
-        user.googleId = googleUser.sub;
-        user.authProvider = 'google';
-        user.isVerified = true;
-        needsUpdate = true;
+          // Update foto profil dari Google jika belum ada atau masih default
+          if (!user.image || user.image === '' || user.image.includes('default')) {
+            user.image = googleUser.picture;
+            needsUpdate = true;
+          }
+
+          if (needsUpdate) {
+            await user.save();
+            console.log('[GOOGLE AUTH] User data updated with Google info');
+          }
+
+        } else {
+          // 🆕 AUTO-REGISTER: Email belum terdaftar, buat akun baru
+          isNewUser = true;
+          const employeeId = `EMP-${Date.now()}`;
+          
+          // DATA DEFAULT: Ambil Nama & Foto Profil dari Google
+          user = await Employee.create({
+            id: employeeId,
+            username: googleUser.email.split('@')[0], // username dari email
+            email: googleUser.email,
+            name: googleUser.name, // ✅ Nama dari Google
+            image: googleUser.picture, // ✅ Foto Profil dari Google
+            googleId: googleUser.sub,
+            authProvider: 'google',
+            role: 'admin', // User pertama jadi admin
+            role_access: ['POS', 'Kitchen', 'Meja', 'Keuangan', 'Laporan', 'Menu', 'Pegawai', 'Pengaturan'],
+            status: 'active',
+            isActive: true,
+            isVerified: true, // Email Google sudah terverifikasi
+            password: null // Tidak perlu password untuk Google auth
+          });
+
+          console.log('[GOOGLE AUTH] 🆕 Auto-Register - Akun baru dibuat:', {
+            email: user.email,
+            name: user.name,
+            picture: user.image,
+            tenant: tenantSlug
+          });
+        }
+
+        return { user, isNewUser };
       }
+    );
 
-      // Update foto profil dari Google jika belum ada atau masih default
-      if (!user.image || user.image === '' || user.image.includes('default')) {
-        user.image = googleUser.picture;
-        needsUpdate = true;
-      }
-
-      if (needsUpdate) {
-        await user.save();
-        console.log('[GOOGLE AUTH] User data updated with Google info');
-      }
-
-    } else {
-      // 🆕 AUTO-REGISTER: Email belum terdaftar, buat akun baru
-      isNewUser = true;
-      const employeeId = `EMP-${Date.now()}`;
-      
-      // DATA DEFAULT: Ambil Nama & Foto Profil dari Google
-      user = await EmployeeModel.create({
-        id: employeeId,
-        username: googleUser.email.split('@')[0], // username dari email
-        email: googleUser.email,
-        name: googleUser.name, // ✅ Nama dari Google
-        image: googleUser.picture, // ✅ Foto Profil dari Google
-        googleId: googleUser.sub,
-        authProvider: 'google',
-        role: 'admin', // User pertama jadi admin
-        role_access: ['POS', 'Kitchen', 'Meja', 'Keuangan', 'Laporan', 'Menu', 'Pegawai', 'Pengaturan'],
-        status: 'active',
-        isActive: true,
-        isVerified: true, // Email Google sudah terverifikasi
-        password: null // Tidak perlu password untuk Google auth
-      });
-
-      console.log('[GOOGLE AUTH] 🆕 Auto-Register - Akun baru dibuat:', {
-        email: user.email,
-        name: user.name,
-        picture: user.image,
-        tenant: tenantSlug
-      });
-    }
+    const { user, isNewUser } = result;
 
     // Generate JWT token untuk akses Dashboard
     const token = jwt.sign(
@@ -277,54 +284,60 @@ const googleCallback = async (req, res) => {
       return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:5174'}/login?error=tenant_not_found`);
     }
 
-    // Koneksi ke database tenant
-    const tenantDB = await getTenantDB(tenant.dbName);
-    const EmployeeModel = tenantDB.model('Employee', require('../models/Employee').schema);
+    // Find or create user using tenant context
+    const result = await runWithTenantContext(
+      { id: tenant._id.toString(), slug: tenant.slug, name: tenant.name, dbName: 'superkafe_v2' },
+      async () => {
+        // Cari atau buat user
+        let user = await Employee.findOne({
+          $or: [
+            { googleId: googleUser.sub },
+            { email: googleUser.email }
+          ]
+        });
 
-    // Cari atau buat user
-    let user = await EmployeeModel.findOne({
-      $or: [
-        { googleId: googleUser.sub },
-        { email: googleUser.email }
-      ]
-    });
+        let isNewUser = false;
 
-    let isNewUser = false;
+        if (!user) {
+          // Auto-register
+          isNewUser = true;
+          const employeeId = `EMP-${Date.now()}`;
+          
+          user = await Employee.create({
+            id: employeeId,
+            username: googleUser.email.split('@')[0],
+            email: googleUser.email,
+            name: googleUser.name,
+            image: googleUser.picture,
+            googleId: googleUser.sub,
+            authProvider: 'google',
+            role: 'admin',
+            role_access: ['POS', 'Kitchen', 'Meja', 'Keuangan', 'Laporan', 'Menu', 'Pegawai', 'Pengaturan'],
+            status: 'active',
+            isActive: true,
+            isVerified: true,
+            password: null
+          });
 
-    if (!user) {
-      // Auto-register
-      isNewUser = true;
-      const employeeId = `EMP-${Date.now()}`;
-      
-      user = await EmployeeModel.create({
-        id: employeeId,
-        username: googleUser.email.split('@')[0],
-        email: googleUser.email,
-        name: googleUser.name,
-        image: googleUser.picture,
-        googleId: googleUser.sub,
-        authProvider: 'google',
-        role: 'admin',
-        role_access: ['POS', 'Kitchen', 'Meja', 'Keuangan', 'Laporan', 'Menu', 'Pegawai', 'Pengaturan'],
-        status: 'active',
-        isActive: true,
-        isVerified: true,
-        password: null
-      });
+          console.log('[GOOGLE CALLBACK] New user registered:', user.email);
+        } else {
+          // Update existing user
+          if (!user.googleId) {
+            user.googleId = googleUser.sub;
+            user.authProvider = 'google';
+            user.isVerified = true;
+          }
+          if (!user.image || user.image === '' || user.image.includes('default')) {
+            user.image = googleUser.picture;
+          }
+          await user.save();
+        }
 
-      console.log('[GOOGLE CALLBACK] New user registered:', user.email);
-    } else {
-      // Update existing user
-      if (!user.googleId) {
-        user.googleId = googleUser.sub;
-        user.authProvider = 'google';
-        user.isVerified = true;
+        return { user, isNewUser };
       }
-      if (!user.image || user.image === '' || user.image.includes('default')) {
-        user.image = googleUser.picture;
-      }
-      await user.save();
-    }
+    );
+
+    const { user, isNewUser } = result;
 
     // Generate JWT
     const token = jwt.sign(

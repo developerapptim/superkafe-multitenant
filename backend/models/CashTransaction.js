@@ -15,6 +15,9 @@ const CashTransactionSchema = new mongoose.Schema({
 
 CashTransactionSchema.index({ type: 1, createdAt: -1 });
 
+// Tenant-scoped compound indexes for optimal query performance
+CashTransactionSchema.index({ tenantId: 1, createdAt: -1 }); // Time-based queries per tenant
+
 // Apply tenant scoping plugin for automatic tenant isolation
 CashTransactionSchema.plugin(tenantScopingPlugin);
 

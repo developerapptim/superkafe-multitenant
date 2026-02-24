@@ -33,6 +33,10 @@ const ShiftSchema = new mongoose.Schema({
 
 ShiftSchema.index({ status: 1, endTime: -1, startTime: -1 });
 
+// Tenant-scoped compound indexes for optimal query performance
+ShiftSchema.index({ tenantId: 1, startTime: -1 }); // Time-based queries per tenant
+ShiftSchema.index({ tenantId: 1, status: 1 }); // Status-based queries per tenant
+
 // Apply tenant scoping plugin for automatic tenant isolation
 ShiftSchema.plugin(tenantScopingPlugin);
 

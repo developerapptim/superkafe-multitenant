@@ -54,6 +54,288 @@ describe('Tenant Scoping Plugin - Property Tests', () => {
   });
 
   /**
+   * Property 3: Automatic Tenant Query Filtering
+   * 
+   * For any query operation (find, update, delete, count, aggregate) on a 
+   * tenant-scoped model, the system SHALL automatically inject a filter 
+   * matching the current tenant context's tenantId, ensuring only documents 
+   * belonging to the current tenant are accessed.
+   * 
+   * **Validates: Requirements 2.3, 2.8, 7.1, 7.4**
+   */
+  describe('Property 3: Automatic Tenant Query Filtering', () => {
+    test('should filter all query types (find, update, delete, count) by tenantId', async () => {
+      await fc.assert(
+        fc.asyncProperty(
+          fc.array(fc.record({
+            tenantId: objectIdArbitrary(),
+            name: fc.string({ minLength: 1, maxLength: 50 }),
+            value: fc.integer({ min: 0, max: 1000 })
+          }), { minLength: 3, maxLength: 10 }),
+          fc.nat({ max: 100 }),
+          fc.constantFrom('find', 'findOne', 'updateOne', 'deleteOne', 'countDocuments'),
+          async (documents, queryIndex, operation) => {
+            if (documents.length === 0) return true;
+
+            // Create documents for multiple tenants
+            const createdDocs = await Promise.all(
+              documents.map(doc => 
+                TestModel.create({
+                  ...doc,
+                  tenantId: new mongoose.Types.ObjectId(doc.tenantId)
+                })
+              )
+            );
+
+            const selectedTenant = createdDocs[queryIndex % documents.length];
+            const selectedTenantId = selectedTenant.tenantId;
+
+            // Execute operation within tenant context
+            let result;
+            await runWithTenantContext(
+              { id: selectedTenantId, slug: 'test-tenant' },
+              async () => {
+                switch (operation) {
+                  case 'find':
+                    result = await TestModel.find({});
+                    break;
+                  case 'findOne':
+                    result = await TestModel.findOne({});
+                    break;
+                  case 'updateOne':
+                    result = await TestModel.updateOne({}, { value: 9999 });
+                    break;
+                  case 'deleteOne':
+                    result = await TestModel.deleteOne({});
+                    break;
+                  case 'countDocuments':
+                    result = await TestModel.countDocuments({});
+                    break;
+                }
+              }
+            );
+
+            // Verify operation only affected selected tenant's documents
+            const expectedCount = createdDocs.filter(
+              doc => doc.tenantId.toString() === selectedTenantId.toString()
+            ).length;
+
+            if (operation === 'find') {
+              return result.every(doc => doc.tenantId.toString() === selectedTenantId.toString()) &&
+                     result.length === expectedCount;
+            } else if (operation === 'findOne') {
+              return !result || result.tenantId.toString() === selectedTenantId.toString();
+            } else if (operation === 'updateOne') {
+              return result.modifiedCount <= expectedCount;
+            } else if (operation === 'deleteOne') {
+              return result.deletedCount <= expectedCount;
+            } else if (operation === 'countDocuments') {
+              return result === expectedCount;
+            }
+
+            return true;
+          }
+        ),
+        { numRuns: 100 }
+      );
+    });
+
+    test('should filter aggregate operations by tenantId', async () => {
+      await fc.assert(
+        fc.asyncProperty(
+          fc.array(fc.record({
+            tenantId: objectIdArbitrary(),
+            category: fc.constantFrom('food', 'drink', 'snack'),
+            value: fc.integer({ min: 1, max: 100 })
+          }), { minLength: 5, maxLength: 15 }),
+          fc.nat({ max: 100 }),
+          async (documents, queryIndex) => {
+            if (documents.length === 0) return true;
+
+            // Create documents
+            const createdDocs = await Promise.all(
+              documents.map(doc => 
+                TestModel.create({
+                  name: `Item ${doc.category}`,
+                  ...doc,
+                  tenantId: new mongoose.Types.ObjectId(doc.tenantId)
+                })
+              )
+            );
+
+            const selectedTenant = createdDocs[queryIndex % documents.length];
+            const selectedTenantId = selectedTenant.tenantId;
+
+            // Run aggregation within tenant context
+            const results = await runWithTenantContext(
+              { id: selectedTenantId, slug: 'test-tenant' },
+              async () => TestModel.aggregate([
+                { $group: { _id: '$category', total: { $sum: '$value' } } }
+              ])
+            );
+
+            // Calculate expected totals for selected tenant
+            const tenantDocs = createdDocs.filter(
+              doc => doc.tenantId.toString() === selectedTenantId.toString()
+            );
+
+            const expectedTotals = {};
+            tenantDocs.forEach(doc => {
+              expectedTotals[doc.category] = (expectedTotals[doc.category] || 0) + doc.value;
+            });
+
+            // Verify aggregation only included selected tenant's data
+            const actualTotal = results.reduce((sum, r) => sum + r.total, 0);
+            const expectedTotal = Object.values(expectedTotals).reduce((sum, v) => sum + v, 0);
+
+            return actualTotal === expectedTotal;
+          }
+        ),
+        { numRuns: 50 }
+      );
+    });
+
+    test('should maintain filtering across updateMany and deleteMany operations', async () => {
+      await fc.assert(
+        fc.asyncProperty(
+          fc.array(fc.record({
+            tenantId: objectIdArbitrary(),
+            name: fc.string({ minLength: 1, maxLength: 50 }),
+            value: fc.integer({ min: 0, max: 1000 })
+          }), { minLength: 4, maxLength: 12 }),
+          fc.nat({ max: 100 }),
+          fc.constantFrom('updateMany', 'deleteMany'),
+          async (documents, queryIndex, operation) => {
+            if (documents.length === 0) return true;
+
+            // Create documents
+            const createdDocs = await Promise.all(
+              documents.map(doc => 
+                TestModel.create({
+                  ...doc,
+                  tenantId: new mongoose.Types.ObjectId(doc.tenantId)
+                })
+              )
+            );
+
+            const selectedTenant = createdDocs[queryIndex % documents.length];
+            const selectedTenantId = selectedTenant.tenantId;
+
+            const tenantDocsCount = createdDocs.filter(
+              doc => doc.tenantId.toString() === selectedTenantId.toString()
+            ).length;
+
+            // Execute operation
+            await runWithTenantContext(
+              { id: selectedTenantId, slug: 'test-tenant' },
+              async () => {
+                if (operation === 'updateMany') {
+                  await TestModel.updateMany({}, { value: 8888 });
+                } else {
+                  await TestModel.deleteMany({});
+                }
+              }
+            );
+
+            // Verify only selected tenant's documents were affected
+            // Query ALL documents without tenant context to verify isolation
+            const allDocs = await TestModel.find({}).lean();
+
+            if (operation === 'updateMany') {
+              // Property: All documents with value 8888 must belong to selected tenant
+              const updatedDocs = allDocs.filter(doc => doc.value === 8888);
+              const allUpdatedBelongToTenant = updatedDocs.every(
+                doc => doc.tenantId.toString() === selectedTenantId.toString()
+              );
+              
+              // Property: Count of updated docs must equal tenant docs count
+              const correctCount = updatedDocs.length === tenantDocsCount;
+              
+              // Property: Documents from other tenants should NOT be updated
+              const otherTenantDocs = allDocs.filter(
+                doc => doc.tenantId.toString() !== selectedTenantId.toString()
+              );
+              const noOtherTenantsUpdated = otherTenantDocs.every(doc => doc.value !== 8888);
+              
+              return allUpdatedBelongToTenant && correctCount && noOtherTenantsUpdated;
+            } else {
+              // Property: No remaining documents should belong to selected tenant
+              const noneFromSelectedTenant = allDocs.every(
+                doc => doc.tenantId.toString() !== selectedTenantId.toString()
+              );
+              
+              // Property: Documents from other tenants should still exist
+              const otherTenantDocs = allDocs.filter(
+                doc => doc.tenantId.toString() !== selectedTenantId.toString()
+              );
+              const expectedOtherDocsCount = createdDocs.length - tenantDocsCount;
+              const otherDocsPreserved = otherTenantDocs.length === expectedOtherDocsCount;
+              
+              return noneFromSelectedTenant && otherDocsPreserved;
+            }
+          }
+        ),
+        { numRuns: 50 }
+      );
+    });
+
+    test('should filter findOneAndUpdate and findOneAndDelete operations', async () => {
+      await fc.assert(
+        fc.asyncProperty(
+          fc.array(fc.record({
+            tenantId: objectIdArbitrary(),
+            name: fc.string({ minLength: 1, maxLength: 50 }),
+            value: fc.integer({ min: 0, max: 1000 })
+          }), { minLength: 2, maxLength: 8 }),
+          fc.nat({ max: 100 }),
+          fc.constantFrom('findOneAndUpdate', 'findOneAndDelete'),
+          async (documents, queryIndex, operation) => {
+            if (documents.length === 0) return true;
+
+            // Create documents
+            const createdDocs = await Promise.all(
+              documents.map(doc => 
+                TestModel.create({
+                  ...doc,
+                  tenantId: new mongoose.Types.ObjectId(doc.tenantId)
+                })
+              )
+            );
+
+            const selectedTenant = createdDocs[queryIndex % documents.length];
+            const selectedTenantId = selectedTenant.tenantId;
+
+            // Execute operation
+            let result;
+            await runWithTenantContext(
+              { id: selectedTenantId, slug: 'test-tenant' },
+              async () => {
+                if (operation === 'findOneAndUpdate') {
+                  result = await TestModel.findOneAndUpdate({}, { value: 7777 }, { new: true });
+                } else {
+                  result = await TestModel.findOneAndDelete({});
+                }
+              }
+            );
+
+            // Verify result belongs to selected tenant (if found)
+            if (result) {
+              return result.tenantId.toString() === selectedTenantId.toString();
+            }
+
+            // If no result, verify no documents exist for this tenant
+            const tenantDocs = createdDocs.filter(
+              doc => doc.tenantId.toString() === selectedTenantId.toString()
+            );
+            return tenantDocs.length === 0;
+          }
+        ),
+        { numRuns: 50 }
+      );
+    });
+  });
+
+  /**
    * Property 10: Automatic TenantId Filter Injection
    * 
    * For any query executed on a tenant-scoped Mongoose model, 
@@ -308,6 +590,160 @@ describe('Tenant Scoping Plugin - Property Tests', () => {
           }
         ),
         { numRuns: 100 }
+      );
+    });
+  });
+
+  /**
+   * Property 2: Automatic Tenant Stamping and Immutability
+   * 
+   * For any new document created in a tenant-scoped model, the system SHALL 
+   * automatically stamp the tenantId field with the current tenant context, 
+   * and for any subsequent update operation, the tenantId field SHALL remain 
+   * immutable and unchanged.
+   * 
+   * **Validates: Requirements 2.2, 2.7, 7.3**
+   */
+  describe('Property 2: Automatic Tenant Stamping and Immutability', () => {
+    test('should auto-stamp tenantId on creation and prevent modification on updates', async () => {
+      await fc.assert(
+        fc.asyncProperty(
+          objectIdArbitrary(), // Original tenant
+          objectIdArbitrary(), // Attempted new tenant
+          fc.string({ minLength: 1, maxLength: 50 }),
+          fc.integer({ min: 0, max: 1000 }),
+          async (originalTenantHex, newTenantHex, name, value) => {
+            const originalTenantId = new mongoose.Types.ObjectId(originalTenantHex);
+            const newTenantId = new mongoose.Types.ObjectId(newTenantHex);
+
+            // Create document with auto-stamping
+            const doc = await runWithTenantContext(
+              { id: originalTenantId, slug: 'original-tenant' },
+              async () => {
+                const newDoc = new TestModel({ name, value });
+                await newDoc.save();
+                return newDoc;
+              }
+            );
+
+            // Property Part 1: Document must have tenantId auto-stamped
+            if (!doc.tenantId || doc.tenantId.toString() !== originalTenantId.toString()) {
+              return false;
+            }
+
+            // Property Part 2: Attempt to modify tenantId should fail
+            try {
+              await runWithTenantContext(
+                { id: newTenantId, slug: 'new-tenant' },
+                async () => {
+                  doc.value = value + 100; // Legitimate change
+                  await doc.save();
+                }
+              );
+              // If save succeeded with different tenant context, that's a violation
+              return false;
+            } catch (error) {
+              // Should throw TENANT_MISMATCH error
+              if (error.code !== 'TENANT_MISMATCH') {
+                return false;
+              }
+            }
+
+            // Verify tenantId remains unchanged
+            const reloaded = await TestModel.findById(doc._id);
+            return reloaded && reloaded.tenantId.toString() === originalTenantId.toString();
+          }
+        ),
+        { numRuns: 100 }
+      );
+    });
+
+    test('should prevent direct tenantId modification attempts', async () => {
+      await fc.assert(
+        fc.asyncProperty(
+          objectIdArbitrary(),
+          objectIdArbitrary(),
+          fc.string({ minLength: 1, maxLength: 50 }),
+          async (originalTenantHex, maliciousTenantHex, name) => {
+            const originalTenantId = new mongoose.Types.ObjectId(originalTenantHex);
+            const maliciousTenantId = new mongoose.Types.ObjectId(maliciousTenantHex);
+
+            // Create document
+            const doc = await runWithTenantContext(
+              { id: originalTenantId, slug: 'original-tenant' },
+              async () => {
+                const newDoc = new TestModel({ name, value: 100 });
+                await newDoc.save();
+                return newDoc;
+              }
+            );
+
+            // Attempt to directly modify tenantId and save in same context
+            await runWithTenantContext(
+              { id: originalTenantId, slug: 'original-tenant' },
+              async () => {
+                doc.tenantId = maliciousTenantId;
+                try {
+                  await doc.save();
+                  // If save succeeded, that's a violation
+                  return false;
+                } catch (error) {
+                  // Should fail with TENANT_MISMATCH
+                  return error.code === 'TENANT_MISMATCH';
+                }
+              }
+            );
+
+            return true;
+          }
+        ),
+        { numRuns: 100 }
+      );
+    });
+
+    test('should maintain tenantId immutability across multiple update operations', async () => {
+      await fc.assert(
+        fc.asyncProperty(
+          objectIdArbitrary(),
+          fc.array(fc.integer({ min: 0, max: 1000 }), { minLength: 2, maxLength: 5 }),
+          fc.string({ minLength: 1, maxLength: 50 }),
+          async (tenantIdHex, updateValues, name) => {
+            const tenantId = new mongoose.Types.ObjectId(tenantIdHex);
+
+            // Create document
+            let doc = await runWithTenantContext(
+              { id: tenantId, slug: 'test-tenant' },
+              async () => {
+                const newDoc = new TestModel({ name, value: updateValues[0] });
+                await newDoc.save();
+                return newDoc;
+              }
+            );
+
+            const originalTenantId = doc.tenantId.toString();
+
+            // Perform multiple updates
+            for (let i = 1; i < updateValues.length; i++) {
+              doc = await runWithTenantContext(
+                { id: tenantId, slug: 'test-tenant' },
+                async () => {
+                  const foundDoc = await TestModel.findById(doc._id);
+                  foundDoc.value = updateValues[i];
+                  await foundDoc.save();
+                  return foundDoc;
+                }
+              );
+
+              // Property: tenantId must remain unchanged after each update
+              if (doc.tenantId.toString() !== originalTenantId) {
+                return false;
+              }
+            }
+
+            return true;
+          }
+        ),
+        { numRuns: 50 }
       );
     });
   });

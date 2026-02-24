@@ -1,19 +1,19 @@
+const Category = require('../models/Category');
+const MenuItem = require('../models/MenuItem');
+
 /**
  * Utility untuk seed kategori dan menu default ke tenant baru
  * Dipanggil otomatis saat setup tenant agar dashboard tidak kosong
+ * Updated for Unified Nexus Architecture - uses models directly with tenant context
  */
 
 const seedDefaultMenu = async (tenantDB, tenantId) => {
   try {
     console.log('[SEED MENU] Memulai seeding kategori dan menu default...');
 
-    // Load models
-    const CategoryModel = tenantDB.model('Category', require('../models/Category').schema);
-    const MenuItemModel = tenantDB.model('MenuItem', require('../models/MenuItem').schema);
-
     // Cek apakah sudah ada data
-    const existingCategories = await CategoryModel.countDocuments();
-    const existingMenuItems = await MenuItemModel.countDocuments();
+    const existingCategories = await Category.countDocuments();
+    const existingMenuItems = await MenuItem.countDocuments();
 
     if (existingCategories > 0 || existingMenuItems > 0) {
       console.log('[SEED MENU] Data menu sudah ada, skip seeding');
@@ -32,11 +32,10 @@ const seedDefaultMenu = async (tenantDB, tenantId) => {
       { id: 'cat-snack', name: 'Snack', emoji: '🍪', order: 4 }
     ];
 
-    // Insert kategori dengan tenantId
-    const categories = await CategoryModel.insertMany(
+    // Insert kategori (tenantId will be auto-stamped by plugin)
+    const categories = await Category.insertMany(
       defaultCategories.map(cat => ({
         ...cat,
-        tenantId: tenantId,
         createdAt: new Date()
       }))
     );
@@ -65,11 +64,10 @@ const seedDefaultMenu = async (tenantDB, tenantId) => {
       { id: 'menu-cookies', name: 'Cookies', categoryId: 'cat-snack', price: 10000, description: 'Cookies cokelat chip' }
     ];
 
-    // Insert menu dengan tenantId
-    const menuItems = await MenuItemModel.insertMany(
+    // Insert menu (tenantId will be auto-stamped by plugin)
+    const menuItems = await MenuItem.insertMany(
       defaultMenuItems.map(item => ({
         ...item,
-        tenantId: tenantId,
         is_active: true,
         use_stock_check: false, // Default tidak cek stok untuk menu awal
         order: 0,

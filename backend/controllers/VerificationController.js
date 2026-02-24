@@ -1,6 +1,7 @@
-const { getTenantDB } = require('../config/db');
+const Employee = require('../models/Employee');
 const { generateOTP, sendOTPEmail, sendWelcomeEmail } = require('../services/emailService');
 const Tenant = require('../models/Tenant');
+const { runWithTenantContext } = require('../utils/tenantContext');
 
 /**
  * POST /api/verify/otp
@@ -27,49 +28,48 @@ const verifyOTP = async (req, res) => {
       });
     }
 
-    // Koneksi ke database tenant
-    const tenantDB = await getTenantDB(tenant.dbName);
-    const EmployeeModel = tenantDB.model('Employee', require('../models/Employee').schema);
+    // Get and update user with tenant context
+    const result = await runWithTenantContext(
+      { id: tenant._id.toString(), slug: tenant.slug, name: tenant.name, dbName: tenant.dbName },
+      async () => {
+        // Cari user berdasarkan email
+        const user = await Employee.findOne({ email: email });
 
-    // Cari user berdasarkan email
-    const user = await EmployeeModel.findOne({ email: email });
+        if (!user) {
+          return { error: 'User tidak ditemukan', status: 404 };
+        }
 
-    if (!user) {
-      return res.status(404).json({
+        // Cek apakah sudah terverifikasi
+        if (user.isVerified) {
+          return { error: 'Email sudah terverifikasi', status: 400 };
+        }
+
+        // Cek OTP code
+        if (user.otpCode !== otpCode) {
+          return { error: 'Kode OTP tidak valid', status: 400 };
+        }
+
+        // Cek expiry
+        if (new Date() > user.otpExpiry) {
+          return { error: 'Kode OTP sudah kadaluarsa. Silakan minta kode baru.', status: 400 };
+        }
+
+        // Update user sebagai terverifikasi
+        user.isVerified = true;
+        user.otpCode = null;
+        user.otpExpiry = null;
+        await user.save();
+
+        return { user };
+      }
+    );
+
+    if (result.error) {
+      return res.status(result.status).json({
         success: false,
-        message: 'User tidak ditemukan'
+        message: result.error
       });
     }
-
-    // Cek apakah sudah terverifikasi
-    if (user.isVerified) {
-      return res.status(400).json({
-        success: false,
-        message: 'Email sudah terverifikasi'
-      });
-    }
-
-    // Cek OTP code
-    if (user.otpCode !== otpCode) {
-      return res.status(400).json({
-        success: false,
-        message: 'Kode OTP tidak valid'
-      });
-    }
-
-    // Cek expiry
-    if (new Date() > user.otpExpiry) {
-      return res.status(400).json({
-        success: false,
-        message: 'Kode OTP sudah kadaluarsa. Silakan minta kode baru.'
-      });
-    }
-
-    // Update user sebagai terverifikasi
-    user.isVerified = true;
-    user.otpCode = null;
-    user.otpExpiry = null;
-    await user.save();
 
     console.log('[VERIFY] User berhasil diverifikasi', {
       email: email,
@@ -78,7 +78,7 @@ const verifyOTP = async (req, res) => {
 
     // Kirim welcome email
     try {
-      await sendWelcomeEmail(email, user.name, tenant.name, tenant.slug);
+      await sendWelcomeEmail(email, result.user.name, tenant.name, tenant.slug);
     } catch (emailError) {
       console.error('[VERIFY] Failed to send welcome email:', emailError.message);
     }
@@ -87,9 +87,9 @@ const verifyOTP = async (req, res) => {
       success: true,
       message: 'Email berhasil diverifikasi! Anda sekarang dapat login.',
       data: {
-        email: user.email,
-        name: user.name,
-        isVerified: user.isVerified
+        email: result.user.email,
+        name: result.user.name,
+        isVerified: result.user.isVerified
       }
     });
 
@@ -131,39 +131,44 @@ const resendOTP = async (req, res) => {
       });
     }
 
-    // Koneksi ke database tenant
-    const tenantDB = await getTenantDB(tenant.dbName);
-    const EmployeeModel = tenantDB.model('Employee', require('../models/Employee').schema);
+    // Get and update user with tenant context
+    const result = await runWithTenantContext(
+      { id: tenant._id.toString(), slug: tenant.slug, name: tenant.name, dbName: tenant.dbName },
+      async () => {
+        // Cari user berdasarkan email
+        const user = await Employee.findOne({ email: email });
 
-    // Cari user berdasarkan email
-    const user = await EmployeeModel.findOne({ email: email });
+        if (!user) {
+          return { error: 'User tidak ditemukan', status: 404 };
+        }
 
-    if (!user) {
-      return res.status(404).json({
+        // Cek apakah sudah terverifikasi
+        if (user.isVerified) {
+          return { error: 'Email sudah terverifikasi', status: 400 };
+        }
+
+        // Generate OTP baru
+        const otpCode = generateOTP();
+        const otpExpiry = new Date(Date.now() + 10 * 60 * 1000); // 10 menit
+
+        // Update user dengan OTP baru
+        user.otpCode = otpCode;
+        user.otpExpiry = otpExpiry;
+        await user.save();
+
+        return { otpCode };
+      }
+    );
+
+    if (result.error) {
+      return res.status(result.status).json({
         success: false,
-        message: 'User tidak ditemukan'
+        message: result.error
       });
     }
-
-    // Cek apakah sudah terverifikasi
-    if (user.isVerified) {
-      return res.status(400).json({
-        success: false,
-        message: 'Email sudah terverifikasi'
-      });
-    }
-
-    // Generate OTP baru
-    const otpCode = generateOTP();
-    const otpExpiry = new Date(Date.now() + 10 * 60 * 1000); // 10 menit
-
-    // Update user dengan OTP baru
-    user.otpCode = otpCode;
-    user.otpExpiry = otpExpiry;
-    await user.save();
 
     // Kirim OTP ke email
-    await sendOTPEmail(email, otpCode, tenant.name);
+    await sendOTPEmail(email, result.otpCode, tenant.name);
 
     console.log('[VERIFY] OTP baru berhasil dikirim', {
       email: email,

@@ -1,17 +1,16 @@
 const bcrypt = require('bcryptjs');
+const Employee = require('../models/Employee');
 
 /**
  * Utility untuk membuat admin user di tenant database
+ * Updated for Unified Nexus Architecture - uses Employee model directly with tenant context
  */
 const seedAdminUser = async (tenantDB, cafeName, adminData, tenantId) => {
   try {
     console.log('[SEED ADMIN] Membuat admin user...');
 
-    // Load Employee model
-    const EmployeeModel = tenantDB.model('Employee', require('../models/Employee').schema);
-
     // Cek apakah admin sudah ada
-    const existingAdmin = await EmployeeModel.findOne({ email: adminData.email });
+    const existingAdmin = await Employee.findOne({ email: adminData.email });
     if (existingAdmin) {
       console.log('[SEED ADMIN] Admin sudah ada, skip');
       return existingAdmin;
@@ -39,11 +38,11 @@ const seedAdminUser = async (tenantDB, cafeName, adminData, tenantId) => {
       isVerified: adminData.isVerified || false,
       authProvider: adminData.authProvider || 'local',
       googleId: adminData.googleId || null,
-      image: adminData.image || null,
-      tenantId: tenantId // Tambahkan tenantId
+      image: adminData.image || null
+      // tenantId will be auto-stamped by tenant scoping plugin
     };
 
-    const admin = await EmployeeModel.create(newAdmin);
+    const admin = await Employee.create(newAdmin);
     console.log('[SEED ADMIN] ✓ Admin user berhasil dibuat:', admin.email);
 
     return admin;

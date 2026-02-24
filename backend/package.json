@@ -10,7 +10,9 @@
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
     "migrate-file": "node scripts/migrate-file.js",
-    "docker-build": "docker build -t warkop-backend ."
+    "docker-build": "docker build -t warkop-backend .",
+    "deploy": "node scripts/deploy.js",
+    "init:universe": "node scripts/initUniverse.js"
   },
   "keywords": [],
   "author": "",

@@ -14,6 +14,9 @@ const VoucherSchema = new mongoose.Schema({
     is_active: { type: Boolean, default: true },
 }, { timestamps: true });
 
+// Tenant-scoped compound indexes for optimal query performance
+VoucherSchema.index({ tenantId: 1, createdAt: -1 }); // Time-based queries per tenant
+
 // Apply tenant scoping plugin for automatic tenant isolation
 VoucherSchema.plugin(tenantScopingPlugin);
 

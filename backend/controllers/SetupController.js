@@ -1,8 +1,9 @@
 const User = require('../models/User');
 const Tenant = require('../models/Tenant');
-const { getTenantDB } = require('../config/db');
+const Employee = require('../models/Employee');
 const jwt = require('jsonwebtoken');
 const { validateSlug } = require('../utils/slugValidator');
+const { runWithTenantContext } = require('../utils/tenantContext');
 
 /**
  * Setup Controller
@@ -67,8 +68,8 @@ const setupTenant = async (req, res) => {
       });
     }
 
-    // Susun dbName
-    const dbName = `superkafe_${slug.toLowerCase().replace(/-/g, '_')}`;
+    // In unified architecture, all tenants use the same database
+    const dbName = 'superkafe_v2';
 
     // Set trial expiry: 10 hari
     const trialExpiresAt = new Date();
@@ -92,60 +93,62 @@ const setupTenant = async (req, res) => {
     });
 
     // Inisialisasi database tenant
-    let tenantDB;
-    
     try {
-      tenantDB = await getTenantDB(dbName);
-      
-      // Seeding settings
-      const SettingModel = tenantDB.model('Setting', require('../models/Setting').schema);
-      
-      const defaultSettings = [
-        { key: 'store_name', value: cafeName, description: 'Nama toko/warkop', tenantId: newTenant._id },
-        { key: 'store_address', value: '', description: 'Alamat toko', tenantId: newTenant._id },
-        { key: 'store_phone', value: '', description: 'Nomor telepon toko', tenantId: newTenant._id },
-        { key: 'currency', value: 'IDR', description: 'Mata uang yang digunakan', tenantId: newTenant._id },
-        { key: 'timezone', value: 'Asia/Jakarta', description: 'Zona waktu', tenantId: newTenant._id },
-        { key: 'tax_rate', value: 0, description: 'Persentase pajak', tenantId: newTenant._id },
-        { key: 'service_charge', value: 0, description: 'Biaya layanan', tenantId: newTenant._id },
-        { key: 'loyalty_settings', value: { enabled: false, pointsPerRupiah: 0.01, minPointsForReward: 100 }, description: 'Konfigurasi program loyalitas', tenantId: newTenant._id },
-        { key: 'notification_sound', value: '/sounds/notif.mp3', description: 'File suara notifikasi', tenantId: newTenant._id },
-        { key: 'units', value: ['pcs', 'kg', 'liter', 'porsi'], description: 'Unit satuan yang tersedia', tenantId: newTenant._id },
-        { key: 'initialized', value: true, description: 'Status inisialisasi database', tenantId: newTenant._id },
-        { key: 'initialized_at', value: new Date().toISOString(), description: 'Waktu inisialisasi database', tenantId: newTenant._id }
-      ];
+      // Use tenant context for seeding operations
+      await runWithTenantContext(
+        { id: newTenant._id.toString(), slug: newTenant.slug, name: newTenant.name, dbName: dbName },
+        async () => {
+          // Seeding settings
+          const SettingModel = require('../models/Setting');
+          
+          const defaultSettings = [
+            { key: 'store_name', value: cafeName, description: 'Nama toko/warkop' },
+            { key: 'store_address', value: '', description: 'Alamat toko' },
+            { key: 'store_phone', value: '', description: 'Nomor telepon toko' },
+            { key: 'currency', value: 'IDR', description: 'Mata uang yang digunakan' },
+            { key: 'timezone', value: 'Asia/Jakarta', description: 'Zona waktu' },
+            { key: 'tax_rate', value: 0, description: 'Persentase pajak' },
+            { key: 'service_charge', value: 0, description: 'Biaya layanan' },
+            { key: 'loyalty_settings', value: { enabled: false, pointsPerRupiah: 0.01, minPointsForReward: 100 }, description: 'Konfigurasi program loyalitas' },
+            { key: 'notification_sound', value: '/sounds/notif.mp3', description: 'File suara notifikasi' },
+            { key: 'units', value: ['pcs', 'kg', 'liter', 'porsi'], description: 'Unit satuan yang tersedia' },
+            { key: 'initialized', value: true, description: 'Status inisialisasi database' },
+            { key: 'initialized_at', value: new Date().toISOString(), description: 'Waktu inisialisasi database' }
+          ];
 
-      await SettingModel.insertMany(defaultSettings);
+          await SettingModel.insertMany(defaultSettings);
 
-      console.log('[SETUP] Settings berhasil di-seed');
+          console.log('[SETUP] Settings berhasil di-seed');
 
-      // Buat admin user di tenant database
-      const { seedAdminUser } = require('../utils/seedAdminUser');
-      const adminData = {
-        email: user.email,
-        password: user.password, // Sudah hashed atau null (Google)
-        name: adminName || user.name,
-        username: user.email.split('@')[0],
-        isVerified: user.isVerified,
-        authProvider: user.authProvider,
-        googleId: user.googleId,
-        image: user.image
-      };
+          // Buat admin user di tenant database
+          const { seedAdminUser } = require('../utils/seedAdminUser');
+          const adminData = {
+            email: user.email,
+            password: user.password, // Sudah hashed atau null (Google)
+            name: adminName || user.name,
+            username: user.email.split('@')[0],
+            isVerified: user.isVerified,
+            authProvider: user.authProvider,
+            googleId: user.googleId,
+            image: user.image
+          };
 
-      await seedAdminUser(tenantDB, cafeName, adminData, newTenant._id);
+          await seedAdminUser(null, cafeName, adminData, newTenant._id);
 
-      console.log('[SETUP] Admin user berhasil dibuat di tenant database');
+          console.log('[SETUP] Admin user berhasil dibuat di tenant database');
 
-      // Seed kategori dan menu default
-      const { seedDefaultMenu } = require('../utils/seedDefaultMenu');
-      const seedResult = await seedDefaultMenu(tenantDB, newTenant._id);
-      
-      if (seedResult.success) {
-        console.log('[SETUP] Menu default berhasil di-seed:', {
-          categories: seedResult.categoriesCount,
-          menuItems: seedResult.menuItemsCount
-        });
-      }
+          // Seed kategori dan menu default
+          const { seedDefaultMenu } = require('../utils/seedDefaultMenu');
+          const seedResult = await seedDefaultMenu(null, newTenant._id);
+          
+          if (seedResult.success) {
+            console.log('[SETUP] Menu default berhasil di-seed:', {
+              categories: seedResult.categoriesCount,
+              menuItems: seedResult.menuItemsCount
+            });
+          }
+        }
+      );
 
     } catch (dbError) {
       // Rollback: Hapus tenant jika gagal inisialisasi database
@@ -175,8 +178,12 @@ const setupTenant = async (req, res) => {
     });
 
     // Generate JWT token baru (include tenant info)
-    const EmployeeModel = tenantDB.model('Employee', require('../models/Employee').schema);
-    const adminUser = await EmployeeModel.findOne({ email: user.email }).lean();
+    const adminUser = await runWithTenantContext(
+      { id: newTenant._id.toString(), slug: newTenant.slug, name: newTenant.name, dbName: dbName },
+      async () => {
+        return await Employee.findOne({ email: user.email }).lean();
+      }
+    );
 
     const token = jwt.sign(
       {
@@ -184,6 +191,7 @@ const setupTenant = async (req, res) => {
         email: adminUser.email,
         role: adminUser.role,
         tenant: newTenant.slug,
+        tenantSlug: newTenant.slug, // CRITICAL: Add tenantSlug for frontend header
         tenantId: newTenant._id.toString(),
         tenantDbName: dbName,
         userId: user._id
@@ -193,7 +201,7 @@ const setupTenant = async (req, res) => {
     );
 
     // Response sukses
-    res.status(201).json({
+    res.status(200).json({
       success: true,
       message: 'Setup tenant berhasil! Selamat datang di SuperKafe!',
       token: token,

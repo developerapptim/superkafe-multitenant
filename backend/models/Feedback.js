@@ -22,6 +22,9 @@ const FeedbackSchema = new mongoose.Schema({
     }
 });
 
+// Tenant-scoped compound indexes for optimal query performance
+FeedbackSchema.index({ tenantId: 1, created_at: -1 }); // Time-based queries per tenant
+
 // Apply tenant scoping plugin for automatic tenant isolation
 FeedbackSchema.plugin(tenantScopingPlugin);
 

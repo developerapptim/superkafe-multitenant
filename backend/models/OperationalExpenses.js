@@ -34,6 +34,9 @@ OperationalExpenseSchema.index({ date: -1 });
 OperationalExpenseSchema.index({ category: 1 });
 OperationalExpenseSchema.index({ isDeleted: 1 });
 
+// Tenant-scoped compound indexes for optimal query performance
+OperationalExpenseSchema.index({ tenantId: 1, createdAt: -1 }); // Time-based queries per tenant
+
 // Apply tenant scoping plugin for automatic tenant isolation
 OperationalExpenseSchema.plugin(tenantScopingPlugin);
 

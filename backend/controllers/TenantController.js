@@ -1,6 +1,7 @@
 const Tenant = require('../models/Tenant');
-const { getTenantDB } = require('../config/db');
+const Employee = require('../models/Employee');
 const { validateSlug } = require('../utils/slugValidator');
+const { runWithTenantContext } = require('../utils/tenantContext');
 
 /**
  * Controller untuk manajemen tenant (cabang warkop)
@@ -106,8 +107,8 @@ const registerTenant = async (req, res) => {
       });
     }
 
-    // Susun dbName otomatis: superkafe_[slug_dengan_underscore]
-    const dbName = `superkafe_${slug.toLowerCase().replace(/-/g, '_')}`;
+    // In unified architecture, all tenants use the same database
+    const dbName = 'superkafe_v2';
 
     // Set trial expiry: 10 hari dari sekarang
     const trialExpiresAt = new Date();
@@ -134,152 +135,153 @@ const registerTenant = async (req, res) => {
     });
 
     // Inisialisasi database tenant dan seeding data awal
-    let tenantDB; // Deklarasi di scope luar agar accessible di response
-    
     try {
-      tenantDB = await getTenantDB(dbName);
-      
-      // Seeding data awal: Buat koleksi settings dengan data default
-      const SettingModel = tenantDB.model('Setting', require('../models/Setting').schema);
-      
-      // Data settings awal untuk tenant baru
-      const defaultSettings = [
-        {
-          key: 'store_name',
-          value: name,
-          description: 'Nama toko/warkop'
-        },
-        {
-          key: 'store_address',
-          value: '',
-          description: 'Alamat toko'
-        },
-        {
-          key: 'store_phone',
-          value: '',
-          description: 'Nomor telepon toko'
-        },
-        {
-          key: 'currency',
-          value: 'IDR',
-          description: 'Mata uang yang digunakan'
-        },
-        {
-          key: 'timezone',
-          value: 'Asia/Jakarta',
-          description: 'Zona waktu'
-        },
-        {
-          key: 'tax_rate',
-          value: 0,
-          description: 'Persentase pajak'
-        },
-        {
-          key: 'service_charge',
-          value: 0,
-          description: 'Biaya layanan'
-        },
-        {
-          key: 'loyalty_settings',
-          value: {
-            enabled: false,
-            pointsPerRupiah: 0.01,
-            minPointsForReward: 100
-          },
-          description: 'Konfigurasi program loyalitas'
-        },
-        {
-          key: 'notification_sound',
-          value: '/sounds/notif.mp3',
-          description: 'File suara notifikasi'
-        },
-        {
-          key: 'units',
-          value: ['pcs', 'kg', 'liter', 'porsi'],
-          description: 'Unit satuan yang tersedia'
-        },
-        {
-          key: 'initialized',
-          value: true,
-          description: 'Status inisialisasi database'
-        },
-        {
-          key: 'initialized_at',
-          value: new Date().toISOString(),
-          description: 'Waktu inisialisasi database'
-        }
-      ];
+      // Use tenant context for seeding operations
+      await runWithTenantContext(
+        { id: newTenant._id.toString(), slug: newTenant.slug, name: newTenant.name, dbName: dbName },
+        async () => {
+          // Seeding data awal: Buat koleksi settings dengan data default
+          const SettingModel = require('../models/Setting');
+          
+          // Data settings awal untuk tenant baru
+          const defaultSettings = [
+            {
+              key: 'store_name',
+              value: name,
+              description: 'Nama toko/warkop'
+            },
+            {
+              key: 'store_address',
+              value: '',
+              description: 'Alamat toko'
+            },
+            {
+              key: 'store_phone',
+              value: '',
+              description: 'Nomor telepon toko'
+            },
+            {
+              key: 'currency',
+              value: 'IDR',
+              description: 'Mata uang yang digunakan'
+            },
+            {
+              key: 'timezone',
+              value: 'Asia/Jakarta',
+              description: 'Zona waktu'
+            },
+            {
+              key: 'tax_rate',
+              value: 0,
+              description: 'Persentase pajak'
+            },
+            {
+              key: 'service_charge',
+              value: 0,
+              description: 'Biaya layanan'
+            },
+            {
+              key: 'loyalty_settings',
+              value: {
+                enabled: false,
+                pointsPerRupiah: 0.01,
+                minPointsForReward: 100
+              },
+              description: 'Konfigurasi program loyalitas'
+            },
+            {
+              key: 'notification_sound',
+              value: '/sounds/notif.mp3',
+              description: 'File suara notifikasi'
+            },
+            {
+              key: 'units',
+              value: ['pcs', 'kg', 'liter', 'porsi'],
+              description: 'Unit satuan yang tersedia'
+            },
+            {
+              key: 'initialized',
+              value: true,
+              description: 'Status inisialisasi database'
+            },
+            {
+              key: 'initialized_at',
+              value: new Date().toISOString(),
+              description: 'Waktu inisialisasi database'
+            }
+          ];
 
-      // Insert semua settings sekaligus
-      await SettingModel.insertMany(defaultSettings);
+          // Insert semua settings sekaligus
+          await SettingModel.insertMany(defaultSettings);
 
-      console.log('[TENANT] Settings berhasil di-seed', {
-        dbName,
-        settingsCount: defaultSettings.length
-      });
+          console.log('[TENANT] Settings berhasil di-seed', {
+            dbName,
+            settingsCount: defaultSettings.length
+          });
 
-      // Generate OTP untuk email verification (hanya untuk registrasi manual)
-      let otpCode, otpExpiry;
-      
-      if (!isGoogleAuth) {
-        const { generateOTP, sendOTPEmail } = require('../services/emailService');
-        otpCode = generateOTP();
-        otpExpiry = new Date(Date.now() + 10 * 60 * 1000); // 10 menit
-      }
-
-      // Seeding User Admin dengan data dari registrasi
-      const { seedAdminUser } = require('../utils/seedAdminUser');
-      const adminData = {
-        email: email,
-        password: isGoogleAuth ? null : password, // Password null untuk Google auth
-        name: adminName || 'Administrator',
-        username: email.split('@')[0], // Username dari email
-        isVerified: isGoogleAuth ? true : false, // Google auth langsung verified
-        authProvider: isGoogleAuth ? 'google' : 'local',
-        googleId: isGoogleAuth ? googleId : undefined,
-        image: isGoogleAuth ? googlePicture : undefined
-      };
-
-      const adminResult = await seedAdminUser(tenantDB, name, adminData);
-
-      // Update admin dengan OTP code (hanya untuk registrasi manual)
-      if (!isGoogleAuth) {
-        const EmployeeModel = tenantDB.model('Employee', require('../models/Employee').schema);
-        await EmployeeModel.findOneAndUpdate(
-          { email: email },
-          {
-            otpCode: otpCode,
-            otpExpiry: otpExpiry
+          // Generate OTP untuk email verification (hanya untuk registrasi manual)
+          let otpCode, otpExpiry;
+          
+          if (!isGoogleAuth) {
+            const { generateOTP, sendOTPEmail } = require('../services/emailService');
+            otpCode = generateOTP();
+            otpExpiry = new Date(Date.now() + 10 * 60 * 1000); // 10 menit
           }
-        );
 
-        console.log('[TENANT] Admin user created with OTP', {
-          email: email,
-          otpExpiry: otpExpiry
-        });
+          // Seeding User Admin dengan data dari registrasi
+          const { seedAdminUser } = require('../utils/seedAdminUser');
+          const adminData = {
+            email: email,
+            password: isGoogleAuth ? null : password, // Password null untuk Google auth
+            name: adminName || 'Administrator',
+            username: email.split('@')[0], // Username dari email
+            isVerified: isGoogleAuth ? true : false, // Google auth langsung verified
+            authProvider: isGoogleAuth ? 'google' : 'local',
+            googleId: isGoogleAuth ? googleId : undefined,
+            image: isGoogleAuth ? googlePicture : undefined
+          };
 
-        // Kirim OTP ke email
-        try {
-          const { sendOTPEmail } = require('../services/emailService');
-          await sendOTPEmail(email, otpCode, name);
-          console.log('[TENANT] OTP email sent successfully');
-        } catch (emailError) {
-          console.error('[TENANT] Failed to send OTP email:', emailError.message);
-          // Don't fail registration if email fails, user can request resend
+          const adminResult = await seedAdminUser(null, name, adminData);
+
+          // Update admin dengan OTP code (hanya untuk registrasi manual)
+          if (!isGoogleAuth) {
+            await Employee.findOneAndUpdate(
+              { email: email },
+              {
+                otpCode: otpCode,
+                otpExpiry: otpExpiry
+              }
+            );
+
+            console.log('[TENANT] Admin user created with OTP', {
+              email: email,
+              otpExpiry: otpExpiry
+            });
+
+            // Kirim OTP ke email
+            try {
+              const { sendOTPEmail } = require('../services/emailService');
+              await sendOTPEmail(email, otpCode, name);
+              console.log('[TENANT] OTP email sent successfully');
+            } catch (emailError) {
+              console.error('[TENANT] Failed to send OTP email:', emailError.message);
+              // Don't fail registration if email fails, user can request resend
+            }
+          } else {
+            console.log('[TENANT] Admin user created with Google auth (no OTP needed)', {
+              email: email,
+              googleId: googleId
+            });
+          }
+
+          console.log('[TENANT] Database tenant berhasil diinisialisasi dengan data awal', {
+            dbName,
+            settingsCount: defaultSettings.length,
+            adminCreated: !adminResult.existed,
+            duration: `${Date.now() - startTime}ms`
+          });
         }
-      } else {
-        console.log('[TENANT] Admin user created with Google auth (no OTP needed)', {
-          email: email,
-          googleId: googleId
-        });
-      }
-
-      console.log('[TENANT] Database tenant berhasil diinisialisasi dengan data awal', {
-        dbName,
-        settingsCount: defaultSettings.length,
-        adminCreated: !adminResult.existed,
-        duration: `${Date.now() - startTime}ms`
-      });
+      );
 
     } catch (dbError) {
       // Jika gagal inisialisasi database, rollback tenant yang sudah dibuat
@@ -334,8 +336,12 @@ const registerTenant = async (req, res) => {
     // Jika Google auth, generate JWT token dan include user data
     if (isGoogleAuth) {
       const jwt = require('jsonwebtoken');
-      const EmployeeModel = tenantDB.model('Employee', require('../models/Employee').schema);
-      const adminUser = await EmployeeModel.findOne({ email: email }).lean();
+      const adminUser = await runWithTenantContext(
+        { id: newTenant._id.toString(), slug: newTenant.slug, name: newTenant.name, dbName: dbName },
+        async () => {
+          return await Employee.findOne({ email: email }).lean();
+        }
+      );
 
       const token = jwt.sign(
         {
@@ -343,6 +349,7 @@ const registerTenant = async (req, res) => {
           email: adminUser.email,
           role: adminUser.role,
           tenant: slug.toLowerCase(),
+          tenantSlug: slug.toLowerCase(), // CRITICAL: Add tenantSlug for frontend header
           tenantDbName: dbName
         },
         process.env.JWT_SECRET || 'your-secret-key',

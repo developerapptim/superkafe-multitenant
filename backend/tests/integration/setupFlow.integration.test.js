@@ -16,6 +16,12 @@ const express = require('express');
 const app = express();
 app.use(express.json());
 
+// Mock JWT middleware for testing
+app.use((req, res, next) => {
+  req.user = { userId: 'test-user-id' };
+  next();
+});
+
 // Import routes
 const setupRoutes = require('../../routes/setupRoutes');
 const tenantRoutes = require('../../routes/tenantRoutes');
@@ -200,7 +206,7 @@ describe('Backend Integration: Setup Flow', () => {
         const response = await request(app)
           .post('/api/tenants/register')
           .send({
-            cafeName: `${keyword} Cafe`,
+            name: `${keyword} Cafe`,
             slug: keyword,
             adminName: 'Test Admin',
             email: `test-${keyword}@example.com`,

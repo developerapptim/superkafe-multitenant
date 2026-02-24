@@ -1,4 +1,9 @@
 require('dotenv').config();
+
+// Validate environment variables before any other initialization
+const { validateAndExit } = require('./utils/envValidator');
+validateAndExit();
+
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
@@ -54,10 +59,6 @@ app.use('/', express.static(path.join(__dirname, 'public', 'customer')));
 
 // ===== DATABASE =====
 const MONGODB_URI = process.env.MONGODB_URI;
-if (!MONGODB_URI) {
-  console.error('❌ FATAL: MONGODB_URI is not defined in .env! Server cannot start.');
-  process.exit(1);
-}
 mongoose.connect(MONGODB_URI, { useNewUrlParser: true, useUnifiedTopology: true })
   .then(() => console.log(`✅ Connected to MongoDB (${MONGODB_URI.includes('mongodb+srv') ? 'Atlas' : 'Local'})`))
   .catch(err => {
@@ -66,6 +67,7 @@ mongoose.connect(MONGODB_URI, { useNewUrlParser: true, useUnifiedTopology: true 
   });
 
 // ===== ROUTES =====
+app.use('/health', require('./routes/healthRoutes')); // Health check endpoint (no auth required)
 app.use('/api/inventory', require('./routes/inventoryRoutes'));
 app.use('/api/ingredients', require('./routes/inventoryRoutes')); // Alias for legacy support
 app.use('/api/gramasi', require('./routes/gramasiRoutes'));

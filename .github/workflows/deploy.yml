@@ -70,6 +70,7 @@ jobs:
             echo "SMTP_USER=$SMTP_USER" >> backend/.env
             echo "SMTP_PASS=$SMTP_PASS" >> backend/.env
             echo "PORT=5001" >> backend/.env
+            echo "NODE_ENV=production" >> backend/.env
 
             docker compose down --remove-orphans
             docker compose pull
@@ -77,5 +78,6 @@ jobs:
 
             sleep 10
             
-            docker compose exec backend node scripts/seedTenant.js
+            # Run automated deployment script (validates env, checks DB, auto-initializes if needed)
+            docker compose exec backend npm run deploy
             docker image prune -f

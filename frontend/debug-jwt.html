@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>JWT Debug Tool</title>
+    <style>
+        body {
+            font-family: monospace;
+            padding: 20px;
+            background: #1a1a2e;
+            color: #eee;
+        }
+        .section {
+            background: #16213e;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 8px;
+            border: 1px solid #0f3460;
+        }
+        h2 {
+            color: #e94560;
+            margin-top: 0;
+        }
+        pre {
+            background: #0f3460;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+        button {
+            background: #e94560;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #c23b52;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔍 JWT Token Debugger</h1>
+    
+    <div class="section">
+        <h2>Token from localStorage</h2>
+        <pre id="token"></pre>
+    </div>
+
+    <div class="section">
+        <h2>Decoded Payload</h2>
+        <pre id="decoded"></pre>
+    </div>
+
+    <div class="section">
+        <h2>Headers that will be sent</h2>
+        <pre id="headers"></pre>
+    </div>
+
+    <div class="section">
+        <h2>Actions</h2>
+        <button onclick="location.reload()">Refresh</button>
+        <button onclick="localStorage.clear(); location.reload()">Clear localStorage</button>
+        <button onclick="window.close()">Close</button>
+    </div>
+
+    <script>
+        function decodeJWT(token) {
+            try {
+                const parts = token.split('.');
+                if (parts.length !== 3) return null;
+                
+                const payload = parts[1];
+                const decoded = atob(payload.replace(/-/g, '+').replace(/_/g, '/'));
+                return JSON.parse(decoded);
+            } catch (error) {
+                return { error: error.message };
+            }
+        }
+
+        const token = localStorage.getItem('token');
+        document.getElementById('token').textContent = token || 'No token found';
+
+        if (token) {
+            const decoded = decodeJWT(token);
+            document.getElementById('decoded').textContent = JSON.stringify(decoded, null, 2);
+
+            // Simulate what headers will be sent
+            const headers = {
+                'Authorization': `Bearer ${token}`,
+                'x-api-key': 'warkop_secret_123'
+            };
+
+            if (decoded) {
+                if (decoded.tenantSlug) {
+                    headers['x-tenant-slug'] = decoded.tenantSlug;
+                } else if (decoded.tenantId) {
+                    headers['x-tenant-id'] = decoded.tenantId;
+                } else if (decoded.tenant) {
+                    headers['x-tenant-slug'] = decoded.tenant;
+                } else {
+                    headers['WARNING'] = 'No tenant info in JWT!';
+                }
+            }
+
+            document.getElementById('headers').textContent = JSON.stringify(headers, null, 2);
+        } else {
+            document.getElementById('decoded').textContent = 'No token to decode';
+            document.getElementById('headers').textContent = 'No token - headers will not include tenant info';
+        }
+    </script>
+</body>
+</html>

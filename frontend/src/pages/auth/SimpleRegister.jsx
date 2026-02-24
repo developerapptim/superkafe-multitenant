@@ -18,20 +18,36 @@ const SimpleRegister = () => {
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [googleScriptReady, setGoogleScriptReady] = useState(false);
+  const [googleScriptFailed, setGoogleScriptFailed] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [passwordMatch, setPasswordMatch] = useState(true);
 
   // Load Google Sign-In script
   useEffect(() => {
+    console.log('[Google Auth] Loading Google script...');
+    
+    const timeoutId = setTimeout(() => {
+      if (!googleScriptReady) {
+        console.warn('[Google Auth] Script loading timeout after 10 seconds');
+        setGoogleScriptFailed(true);
+      }
+    }, 10000);
+    
     loadGoogleScript()
       .then(() => {
+        clearTimeout(timeoutId);
         setGoogleScriptReady(true);
+        setGoogleScriptFailed(false);
         console.log('[Google Auth] Script ready');
       })
       .catch((error) => {
+        clearTimeout(timeoutId);
         console.error('[Google Auth] Failed to load:', error);
+        setGoogleScriptFailed(true);
       });
+    
+    return () => clearTimeout(timeoutId);
   }, []);
 
   // Check password match
@@ -117,88 +133,106 @@ const SimpleRegister = () => {
   };
 
   const handleGoogleSignUp = () => {
+    // Check Google script first
+    if (!googleScriptReady || googleScriptFailed) {
+      toast.error('Google Sign-In tidak tersedia saat ini. Silakan gunakan registrasi email/password atau refresh halaman.', {
+        duration: 5000
+      });
+      return;
+    }
+
     setGoogleLoading(true);
 
     // Check Google script
     if (typeof window.google === 'undefined') {
-      toast.error('Google Sign-In belum siap. Silakan refresh halaman.');
+      toast.error('Google Sign-In belum siap. Silakan refresh halaman.', {
+        duration: 4000
+      });
       setGoogleLoading(false);
       return;
     }
 
-    // Initialize Google OAuth
-    const client = window.google.accounts.oauth2.initTokenClient({
-      client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID,
-      scope: 'email profile openid',
-      callback: async (response) => {
-        try {
-          if (response.error) {
-            console.error('Google OAuth Error:', response);
-            toast.error('Pendaftaran dengan Google gagal');
+    try {
+      // Initialize Google OAuth
+      const client = window.google.accounts.oauth2.initTokenClient({
+        client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID,
+        scope: 'email profile openid',
+        callback: async (response) => {
+          try {
+            if (response.error) {
+              console.error('Google OAuth Error:', response);
+              toast.error('Pendaftaran dengan Google gagal');
+              setGoogleLoading(false);
+              return;
+            }
+
+            // Get user info from Google
+            const userInfoResponse = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+              headers: {
+                Authorization: `Bearer ${response.access_token}`
+              }
+            });
+            const userInfo = await userInfoResponse.json();
+
+            console.log('[Google Auth] User info:', userInfo);
+
+            // Kirim ke backend (endpoint baru)
+            const backendResponse = await api.post('/auth/google', {
+              idToken: userInfo.sub,
+              email: userInfo.email,
+              name: userInfo.name,
+              picture: userInfo.picture
+            });
+
+            if (backendResponse.data.success) {
+              // Simpan token dan user data
+              localStorage.setItem('token', backendResponse.data.token);
+              localStorage.setItem('user', JSON.stringify(backendResponse.data.user));
+
+              // Show success message
+              if (backendResponse.data.isNewUser) {
+                toast.success('Akun berhasil dibuat dengan Google! Selamat datang!');
+              } else {
+                toast.success('Login dengan Google berhasil!');
+              }
+
+              // Redirect berdasarkan hasCompletedSetup
+              if (backendResponse.data.user.hasCompletedSetup) {
+                // User sudah setup tenant → ke dashboard via legacy route (will redirect to tenant-specific)
+                localStorage.setItem('tenant_slug', backendResponse.data.user.tenantSlug);
+                setTimeout(() => {
+                  navigate('/admin');
+                }, 1500);
+              } else {
+                // User belum setup tenant → ke setup wizard
+                setTimeout(() => {
+                  navigate('/setup-cafe');
+                }, 1500);
+              }
+            }
+          } catch (error) {
+            console.error('Backend registration error:', error);
+
+            if (error.response?.status === 409) {
+              toast.error('Email sudah terdaftar');
+            } else {
+              toast.error(error.response?.data?.message || 'Registrasi gagal. Silakan coba lagi.');
+            }
+          } finally {
             setGoogleLoading(false);
-            return;
           }
+        },
+      });
 
-          // Get user info from Google
-          const userInfoResponse = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-            headers: {
-              Authorization: `Bearer ${response.access_token}`
-            }
-          });
-          const userInfo = await userInfoResponse.json();
-
-          console.log('[Google Auth] User info:', userInfo);
-
-          // Kirim ke backend (endpoint baru)
-          const backendResponse = await api.post('/auth/google', {
-            idToken: userInfo.sub,
-            email: userInfo.email,
-            name: userInfo.name,
-            picture: userInfo.picture
-          });
-
-          if (backendResponse.data.success) {
-            // Simpan token dan user data
-            localStorage.setItem('token', backendResponse.data.token);
-            localStorage.setItem('user', JSON.stringify(backendResponse.data.user));
-
-            // Show success message
-            if (backendResponse.data.isNewUser) {
-              toast.success('Akun berhasil dibuat dengan Google! Selamat datang!');
-            } else {
-              toast.success('Login dengan Google berhasil!');
-            }
-
-            // Redirect berdasarkan hasCompletedSetup
-            if (backendResponse.data.user.hasCompletedSetup) {
-              // User sudah setup tenant → ke dashboard via legacy route (will redirect to tenant-specific)
-              localStorage.setItem('tenant_slug', backendResponse.data.user.tenantSlug);
-              setTimeout(() => {
-                navigate('/admin');
-              }, 1500);
-            } else {
-              // User belum setup tenant → ke setup wizard
-              setTimeout(() => {
-                navigate('/setup-cafe');
-              }, 1500);
-            }
-          }
-        } catch (error) {
-          console.error('Backend registration error:', error);
-
-          if (error.response?.status === 409) {
-            toast.error('Email sudah terdaftar');
-          } else {
-            toast.error(error.response?.data?.message || 'Registrasi gagal. Silakan coba lagi.');
-          }
-        } finally {
-          setGoogleLoading(false);
-        }
-      },
-    });
-
-    // Request access token
-    client.requestAccessToken();
+      // Request access token
+      client.requestAccessToken();
+    } catch (error) {
+      console.error('[Google Auth] Error initializing:', error);
+      toast.error('Gagal menginisialisasi Google Sign-In. Silakan coba lagi.', {
+        duration: 4000
+      });
+      setGoogleLoading(false);
+    }
   };
 
   return (
@@ -250,7 +284,7 @@ const SimpleRegister = () => {
                   value={formData.name}
                   onChange={handleChange}
                   placeholder="John Doe"
-                  className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-700 focus:border-transparent transition-all placeholder:text-gray-400"
+                  className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-700 focus:border-transparent transition-all placeholder:text-gray-400 text-gray-900"
                   required
                 />
               </div>
@@ -271,7 +305,7 @@ const SimpleRegister = () => {
                   value={formData.email}
                   onChange={handleChange}
                   placeholder="admin@warkop.com"
-                  className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-700 focus:border-transparent transition-all placeholder:text-gray-400"
+                  className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-700 focus:border-transparent transition-all placeholder:text-gray-400 text-gray-900"
                   required
                 />
               </div>
@@ -292,7 +326,7 @@ const SimpleRegister = () => {
                   value={formData.password}
                   onChange={handleChange}
                   placeholder="Minimal 6 karakter"
-                  className="w-full pl-12 pr-12 py-3 bg-gray-50 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-700 focus:border-transparent transition-all placeholder:text-gray-400"
+                  className="w-full pl-12 pr-12 py-3 bg-gray-50 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-700 focus:border-transparent transition-all placeholder:text-gray-400 text-gray-900"
                   required
                   minLength={6}
                 />
@@ -321,7 +355,7 @@ const SimpleRegister = () => {
                   value={formData.confirmPassword}
                   onChange={handleChange}
                   placeholder="Ketik ulang password"
-                  className={`w-full pl-12 pr-12 py-3 bg-gray-50 border rounded-xl focus:outline-none focus:ring-2 transition-all placeholder:text-gray-400 ${
+                  className={`w-full pl-12 pr-12 py-3 bg-gray-50 border rounded-xl focus:outline-none focus:ring-2 transition-all placeholder:text-gray-400 text-gray-900 ${
                     passwordMatch
                       ? 'border-gray-300 focus:ring-amber-700 focus:border-transparent'
                       : 'border-red-500 focus:ring-red-500 focus:border-red-500'
@@ -374,14 +408,22 @@ const SimpleRegister = () => {
               <span>
                 {googleLoading
                   ? 'Memproses...'
+                  : googleScriptFailed
+                  ? 'Google Sign-In Tidak Tersedia'
                   : 'Daftar dengan Google'
                 }
               </span>
             </button>
 
-            {!googleScriptReady && (
+            {!googleScriptReady && !googleScriptFailed && (
               <p className="text-xs text-gray-500 text-center -mt-2">
                 Memuat Google Sign-In...
+              </p>
+            )}
+            
+            {googleScriptFailed && (
+              <p className="text-xs text-red-500 text-center -mt-2">
+                Google Sign-In gagal dimuat. Gunakan registrasi email/password.
               </p>
             )}
           </form>

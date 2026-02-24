@@ -37,10 +37,22 @@ function validateSlug(slug) {
     return { valid: false, error: 'Slug tidak boleh kosong' };
   }
 
-  // 2. Convert to lowercase and trim
-  const normalizedSlug = slug.toLowerCase().trim();
+  // 2. Trim whitespace
+  const trimmedSlug = slug.trim();
 
-  // 3. Check reserved keywords
+  // 3. Check format BEFORE normalization (must be lowercase already)
+  const slugRegex = /^[a-z0-9-]+$/;
+  if (!slugRegex.test(trimmedSlug)) {
+    return { 
+      valid: false, 
+      error: 'Slug hanya boleh mengandung huruf kecil, angka, dan tanda hubung (-)' 
+    };
+  }
+
+  // 4. Convert to lowercase for reserved keyword check (defensive)
+  const normalizedSlug = trimmedSlug.toLowerCase();
+
+  // 5. Check reserved keywords
   if (RESERVED_KEYWORDS.includes(normalizedSlug)) {
     return { 
       valid: false, 
@@ -48,16 +60,7 @@ function validateSlug(slug) {
     };
   }
 
-  // 4. Check format (only lowercase, numbers, and hyphens)
-  const slugRegex = /^[a-z0-9-]+$/;
-  if (!slugRegex.test(normalizedSlug)) {
-    return { 
-      valid: false, 
-      error: 'Slug hanya boleh mengandung huruf kecil, angka, dan tanda hubung (-)' 
-    };
-  }
-
-  // 5. Check length (min 3, max 50)
+  // 6. Check length (min 3, max 50)
   if (normalizedSlug.length < 3) {
     return { valid: false, error: 'Slug minimal 3 karakter' };
   }
@@ -66,7 +69,7 @@ function validateSlug(slug) {
     return { valid: false, error: 'Slug maksimal 50 karakter' };
   }
 
-  // 6. Check if starts or ends with hyphen
+  // 7. Check if starts or ends with hyphen
   if (normalizedSlug.startsWith('-') || normalizedSlug.endsWith('-')) {
     return { valid: false, error: 'Slug tidak boleh diawali atau diakhiri dengan tanda hubung' };
   }

@@ -271,7 +271,7 @@ function Meja() {
                             try {
                                 await tablesAPI.delete(id);
                                 toast.success('Meja dihapus', { duration: 3000 });
-                                fetchTables();
+                                mutate('/tables');
                             } catch (err) {
                                 toast.error('Gagal menghapus meja');
                             }
@@ -358,7 +358,7 @@ function Meja() {
                 <h2 className="text-2xl font-bold hidden md:block">🪑 Meja & Reservasi</h2>
                 <div className="glass rounded-xl p-6 text-center">
                     <p className="text-red-400">{error}</p>
-                    <button onClick={fetchTables} className="mt-4 px-4 py-2 bg-purple-500 rounded-lg hover:bg-purple-600">
+                    <button onClick={() => mutate('/tables')} className="mt-4 px-4 py-2 bg-purple-500 rounded-lg hover:bg-purple-600">
                         Coba Lagi
                     </button>
                 </div>

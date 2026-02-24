@@ -20,6 +20,9 @@ const StockHistorySchema = new mongoose.Schema({
     timestamp: { type: Number, default: Date.now }
 });
 
+// Tenant-scoped compound indexes for optimal query performance
+StockHistorySchema.index({ tenantId: 1, timestamp: -1 }); // Time-based queries per tenant
+
 // Apply tenant scoping plugin for automatic tenant isolation
 StockHistorySchema.plugin(tenantScopingPlugin);
 

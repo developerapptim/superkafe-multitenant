@@ -1,4 +1,5 @@
 const { getTenantContext } = require('../utils/tenantContext');
+const logger = require('../utils/logger');
 
 /**
  * Mongoose Tenant Scoping Plugin
@@ -45,15 +46,17 @@ function tenantScopingPlugin(schema, options = {}) {
       // Only inject if tenantId is not already in the filter
       // This allows explicit override if needed (e.g., for admin operations)
       if (!filter.tenantId) {
-        query.where({ tenantId: tenant.id });
+        // For all operations: directly modify the filter object
+        // This works for updateMany/deleteMany as well as other operations
+        filter.tenantId = tenant.id;
       }
     } else {
       // Log warning if no tenant context is available for a query
-      console.warn('[TENANT PLUGIN] No tenant context available for query', {
+      logger.warn('TENANT_PLUGIN', 'No tenant context available for query', {
         model: query.model?.modelName || 'unknown',
         operation: query.op,
         filter: query.getFilter(),
-        timestamp: new Date().toISOString()
+        event: 'QUERY_WITHOUT_CONTEXT'
       });
     }
   }
@@ -97,7 +100,7 @@ function tenantScopingPlugin(schema, options = {}) {
     injectTenantFilter(this);
   });
 
-  // Hook into count/aggregate queries
+  // Hook into count queries
   schema.pre('count', function() {
     injectTenantFilter(this);
   });
@@ -108,6 +111,31 @@ function tenantScopingPlugin(schema, options = {}) {
 
   schema.pre('estimatedDocumentCount', function() {
     injectTenantFilter(this);
+  });
+
+  // Hook into aggregate queries
+  schema.pre('aggregate', function() {
+    const tenant = getTenantContext();
+    
+    if (tenant && tenant.id) {
+      // Inject $match stage at the beginning of the pipeline
+      const pipeline = this.pipeline();
+      
+      // Check if first stage is already a $match with tenantId
+      const hasExplicitTenantId = pipeline.length > 0 && 
+                                   pipeline[0].$match && 
+                                   pipeline[0].$match.tenantId;
+      
+      if (!hasExplicitTenantId) {
+        // Prepend $match stage with tenantId filter
+        this.pipeline().unshift({ $match: { tenantId: tenant.id } });
+      }
+    } else {
+      logger.warn('TENANT_PLUGIN', 'No tenant context available for aggregate query', {
+        model: this.model?.modelName || 'unknown',
+        event: 'AGGREGATE_WITHOUT_CONTEXT'
+      });
+    }
   });
 
   // Auto-set tenantId on document creation
@@ -121,11 +149,11 @@ function tenantScopingPlugin(schema, options = {}) {
       } else {
         // If no tenant context is available, this is likely an error
         // Log a warning but don't fail the save (let required validation handle it)
-        console.warn('[TENANT PLUGIN] No tenant context available for new document', {
+        logger.warn('TENANT_PLUGIN', 'No tenant context available for new document', {
           severity: 'WARNING',
           model: this.constructor.modelName,
           documentId: this._id,
-          timestamp: new Date().toISOString()
+          event: 'DOCUMENT_CREATE_WITHOUT_CONTEXT'
         });
       }
     }
@@ -140,14 +168,13 @@ function tenantScopingPlugin(schema, options = {}) {
       const tenant = getTenantContext();
       
       if (tenant && tenant.id && this.tenantId.toString() !== tenant.id.toString()) {
-        console.error('[TENANT PLUGIN SECURITY] Attempt to modify document from different tenant', {
-          severity: 'HIGH',
+        logger.security('Attempt to modify document from different tenant', {
           documentTenantId: this.tenantId.toString(),
           contextTenantId: tenant.id.toString(),
           contextTenantSlug: tenant.slug,
           model: this.constructor.modelName,
           documentId: this._id,
-          timestamp: new Date().toISOString()
+          event: 'TENANT_MISMATCH'
         });
         
         const error = new Error('Cannot modify document from different tenant');

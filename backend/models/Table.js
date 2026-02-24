@@ -11,6 +11,10 @@ const TableSchema = new mongoose.Schema({
     occupiedSince: Date
 }, { timestamps: true });
 
+// Tenant-scoped compound indexes for optimal query performance
+TableSchema.index({ tenantId: 1, createdAt: -1 }); // Time-based queries per tenant
+TableSchema.index({ tenantId: 1, status: 1 }); // Status-based queries per tenant
+
 // Apply tenant scoping plugin for automatic tenant isolation
 TableSchema.plugin(tenantScopingPlugin);
 

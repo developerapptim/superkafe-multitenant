@@ -40,6 +40,10 @@ OrderSchema.index({ status: 1, timestamp: -1 }); // Most critical for report fil
 OrderSchema.index({ paymentMethod: 1 }); // For payment stats
 OrderSchema.index({ customerPhone: 1 }); // For retention analysis
 
+// Tenant-scoped compound indexes for optimal query performance
+OrderSchema.index({ tenantId: 1, timestamp: -1 }); // Time-based queries per tenant
+OrderSchema.index({ tenantId: 1, status: 1 }); // Status-based queries per tenant
+
 // Apply tenant scoping plugin for automatic tenant isolation
 OrderSchema.plugin(tenantScopingPlugin);
 

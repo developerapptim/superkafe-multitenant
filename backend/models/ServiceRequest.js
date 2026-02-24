@@ -27,6 +27,10 @@ const ServiceRequestSchema = new mongoose.Schema({
     }
 });
 
+// Tenant-scoped compound indexes for optimal query performance
+ServiceRequestSchema.index({ tenantId: 1, created_at: -1 }); // Time-based queries per tenant
+ServiceRequestSchema.index({ tenantId: 1, status: 1 }); // Status-based queries per tenant
+
 // Apply tenant scoping plugin for automatic tenant isolation
 ServiceRequestSchema.plugin(tenantScopingPlugin);
 

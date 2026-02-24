@@ -1,17 +1,15 @@
 const fc = require('fast-check');
 const tenantResolver = require('../../middleware/tenantResolver');
 const Tenant = require('../../models/Tenant');
-const { getTenantDB } = require('../../config/db');
 const { setTenantContext } = require('../../utils/tenantContext');
 
 // Mock dependencies
 jest.mock('../../models/Tenant');
-jest.mock('../../config/db');
 jest.mock('../../utils/tenantContext');
 
 /**
  * Property-Based Tests for tenantResolver Middleware
- * Feature: tenant-data-isolation
+ * Feature: unified-nexus-architecture
  * 
  * These tests verify that the middleware correctly attaches tenant context
  * across a wide range of randomized inputs.
@@ -21,6 +19,10 @@ describe('tenantResolver Middleware - Property-Based Tests', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    
+    // Clear tenant cache before each test
+    const { clearTenantCache } = require('../../middleware/tenantResolver');
+    clearTenantCache();
 
     // Setup response and next function
     res = {
@@ -32,15 +34,16 @@ describe('tenantResolver Middleware - Property-Based Tests', () => {
   });
 
   /**
-   * Property 17: Middleware Attaches Tenant Context
-   * **Validates: Requirements 3.3, 3.4**
+   * Property 5: Tenant Resolver Header Extraction
+   * **Validates: Requirements 3.1, 3.3, 3.6**
    * 
-   * For any request processed by the tenantResolver middleware,
-   * the request object should have both req.tenant (metadata) and
-   * req.tenantDB (connection) populated.
+   * For any HTTP request to a tenant-scoped endpoint, the tenant resolver
+   * SHALL extract the tenant slug from the x-tenant-slug header, validate it
+   * against the tenants collection, and store the tenant context in AsyncLocalStorage
+   * if valid and active.
    */
-  describe('Property 17: Middleware Attaches Tenant Context', () => {
-    it('should attach both req.tenant and req.tenantDB for any valid tenant request', async () => {
+  describe('Property 5: Tenant Resolver Header Extraction', () => {
+    it('should attach req.tenant and call setTenantContext for any valid tenant request', async () => {
       await fc.assert(
         fc.asyncProperty(
           // Generate arbitrary tenant data
@@ -51,8 +54,7 @@ describe('tenantResolver Middleware - Property-Based Tests', () => {
               minLength: 3, 
               maxLength: 50 
             }).map(s => s.toLowerCase().replace(/[^a-z0-9-]/g, '-')).filter(s => s.length >= 3),
-            dbName: fc.string({ minLength: 5, maxLength: 50 })
-              .map(s => `tenant_${s.toLowerCase().replace(/[^a-z0-9_]/g, '_')}`),
+            dbName: fc.constant('superkafe_v2'), // Always unified database
             isActive: fc.constant(true)
           }),
           // Generate arbitrary request metadata
@@ -73,15 +75,8 @@ describe('tenantResolver Middleware - Property-Based Tests', () => {
           }),
           async (mockTenant, requestMeta) => {
             // Arrange
-            const mockTenantDB = {
-              name: mockTenant.dbName,
-              host: 'localhost',
-              port: 27017,
-              readyState: 1
-            };
-
             const req = {
-              headers: { 'x-tenant-id': mockTenant.slug },
+              headers: { 'x-tenant-slug': mockTenant.slug },
               path: requestMeta.path,
               method: requestMeta.method,
               ip: requestMeta.ip
@@ -90,21 +85,16 @@ describe('tenantResolver Middleware - Property-Based Tests', () => {
             Tenant.findOne.mockReturnValue({
               lean: jest.fn().mockResolvedValue(mockTenant)
             });
-            getTenantDB.mockResolvedValue(mockTenantDB);
 
             // Act
             await tenantResolver(req, res, next);
 
             // Assert - Property: req.tenant must be populated with correct structure
             expect(req.tenant).toBeDefined();
-            expect(req.tenant).toHaveProperty('id', mockTenant._id);
+            expect(req.tenant).toHaveProperty('id', mockTenant._id.toString());
             expect(req.tenant).toHaveProperty('name', mockTenant.name);
             expect(req.tenant).toHaveProperty('slug', mockTenant.slug);
-            expect(req.tenant).toHaveProperty('dbName', mockTenant.dbName);
-
-            // Assert - Property: req.tenantDB must be populated
-            expect(req.tenantDB).toBeDefined();
-            expect(req.tenantDB).toBe(mockTenantDB);
+            expect(req.tenant).toHaveProperty('dbName', 'superkafe_v2');
 
             // Assert - Property: setTenantContext must be called with tenant metadata
             expect(setTenantContext).toHaveBeenCalledWith(req.tenant);
@@ -130,8 +120,7 @@ describe('tenantResolver Middleware - Property-Based Tests', () => {
               minLength: 3, 
               maxLength: 20 
             }).map(s => s.toLowerCase().replace(/[^a-z0-9-]/g, '-')).filter(s => s.length >= 3),
-            dbName: fc.string({ minLength: 5, maxLength: 50 })
-              .map(s => `tenant_${s.toLowerCase().replace(/[^a-z0-9_]/g, '_')}`),
+            dbName: fc.constant('superkafe_v2'),
             isActive: fc.constant(true)
           }),
           // Generate case variations of the slug
@@ -148,15 +137,8 @@ describe('tenantResolver Middleware - Property-Based Tests', () => {
                 .join('');
             }
 
-            const mockTenantDB = {
-              name: mockTenant.dbName,
-              host: 'localhost',
-              port: 27017,
-              readyState: 1
-            };
-
             const req = {
-              headers: { 'x-tenant-id': requestSlug },
+              headers: { 'x-tenant-slug': requestSlug },
               path: '/api/test',
               method: 'GET',
               ip: '127.0.0.1'
@@ -166,7 +148,6 @@ describe('tenantResolver Middleware - Property-Based Tests', () => {
             Tenant.findOne.mockReturnValue({
               lean: jest.fn().mockResolvedValue(mockTenant)
             });
-            getTenantDB.mockResolvedValue(mockTenantDB);
 
             // Act
             await tenantResolver(req, res, next);
@@ -177,7 +158,7 @@ describe('tenantResolver Middleware - Property-Based Tests', () => {
               isActive: true
             });
             expect(req.tenant).toBeDefined();
-            expect(req.tenantDB).toBeDefined();
+            expect(req.tenant.dbName).toBe('superkafe_v2');
             expect(next).toHaveBeenCalled();
           }
         ),
@@ -185,7 +166,7 @@ describe('tenantResolver Middleware - Property-Based Tests', () => {
       );
     });
 
-    it('should reject requests without x-tenant-id header', async () => {
+    it('should reject requests without x-tenant-slug header', async () => {
       await fc.assert(
         fc.asyncProperty(
           // Generate arbitrary request metadata without tenant header
@@ -197,7 +178,7 @@ describe('tenantResolver Middleware - Property-Based Tests', () => {
           async (requestMeta) => {
             // Arrange
             const req = {
-              headers: {}, // No x-tenant-id header
+              headers: {}, // No x-tenant-slug header
               path: requestMeta.path,
               method: requestMeta.method,
               ip: requestMeta.ip
@@ -210,11 +191,11 @@ describe('tenantResolver Middleware - Property-Based Tests', () => {
             expect(res.status).toHaveBeenCalledWith(400);
             expect(res.json).toHaveBeenCalledWith({
               success: false,
-              message: 'Header x-tenant-id wajib disertakan'
+              message: 'Header x-tenant-slug atau x-tenant-id wajib disertakan',
+              code: 'TENANT_HEADER_MISSING'
             });
             expect(next).not.toHaveBeenCalled();
             expect(req.tenant).toBeUndefined();
-            expect(req.tenantDB).toBeUndefined();
           }
         ),
         { numRuns: 50 }
@@ -232,7 +213,7 @@ describe('tenantResolver Middleware - Property-Based Tests', () => {
           async (tenantSlug) => {
             // Arrange
             const req = {
-              headers: { 'x-tenant-id': tenantSlug },
+              headers: { 'x-tenant-slug': tenantSlug },
               path: '/api/test',
               method: 'GET',
               ip: '127.0.0.1'
@@ -250,11 +231,11 @@ describe('tenantResolver Middleware - Property-Based Tests', () => {
             expect(res.status).toHaveBeenCalledWith(404);
             expect(res.json).toHaveBeenCalledWith({
               success: false,
-              message: 'Tenant tidak ditemukan atau tidak aktif'
+              message: 'Tenant tidak ditemukan atau tidak aktif',
+              code: 'TENANT_NOT_FOUND'
             });
             expect(next).not.toHaveBeenCalled();
             expect(req.tenant).toBeUndefined();
-            expect(req.tenantDB).toBeUndefined();
           }
         ),
         { numRuns: 50 }
@@ -275,7 +256,7 @@ describe('tenantResolver Middleware - Property-Based Tests', () => {
           async ({ slug, errorMessage }) => {
             // Arrange
             const req = {
-              headers: { 'x-tenant-id': slug },
+              headers: { 'x-tenant-slug': slug },
               path: '/api/test',
               method: 'GET',
               ip: '127.0.0.1'
@@ -293,11 +274,11 @@ describe('tenantResolver Middleware - Property-Based Tests', () => {
             expect(res.status).toHaveBeenCalledWith(500);
             expect(res.json).toHaveBeenCalledWith({
               success: false,
-              message: 'Terjadi kesalahan saat memproses tenant'
+              message: 'Terjadi kesalahan saat memproses tenant',
+              code: 'TENANT_RESOLUTION_ERROR'
             });
             expect(next).not.toHaveBeenCalled();
             expect(req.tenant).toBeUndefined();
-            expect(req.tenantDB).toBeUndefined();
           }
         ),
         { numRuns: 50 }

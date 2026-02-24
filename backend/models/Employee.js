@@ -30,6 +30,10 @@ const EmployeeSchema = new mongoose.Schema({
     createdAt: { type: Date, default: Date.now }
 });
 
+// Tenant-scoped compound indexes for optimal query performance
+EmployeeSchema.index({ tenantId: 1, createdAt: -1 }); // Time-based queries per tenant
+EmployeeSchema.index({ tenantId: 1, status: 1 }); // Status-based queries per tenant
+
 // Apply tenant scoping plugin for automatic tenant isolation
 EmployeeSchema.plugin(tenantScopingPlugin);
 

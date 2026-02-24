@@ -65,6 +65,21 @@ api.interceptors.request.use((config) => {
         }
     }
 
+    // 5. Fallback: Extract tenant slug from URL path if not in JWT
+    // URL format: /:tenantSlug/admin/* or /:tenantSlug/dashboard/*
+    if (!config.headers['x-tenant-slug'] && !config.headers['x-tenant-id']) {
+        const pathMatch = window.location.pathname.match(/^\/([^\/]+)\/(admin|dashboard)/);
+        if (pathMatch && pathMatch[1]) {
+            const tenantSlug = pathMatch[1];
+            // Exclude reserved paths
+            const reservedPaths = ['login', 'register', 'setup', 'auth', 'api', 'admin', 'customer'];
+            if (!reservedPaths.includes(tenantSlug)) {
+                config.headers['x-tenant-slug'] = tenantSlug;
+                console.log('[API] Using tenant slug from URL:', tenantSlug);
+            }
+        }
+    }
+
     return config;
 }, (error) => {
     return Promise.reject(error);

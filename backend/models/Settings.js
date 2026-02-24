@@ -43,6 +43,9 @@ const SettingsSchema = new mongoose.Schema({
     updatedAt: { type: Date, default: Date.now }
 });
 
+// Tenant-scoped compound indexes for optimal query performance
+SettingsSchema.index({ tenantId: 1, updatedAt: -1 }); // Time-based queries per tenant
+
 // Apply tenant scoping plugin for automatic tenant isolation
 SettingsSchema.plugin(tenantScopingPlugin);
 

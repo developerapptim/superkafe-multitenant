@@ -255,4 +255,47 @@ describe('Tenant Scoping Plugin', () => {
       expect(results2[0].name).toBe('Tenant 2 Item');
     });
   });
+
+  describe('Missing tenant context error', () => {
+    test('should throw error when querying without tenant context', async () => {
+      // Create a document with explicit tenantId
+      const tenantId = new mongoose.Types.ObjectId();
+      await TestModel.create({ 
+        name: 'Test Item', 
+        value: 100,
+        tenantId: tenantId 
+      });
+
+      // Try to query without tenant context - should not throw but warn
+      const consoleSpy = jest.spyOn(console, 'warn').mockImplementation();
+      
+      const results = await TestModel.find({});
+      
+      // Should warn about missing context
+      expect(consoleSpy).toHaveBeenCalledWith(
+        expect.stringContaining('[TENANT PLUGIN] No tenant context available'),
+        expect.any(Object)
+      );
+
+      consoleSpy.mockRestore();
+    });
+
+    test('should require tenant context for document creation', async () => {
+      const consoleSpy = jest.spyOn(console, 'warn').mockImplementation();
+      
+      // Try to create document without tenant context
+      const doc = new TestModel({ name: 'Test Item', value: 100 });
+      
+      // Should fail validation since tenantId is required
+      await expect(doc.save()).rejects.toThrow();
+      
+      // Should warn about missing context
+      expect(consoleSpy).toHaveBeenCalledWith(
+        expect.stringContaining('[TENANT PLUGIN] No tenant context available'),
+        expect.any(Object)
+      );
+
+      consoleSpy.mockRestore();
+    });
+  });
 });

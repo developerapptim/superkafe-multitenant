@@ -1,9 +1,10 @@
 const User = require('../models/User');
 const Tenant = require('../models/Tenant');
-const { getTenantDB } = require('../config/db');
+const Employee = require('../models/Employee');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const { OAuth2Client } = require('google-auth-library');
+const { runWithTenantContext } = require('../utils/tenantContext');
 
 /**
  * Unified Auth Controller
@@ -12,6 +13,49 @@ const { OAuth2Client } = require('google-auth-library');
  * 1. Register/Login → Buat User (belum ada tenant)
  * 2. Setup Wizard → Buat Tenant + pindahkan User ke Employee
  */
+
+/**
+ * Helper function to get employee data with tenant context
+ * @param {Object} user - User object with tenantId
+ * @returns {Object} Token payload with employee data
+ */
+const getEmployeeTokenPayload = async (user) => {
+  let tokenPayload = {
+    userId: user._id,
+    email: user.email,
+    hasCompletedSetup: user.hasCompletedSetup,
+    tenantSlug: user.tenantSlug
+  };
+
+  if (user.hasCompletedSetup && user.tenantId) {
+    // Fetch tenant info
+    const tenant = await Tenant.findById(user.tenantId);
+    if (tenant) {
+      // Get employee data using tenant context
+      const employee = await runWithTenantContext(
+        { id: tenant._id.toString(), slug: tenant.slug, name: tenant.name, dbName: tenant.dbName },
+        async () => {
+          return await Employee.findOne({ email: user.email }).lean();
+        }
+      );
+
+      if (employee) {
+        tokenPayload = {
+          id: employee._id.toString(),
+          email: employee.email,
+          role: employee.role,
+          tenant: tenant.slug,
+          tenantSlug: tenant.slug, // CRITICAL: Add tenantSlug for frontend header
+          tenantId: tenant._id.toString(),
+          tenantDbName: tenant.dbName,
+          userId: user._id.toString()
+        };
+      }
+    }
+  }
+
+  return tokenPayload;
+};
 
 /**
  * POST /api/auth/register
@@ -156,36 +200,8 @@ const login = async (req, res) => {
       });
     }
 
-    // If user has completed setup, fetch tenant info and employee data
-    let tokenPayload = {
-      userId: user._id,
-      email: user.email,
-      hasCompletedSetup: user.hasCompletedSetup,
-      tenantSlug: user.tenantSlug
-    };
-
-    if (user.hasCompletedSetup && user.tenantId) {
-      // Fetch tenant info
-      const tenant = await Tenant.findById(user.tenantId);
-      if (tenant) {
-        // Get tenant DB and employee data
-        const tenantDB = await getTenantDB(tenant.dbName);
-        const EmployeeModel = tenantDB.model('Employee', require('../models/Employee').schema);
-        const employee = await EmployeeModel.findOne({ email: user.email }).lean();
-
-        if (employee) {
-          tokenPayload = {
-            id: employee._id.toString(),
-            email: employee.email,
-            role: employee.role,
-            tenant: tenant.slug,
-            tenantId: tenant._id.toString(),
-            tenantDbName: tenant.dbName,
-            userId: user._id.toString()
-          };
-        }
-      }
-    }
+    // Get token payload with employee data if setup completed
+    const tokenPayload = await getEmployeeTokenPayload(user);
 
     // Generate JWT token
     const token = jwt.sign(
@@ -312,36 +328,8 @@ const googleAuth = async (req, res) => {
       });
     }
 
-    // If user has completed setup, fetch tenant info and employee data
-    let tokenPayload = {
-      userId: user._id,
-      email: user.email,
-      hasCompletedSetup: user.hasCompletedSetup,
-      tenantSlug: user.tenantSlug
-    };
-
-    if (user.hasCompletedSetup && user.tenantId) {
-      // Fetch tenant info
-      const tenant = await Tenant.findById(user.tenantId);
-      if (tenant) {
-        // Get tenant DB and employee data
-        const tenantDB = await getTenantDB(tenant.dbName);
-        const EmployeeModel = tenantDB.model('Employee', require('../models/Employee').schema);
-        const employee = await EmployeeModel.findOne({ email: user.email }).lean();
-
-        if (employee) {
-          tokenPayload = {
-            id: employee._id.toString(),
-            email: employee.email,
-            role: employee.role,
-            tenant: tenant.slug,
-            tenantId: tenant._id.toString(),
-            tenantDbName: tenant.dbName,
-            userId: user._id.toString()
-          };
-        }
-      }
-    }
+    // Get token payload with employee data if setup completed
+    const tokenPayload = await getEmployeeTokenPayload(user);
 
     // Generate JWT token
     const token = jwt.sign(
@@ -428,36 +416,8 @@ const verifyOTP = async (req, res) => {
       email: user.email
     });
 
-    // If user has completed setup, fetch tenant info and employee data
-    let tokenPayload = {
-      userId: user._id,
-      email: user.email,
-      hasCompletedSetup: user.hasCompletedSetup,
-      tenantSlug: user.tenantSlug
-    };
-
-    if (user.hasCompletedSetup && user.tenantId) {
-      // Fetch tenant info
-      const tenant = await Tenant.findById(user.tenantId);
-      if (tenant) {
-        // Get tenant DB and employee data
-        const tenantDB = await getTenantDB(tenant.dbName);
-        const EmployeeModel = tenantDB.model('Employee', require('../models/Employee').schema);
-        const employee = await EmployeeModel.findOne({ email: user.email }).lean();
-
-        if (employee) {
-          tokenPayload = {
-            id: employee._id.toString(),
-            email: employee.email,
-            role: employee.role,
-            tenant: tenant.slug,
-            tenantId: tenant._id.toString(),
-            tenantDbName: tenant.dbName,
-            userId: user._id.toString()
-          };
-        }
-      }
-    }
+    // Get token payload with employee data if setup completed
+    const tokenPayload = await getEmployeeTokenPayload(user);
 
     // Generate JWT token
     const token = jwt.sign(

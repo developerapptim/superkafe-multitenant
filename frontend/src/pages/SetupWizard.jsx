@@ -273,7 +273,7 @@ const SetupWizard = () => {
                   value={formData.cafeName}
                   onChange={handleChange}
                   placeholder="Warkop Kopi Kenangan"
-                  className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-700 focus:border-transparent transition-all placeholder:text-gray-400"
+                  className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-700 focus:border-transparent transition-all placeholder:text-gray-400 text-gray-900"
                   required
                 />
               </div>
@@ -294,7 +294,7 @@ const SetupWizard = () => {
                   value={formData.slug}
                   onChange={handleChange}
                   placeholder="warkop-kopi-kenangan"
-                  className={`w-full pl-12 pr-12 py-3 bg-gray-50 border rounded-xl focus:outline-none focus:ring-2 transition-all placeholder:text-gray-400 ${
+                  className={`w-full pl-12 pr-12 py-3 bg-gray-50 border rounded-xl focus:outline-none focus:ring-2 transition-all placeholder:text-gray-400 text-gray-900 ${
                     slugStatus.available === true
                       ? 'border-green-500 focus:ring-green-500'
                       : slugStatus.available === false
@@ -346,7 +346,7 @@ const SetupWizard = () => {
                   value={formData.adminName}
                   onChange={handleChange}
                   placeholder="Nama Anda"
-                  className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-700 focus:border-transparent transition-all placeholder:text-gray-400"
+                  className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-700 focus:border-transparent transition-all placeholder:text-gray-400 text-gray-900"
                 />
               </div>
               <p className="text-xs text-gray-500 mt-1">
