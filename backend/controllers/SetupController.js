@@ -22,7 +22,23 @@ const setupTenant = async (req, res) => {
   
   try {
     const { cafeName, slug, adminName } = req.body;
-    const userId = req.user.userId; // Dari JWT middleware
+    const userId = req.user.id || req.user.userId; // Support both formats for compatibility
+
+    // Validasi userId
+    if (!userId) {
+      console.error('[SETUP ERROR] No user ID in JWT token', { user: req.user });
+      return res.status(401).json({
+        success: false,
+        message: 'User ID tidak ditemukan. Silakan login kembali.'
+      });
+    }
+
+    console.log('[SETUP] Starting tenant setup', {
+      userId,
+      cafeName,
+      slug,
+      adminName
+    });
 
     // Validasi input
     if (!cafeName || !slug) {
@@ -92,10 +108,11 @@ const setupTenant = async (req, res) => {
       dbName: newTenant.dbName
     });
 
-    // Inisialisasi database tenant
+    // Inisialisasi database tenant dan get admin user
+    let adminUser;
     try {
       // Use tenant context for seeding operations
-      await runWithTenantContext(
+      adminUser = await runWithTenantContext(
         { id: newTenant._id.toString(), slug: newTenant.slug, name: newTenant.name, dbName: dbName },
         async () => {
           // Seeding settings
@@ -133,9 +150,12 @@ const setupTenant = async (req, res) => {
             image: user.image
           };
 
-          await seedAdminUser(null, cafeName, adminData, newTenant._id);
+          const createdAdmin = await seedAdminUser(null, cafeName, adminData, newTenant._id);
 
-          console.log('[SETUP] Admin user berhasil dibuat di tenant database');
+          console.log('[SETUP] Admin user berhasil dibuat di tenant database', {
+            email: createdAdmin.email,
+            role: createdAdmin.role
+          });
 
           // Seed kategori dan menu default
           const { seedDefaultMenu } = require('../utils/seedDefaultMenu');
@@ -147,13 +167,21 @@ const setupTenant = async (req, res) => {
               menuItems: seedResult.menuItemsCount
             });
           }
+
+          // Return admin user as plain object
+          return createdAdmin.toObject ? createdAdmin.toObject() : createdAdmin;
         }
       );
+
+      if (!adminUser) {
+        throw new Error('Admin user creation failed');
+      }
 
     } catch (dbError) {
       // Rollback: Hapus tenant jika gagal inisialisasi database
       console.error('[SETUP ERROR] Gagal inisialisasi database, rollback', {
         error: dbError.message,
+        stack: dbError.stack,
         tenantId: newTenant._id
       });
 
@@ -161,7 +189,8 @@ const setupTenant = async (req, res) => {
 
       return res.status(500).json({
         success: false,
-        message: 'Gagal menginisialisasi database tenant'
+        message: 'Gagal menginisialisasi database tenant',
+        error: process.env.NODE_ENV === 'development' ? dbError.message : undefined
       });
     }
 
@@ -178,13 +207,6 @@ const setupTenant = async (req, res) => {
     });
 
     // Generate JWT token baru (include tenant info)
-    const adminUser = await runWithTenantContext(
-      { id: newTenant._id.toString(), slug: newTenant.slug, name: newTenant.name, dbName: dbName },
-      async () => {
-        return await Employee.findOne({ email: user.email }).lean();
-      }
-    );
-
     const token = jwt.sign(
       {
         id: adminUser.id,
@@ -227,10 +249,20 @@ const setupTenant = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('[SETUP ERROR] Gagal setup tenant:', error);
+    const duration = Date.now() - startTime;
+    
+    console.error('[SETUP ERROR] Gagal setup tenant', {
+      error: error.message,
+      stack: error.stack,
+      userId: req.user?.id || req.user?.userId,
+      body: req.body,
+      duration: `${duration}ms`
+    });
+    
     res.status(500).json({
       success: false,
-      message: 'Terjadi kesalahan saat setup tenant'
+      message: 'Terjadi kesalahan saat setup tenant',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 };
