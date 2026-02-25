@@ -16,8 +16,8 @@ const tenantSchema = new mongoose.Schema({
   },
   dbName: {
     type: String,
-    required: true,
-    unique: true
+    required: true
+    // unique: true removed - In Unified Nexus Architecture, all tenants share the same database
   },
   isActive: {
     type: Boolean,

@@ -150,21 +150,27 @@ const setupTenant = async (req, res) => {
             image: user.image
           };
 
-          const createdAdmin = await seedAdminUser(null, cafeName, adminData, newTenant._id);
+          const adminSeedResult = await seedAdminUser(null, cafeName, adminData, newTenant._id);
+          const createdAdmin = adminSeedResult.admin;
+
+          if (!createdAdmin) {
+            throw new Error('Failed to create admin user');
+          }
 
           console.log('[SETUP] Admin user berhasil dibuat di tenant database', {
             email: createdAdmin.email,
-            role: createdAdmin.role
+            role: createdAdmin.role,
+            existed: adminSeedResult.existed
           });
 
           // Seed kategori dan menu default
           const { seedDefaultMenu } = require('../utils/seedDefaultMenu');
-          const seedResult = await seedDefaultMenu(null, newTenant._id);
+          const menuSeedResult = await seedDefaultMenu(null, newTenant._id);
           
-          if (seedResult.success) {
+          if (menuSeedResult.success) {
             console.log('[SETUP] Menu default berhasil di-seed:', {
-              categories: seedResult.categoriesCount,
-              menuItems: seedResult.menuItemsCount
+              categories: menuSeedResult.categoriesCount,
+              menuItems: menuSeedResult.menuItemsCount
             });
           }
 

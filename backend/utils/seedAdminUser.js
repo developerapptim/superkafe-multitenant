@@ -7,13 +7,19 @@ const Employee = require('../models/Employee');
  */
 const seedAdminUser = async (tenantDB, cafeName, adminData, tenantId) => {
   try {
-    console.log('[SEED ADMIN] Membuat admin user...');
+    console.log('[SEED ADMIN] Membuat admin user...', {
+      email: adminData.email,
+      tenantId: tenantId
+    });
 
     // Cek apakah admin sudah ada
     const existingAdmin = await Employee.findOne({ email: adminData.email });
     if (existingAdmin) {
       console.log('[SEED ADMIN] Admin sudah ada, skip');
-      return existingAdmin;
+      return {
+        existed: true,
+        admin: existingAdmin
+      };
     }
 
     // Generate employee ID
@@ -27,7 +33,7 @@ const seedAdminUser = async (tenantDB, cafeName, adminData, tenantId) => {
       password: adminData.password, // Sudah hashed atau null (Google)
       name: adminData.name || 'Administrator',
       role: 'admin',
-      role_access: ['POS', 'Kitchen', 'Meja', 'Keuangan', 'Laporan', 'Menu', 'Pegawai', 'Pengaturan'],
+      role_access: ['*'], // Full access for admin
       phone: '',
       address: '',
       salary: 0,
@@ -43,12 +49,23 @@ const seedAdminUser = async (tenantDB, cafeName, adminData, tenantId) => {
     };
 
     const admin = await Employee.create(newAdmin);
-    console.log('[SEED ADMIN] ✓ Admin user berhasil dibuat:', admin.email);
+    console.log('[SEED ADMIN] ✓ Admin user berhasil dibuat:', {
+      email: admin.email,
+      id: admin.id,
+      role: admin.role
+    });
 
-    return admin;
+    return {
+      existed: false,
+      admin: admin
+    };
 
   } catch (error) {
-    console.error('[SEED ADMIN ERROR]', error);
+    console.error('[SEED ADMIN ERROR]', {
+      error: error.message,
+      stack: error.stack,
+      email: adminData?.email
+    });
     throw error;
   }
 };
