@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useOutletContext } from 'react-router-dom';
+import { useOutletContext, useNavigate, useParams } from 'react-router-dom';
 import { motion, AnimatePresence } from "framer-motion";
 import { menuAPI, categoriesAPI, bannerAPI } from '../../services/api';
 import { useCart } from '../../context/CartContext';
@@ -8,6 +8,22 @@ import { useRefresh } from '../../context/RefreshContext';
 function MenuCustomer() {
     const { tableId } = useOutletContext();
     const { cart, addToCart, updateQty } = useCart();
+    const navigate = useNavigate();
+    const { tenantSlug } = useParams();
+
+    // Check if user is admin (for "Back to Admin" button)
+    const [isAdmin, setIsAdmin] = useState(false);
+    useEffect(() => {
+        try {
+            const userStr = localStorage.getItem('user');
+            if (userStr) {
+                const user = JSON.parse(userStr);
+                setIsAdmin(user?.role === 'admin' || user?.role === 'owner');
+            }
+        } catch (err) {
+            console.error('Error parsing user:', err);
+        }
+    }, []);
 
     const [menuItems, setMenuItems] = useState([]);
     const [categories, setCategories] = useState([]);
@@ -147,6 +163,38 @@ function MenuCustomer() {
 
     return (
         <div className="py-4 space-y-4">
+            {/* Admin Preview Mode Indicator & Back Button */}
+            {isAdmin && (
+                <motion.div
+                    initial={{ opacity: 0, y: -20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="fixed top-4 right-4 z-50 flex flex-col gap-2"
+                >
+                    {/* Preview Mode Badge */}
+                    <div className="bg-gradient-to-r from-purple-600 to-blue-600 text-white px-4 py-2 rounded-full shadow-2xl border border-white/20 flex items-center gap-2 backdrop-blur-xl">
+                        <span className="text-lg">👁️</span>
+                        <span className="text-sm font-bold">Mode Preview</span>
+                    </div>
+                    
+                    {/* Back to Admin Button */}
+                    <button
+                        onClick={() => {
+                            // Close current tab if opened from admin panel
+                            if (window.opener) {
+                                window.close();
+                            } else {
+                                // Navigate back to admin dashboard
+                                navigate(`/${tenantSlug}/admin/dashboard`);
+                            }
+                        }}
+                        className="bg-white/10 hover:bg-white/20 backdrop-blur-xl text-white px-4 py-2 rounded-full shadow-2xl border border-white/20 flex items-center gap-2 transition-all hover:scale-105 active:scale-95"
+                    >
+                        <span className="text-lg">🔙</span>
+                        <span className="text-sm font-medium">Kembali ke Dashboard</span>
+                    </button>
+                </motion.div>
+            )}
+
             {/* Banner Slider */}
             {banners.length > 0 && (
                 <div className="relative rounded-xl overflow-hidden border border-purple-500/20 h-36 md:h-48">

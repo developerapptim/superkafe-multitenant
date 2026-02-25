@@ -141,7 +141,7 @@ function Inventaris() {
     const canEdit = isAdmin || (isStaff && settingsData?.allowStaffEditInventory);
 
     const [ingredients, setIngredients] = useState([]);
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(false); // Changed to false to prevent initial flicker
     const [error, setError] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
     const [activeTab, setActiveTab] = useState('bahan');
@@ -706,30 +706,7 @@ function Inventaris() {
         }
     };
 
-    if (loading) {
-        return (
-            <section className="p-4 md:p-6 space-y-6">
-
-                <div className="flex items-center justify-center h-64">
-                    <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500"></div>
-                </div>
-            </section>
-        );
-    }
-
-    if (error) {
-        return (
-            <section className="p-4 md:p-6 space-y-6">
-
-                <div className="glass rounded-xl p-6 text-center">
-                    <p className="text-red-400">{error}</p>
-                    <button onClick={fetchData} className="mt-4 px-4 py-2 bg-purple-500 rounded-lg hover:bg-purple-600">
-                        Coba Lagi
-                    </button>
-                </div>
-            </section>
-        );
-    }
+    // Removed separate loading/error returns to prevent layout shift and flicker
 
     return (
         <section className="p-4 md:p-6 space-y-6">
@@ -868,7 +845,52 @@ function Inventaris() {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-purple-500/10">
-                                    {displayedItems.length === 0 ? (
+                                    {loading ? (
+                                        // Skeleton loading rows
+                                        [...Array(5)].map((_, i) => (
+                                            <tr key={i} className="animate-pulse">
+                                                <td className="px-4 py-3">
+                                                    <div className="h-4 bg-white/10 rounded w-32"></div>
+                                                </td>
+                                                <td className="px-4 py-3">
+                                                    <div className="h-4 bg-white/10 rounded w-16 mx-auto"></div>
+                                                </td>
+                                                {isAdmin && (
+                                                    <>
+                                                        <td className="px-4 py-3">
+                                                            <div className="h-4 bg-white/10 rounded w-20 ml-auto"></div>
+                                                        </td>
+                                                        <td className="px-4 py-3">
+                                                            <div className="h-4 bg-white/10 rounded w-20 ml-auto"></div>
+                                                        </td>
+                                                        <td className="px-4 py-3">
+                                                            <div className="h-4 bg-white/10 rounded w-24 ml-auto"></div>
+                                                        </td>
+                                                    </>
+                                                )}
+                                                <td className="px-4 py-3">
+                                                    <div className="h-6 bg-white/10 rounded-full w-16 mx-auto"></div>
+                                                </td>
+                                                <td className="px-4 py-3">
+                                                    <div className="flex items-center justify-center gap-2">
+                                                        <div className="h-8 w-8 bg-white/10 rounded"></div>
+                                                        <div className="h-8 w-8 bg-white/10 rounded"></div>
+                                                        <div className="h-8 w-8 bg-white/10 rounded"></div>
+                                                        <div className="h-8 w-8 bg-white/10 rounded"></div>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))
+                                    ) : error ? (
+                                        <tr>
+                                            <td colSpan={isAdmin ? 7 : 4} className="px-4 py-8 text-center">
+                                                <p className="text-red-400 mb-4">{error}</p>
+                                                <button onClick={fetchData} className="px-4 py-2 bg-purple-500 rounded-lg hover:bg-purple-600">
+                                                    Coba Lagi
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    ) : displayedItems.length === 0 ? (
                                         <tr>
                                             <td colSpan={isAdmin ? 7 : 4} className="px-4 py-8 text-center text-gray-400">
                                                 Tidak ada bahan ditemukan
@@ -1018,7 +1040,49 @@ function Inventaris() {
 
                     {/* Mobile View: Card List */}
                     <div className="md:hidden space-y-4">
-                        {displayedItems.length === 0 ? (
+                        {loading ? (
+                            // Skeleton loading cards for mobile
+                            [...Array(3)].map((_, i) => (
+                                <div key={i} className="glass rounded-xl p-4 border border-purple-500/10 animate-pulse">
+                                    <div className="flex justify-between items-start mb-3">
+                                        <div className="h-6 bg-white/10 rounded w-32"></div>
+                                        <div className="h-6 bg-white/10 rounded-full w-16"></div>
+                                    </div>
+                                    <div className="mb-4 bg-white/5 rounded-lg p-3">
+                                        <div className="h-4 bg-white/10 rounded w-24 mx-auto mb-2"></div>
+                                        <div className="h-8 bg-white/10 rounded w-20 mx-auto"></div>
+                                    </div>
+                                    {isAdmin && (
+                                        <div className="grid grid-cols-3 gap-2 mb-4">
+                                            <div className="bg-white/5 rounded-lg p-2">
+                                                <div className="h-3 bg-white/10 rounded w-12 mx-auto mb-1"></div>
+                                                <div className="h-4 bg-white/10 rounded w-16 mx-auto"></div>
+                                            </div>
+                                            <div className="bg-white/5 rounded-lg p-2">
+                                                <div className="h-3 bg-white/10 rounded w-12 mx-auto mb-1"></div>
+                                                <div className="h-4 bg-white/10 rounded w-16 mx-auto"></div>
+                                            </div>
+                                            <div className="bg-white/5 rounded-lg p-2">
+                                                <div className="h-3 bg-white/10 rounded w-12 mx-auto mb-1"></div>
+                                                <div className="h-4 bg-white/10 rounded w-16 mx-auto"></div>
+                                            </div>
+                                        </div>
+                                    )}
+                                    <div className="grid grid-cols-4 gap-2">
+                                        <div className="col-span-2 h-10 bg-white/10 rounded-lg"></div>
+                                        <div className="h-10 bg-white/10 rounded-lg"></div>
+                                        <div className="h-10 bg-white/10 rounded-lg"></div>
+                                    </div>
+                                </div>
+                            ))
+                        ) : error ? (
+                            <div className="text-center py-8 glass rounded-xl">
+                                <p className="text-red-400 mb-4">{error}</p>
+                                <button onClick={fetchData} className="px-4 py-2 bg-purple-500 rounded-lg hover:bg-purple-600">
+                                    Coba Lagi
+                                </button>
+                            </div>
+                        ) : displayedItems.length === 0 ? (
                             <div className="text-center py-8 text-gray-400 glass rounded-xl">
                                 Tidak ada bahan ditemukan
                             </div>

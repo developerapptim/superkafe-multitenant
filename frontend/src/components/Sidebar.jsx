@@ -37,6 +37,15 @@ const baseMenuItems = [
       { path: '/admin/data-center', label: 'Pusat Data' }
     ]
   },
+  { 
+    path: '/customer-preview', 
+    icon: '👁️', 
+    label: 'Lihat Tampilan Customer', 
+    section: 'customerPreview', 
+    access: 'Menu',
+    roles: ['admin', 'owner'],
+    isExternal: true // Flag untuk open in new tab
+  },
 ];
 
 function Sidebar({ onLogout, isCollapsed, toggleSidebar }) {
@@ -316,39 +325,59 @@ function Sidebar({ onLogout, isCollapsed, toggleSidebar }) {
 
             return (
               <li key={item.section}>
-                <NavLink
-                  to={item.path}
-                  className={({ isActive }) =>
-                    `flex items-center gap-3 px-2 lg:px-3 py-3 rounded-lg transition-colors duration-200 ${isActive
-                      ? 'bg-purple-600 text-white shadow-lg'
-                      : 'text-gray-300 hover:bg-white/10 hover:text-white'
-                    } justify-center lg:justify-start relative`
-                  }
-                  title={item.label}
-                >
-                  <span className="text-lg lg:text-xl shrink-0 leading-none relative">
-                    {item.icon}
-                    {item.path === '/admin/kasir' && pendingOrderCount > 0 && (
-                      <span className="absolute -top-2 -right-3 bg-red-500 text-white text-[10px] font-bold rounded-full h-5 w-5 flex items-center justify-center shadow-sm border border-[#1e1b4b] animate-bounce-slow">
-                        {pendingOrderCount > 99 ? '99+' : pendingOrderCount}
-                      </span>
-                    )}
-                    {item.path === '/admin/meja' && pendingReservationsCount > 0 && (
-                      <span className="absolute -top-2 -right-3 bg-red-500 text-white text-[10px] font-bold rounded-full h-5 w-5 flex items-center justify-center shadow-sm border border-[#1e1b4b] animate-bounce-slow">
-                        {pendingReservationsCount > 99 ? '99+' : pendingReservationsCount}
-                      </span>
-                    )}
-                  </span>
-                  <span className={`hidden lg:block text-sm font-medium whitespace-nowrap transition-all duration-300 ${isCollapsed ? 'w-0 opacity-0 overflow-hidden' : 'w-auto opacity-100'}`}>
-                    {item.label}
-                    {item.path === '/admin/kasir' && pendingOrderCount > 0 && isCollapsed && (
-                      <span className="absolute top-0 right-0 w-3 h-3 bg-red-500 rounded-full border-2 border-[#1e1b4b]"></span>
-                    )}
-                    {item.path === '/admin/meja' && pendingReservationsCount > 0 && isCollapsed && (
-                      <span className="absolute top-0 right-0 w-3 h-3 bg-red-500 rounded-full border-2 border-[#1e1b4b]"></span>
-                    )}
-                  </span>
-                </NavLink>
+                {item.isExternal ? (
+                  // External link (opens in new tab)
+                  <a
+                    href={`/${tenantSlug || localStorage.getItem('tenant_slug')}/c/menu`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-3 px-2 lg:px-3 py-3 rounded-lg transition-colors duration-200 text-gray-300 hover:bg-white/10 hover:text-white justify-center lg:justify-start relative group"
+                    title={item.label}
+                  >
+                    <span className="text-lg lg:text-xl shrink-0 leading-none relative">
+                      {item.icon}
+                      <span className="absolute -top-1 -right-1 text-[10px]">🔗</span>
+                    </span>
+                    <span className={`hidden lg:block text-sm font-medium whitespace-nowrap transition-all duration-300 ${isCollapsed ? 'w-0 opacity-0 overflow-hidden' : 'w-auto opacity-100'}`}>
+                      {item.label}
+                    </span>
+                  </a>
+                ) : (
+                  // Internal link (React Router)
+                  <NavLink
+                    to={item.path}
+                    className={({ isActive }) =>
+                      `flex items-center gap-3 px-2 lg:px-3 py-3 rounded-lg transition-colors duration-200 ${isActive
+                        ? 'bg-purple-600 text-white shadow-lg'
+                        : 'text-gray-300 hover:bg-white/10 hover:text-white'
+                      } justify-center lg:justify-start relative`
+                    }
+                    title={item.label}
+                  >
+                    <span className="text-lg lg:text-xl shrink-0 leading-none relative">
+                      {item.icon}
+                      {item.path === '/admin/kasir' && pendingOrderCount > 0 && (
+                        <span className="absolute -top-2 -right-3 bg-red-500 text-white text-[10px] font-bold rounded-full h-5 w-5 flex items-center justify-center shadow-sm border border-[#1e1b4b] animate-bounce-slow">
+                          {pendingOrderCount > 99 ? '99+' : pendingOrderCount}
+                        </span>
+                      )}
+                      {item.path === '/admin/meja' && pendingReservationsCount > 0 && (
+                        <span className="absolute -top-2 -right-3 bg-red-500 text-white text-[10px] font-bold rounded-full h-5 w-5 flex items-center justify-center shadow-sm border border-[#1e1b4b] animate-bounce-slow">
+                          {pendingReservationsCount > 99 ? '99+' : pendingReservationsCount}
+                        </span>
+                      )}
+                    </span>
+                    <span className={`hidden lg:block text-sm font-medium whitespace-nowrap transition-all duration-300 ${isCollapsed ? 'w-0 opacity-0 overflow-hidden' : 'w-auto opacity-100'}`}>
+                      {item.label}
+                      {item.path === '/admin/kasir' && pendingOrderCount > 0 && isCollapsed && (
+                        <span className="absolute top-0 right-0 w-3 h-3 bg-red-500 rounded-full border-2 border-[#1e1b4b]"></span>
+                      )}
+                      {item.path === '/admin/meja' && pendingReservationsCount > 0 && isCollapsed && (
+                        <span className="absolute top-0 right-0 w-3 h-3 bg-red-500 rounded-full border-2 border-[#1e1b4b]"></span>
+                      )}
+                    </span>
+                  </NavLink>
+                )}
               </li>
             );
           })}
