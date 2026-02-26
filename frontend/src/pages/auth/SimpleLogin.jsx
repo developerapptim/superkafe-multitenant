@@ -102,6 +102,11 @@ const SimpleLogin = () => {
         // Simpan token dan user data
         localStorage.setItem('token', response.data.token);
         localStorage.setItem('user', JSON.stringify(response.data.user));
+        
+        // Simpan tenant data jika ada (termasuk theme)
+        if (response.data.tenant) {
+          localStorage.setItem('tenant', JSON.stringify(response.data.tenant));
+        }
 
         toast.success('Login berhasil!');
 
@@ -203,6 +208,11 @@ const SimpleLogin = () => {
               // Simpan token dan user data
               localStorage.setItem('token', backendResponse.data.token);
               localStorage.setItem('user', JSON.stringify(backendResponse.data.user));
+              
+              // Simpan tenant data jika ada (termasuk theme)
+              if (backendResponse.data.tenant) {
+                localStorage.setItem('tenant', JSON.stringify(backendResponse.data.tenant));
+              }
 
               // Show success message
               if (backendResponse.data.isNewUser) {

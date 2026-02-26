@@ -195,6 +195,11 @@ const SetupWizard = () => {
         localStorage.setItem('token', response.data.token);
         localStorage.setItem('user', JSON.stringify(response.data.user));
         localStorage.setItem('tenant_slug', response.data.tenant.slug);
+        
+        // Simpan tenant data jika ada (termasuk theme)
+        if (response.data.tenant) {
+          localStorage.setItem('tenant', JSON.stringify(response.data.tenant));
+        }
 
         toast.success(response.data.message || 'Setup berhasil! Selamat datang!');
 

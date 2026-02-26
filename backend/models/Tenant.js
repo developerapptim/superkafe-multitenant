@@ -42,6 +42,16 @@ const tenantSchema = new mongoose.Schema({
     type: Date,
     default: null
   },
+  // Theme Customization Fields
+  selectedTheme: {
+    type: String,
+    enum: ['default', 'light-coffee'],
+    default: 'default'
+  },
+  hasSeenThemePopup: {
+    type: Boolean,
+    default: false
+  },
   createdAt: {
     type: Date,
     default: Date.now

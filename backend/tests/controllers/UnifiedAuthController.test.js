@@ -10,13 +10,15 @@ const bcrypt = require('bcryptjs');
 // Mock dependencies
 jest.mock('../../models/User');
 jest.mock('../../models/Tenant');
-jest.mock('../../config/db');
+jest.mock('../../models/Employee');
 jest.mock('jsonwebtoken');
 jest.mock('bcryptjs');
+jest.mock('../../utils/tenantContext');
 
 const User = require('../../models/User');
 const Tenant = require('../../models/Tenant');
-const { getTenantDB } = require('../../config/db');
+const Employee = require('../../models/Employee');
+const { runWithTenantContext } = require('../../utils/tenantContext');
 const { login, googleAuth, verifyOTP } = require('../../controllers/UnifiedAuthController');
 
 describe('UnifiedAuthController - JWT Token Generation', () => {
@@ -32,6 +34,20 @@ describe('UnifiedAuthController - JWT Token Generation', () => {
       json: jest.fn()
     };
     jest.clearAllMocks();
+    
+    // Mock runWithTenantContext to execute the callback directly
+    runWithTenantContext.mockImplementation(async (tenant, callback) => {
+      return await callback();
+    });
+    
+    // Mock Employee.findOne to return a default employee
+    Employee.findOne = jest.fn().mockReturnValue({
+      lean: jest.fn().mockResolvedValue({
+        _id: 'employee-123',
+        email: 'test@example.com',
+        role: 'admin'
+      })
+    });
   });
 
   describe('login() - User with completed setup', () => {
@@ -63,18 +79,12 @@ describe('UnifiedAuthController - JWT Token Generation', () => {
         username: 'test'
       };
 
-      const mockTenantDB = {
-        model: jest.fn().mockImplementation(() => ({
-          findOne: jest.fn().mockReturnValue({
-            lean: jest.fn().mockResolvedValue(mockEmployee)
-          })
-        }))
-      };
-
       // Mock dependencies
       User.findOne = jest.fn().mockResolvedValue(mockUser);
       Tenant.findById = jest.fn().mockResolvedValue(mockTenant);
-      getTenantDB.mockResolvedValue(mockTenantDB);
+      Employee.findOne = jest.fn().mockReturnValue({
+        lean: jest.fn().mockResolvedValue(mockEmployee)
+      });
       bcrypt.compare = jest.fn().mockResolvedValue(true);
       jwt.sign = jest.fn().mockReturnValue('mock-jwt-token');
 
@@ -193,7 +203,7 @@ describe('UnifiedAuthController - JWT Token Generation', () => {
       // Mock dependencies
       User.findOne = jest.fn().mockResolvedValue(mockUser);
       Tenant.findById = jest.fn().mockResolvedValue(mockTenant);
-      getTenantDB.mockResolvedValue(mockTenantDB);
+      Employee.findOne = jest.fn().mockReturnValue({ lean: jest.fn().mockResolvedValue(mockEmployee) });
       jwt.sign = jest.fn().mockReturnValue('mock-jwt-token');
 
       req.body = {
@@ -263,7 +273,7 @@ describe('UnifiedAuthController - JWT Token Generation', () => {
       // Mock dependencies
       User.findOne = jest.fn().mockResolvedValue(mockUser);
       Tenant.findById = jest.fn().mockResolvedValue(mockTenant);
-      getTenantDB.mockResolvedValue(mockTenantDB);
+      Employee.findOne = jest.fn().mockReturnValue({ lean: jest.fn().mockResolvedValue(mockEmployee) });
       jwt.sign = jest.fn().mockReturnValue('mock-jwt-token');
 
       req.body = {
@@ -289,4 +299,451 @@ describe('UnifiedAuthController - JWT Token Generation', () => {
       );
     });
   });
+
+  describe('Theme Data in Auth Responses', () => {
+    describe('login() - Theme data inclusion', () => {
+      it('should include selectedTheme field in login response for user with tenant', async () => {
+        const mockUser = {
+          _id: 'user-123',
+          email: 'test@example.com',
+          password: 'hashed-password',
+          name: 'Test User',
+          authProvider: 'local',
+          isVerified: true,
+          hasCompletedSetup: true,
+          tenantId: 'tenant-123',
+          tenantSlug: 'test-cafe'
+        };
+
+        const mockTenant = {
+          _id: 'tenant-123',
+          name: 'Test Cafe',
+          slug: 'test-cafe',
+          dbName: 'superkafe_test_cafe',
+          isActive: true,
+          selectedTheme: 'light-coffee',
+          hasSeenThemePopup: true
+        };
+
+        const mockEmployee = {
+          _id: 'employee-123',
+          email: 'test@example.com',
+          role: 'admin',
+          username: 'test'
+        };
+
+        const mockTenantDB = {
+          model: jest.fn().mockImplementation(() => ({
+            findOne: jest.fn().mockReturnValue({
+              lean: jest.fn().mockResolvedValue(mockEmployee)
+            })
+          }))
+        };
+
+        User.findOne = jest.fn().mockResolvedValue(mockUser);
+        Tenant.findById = jest.fn().mockResolvedValue(mockTenant);
+        Employee.findOne = jest.fn().mockReturnValue({ lean: jest.fn().mockResolvedValue(mockEmployee) });
+        bcrypt.compare = jest.fn().mockResolvedValue(true);
+        jwt.sign = jest.fn().mockReturnValue('mock-jwt-token');
+
+        req.body = {
+          email: 'test@example.com',
+          password: 'password123'
+        };
+
+        await login(req, res);
+
+        expect(res.json).toHaveBeenCalledWith(
+          expect.objectContaining({
+            success: true,
+            tenant: expect.objectContaining({
+              selectedTheme: 'light-coffee'
+            })
+          })
+        );
+      });
+
+      it('should include hasSeenThemePopup field in login response for user with tenant', async () => {
+        const mockUser = {
+          _id: 'user-123',
+          email: 'test@example.com',
+          password: 'hashed-password',
+          name: 'Test User',
+          authProvider: 'local',
+          isVerified: true,
+          hasCompletedSetup: true,
+          tenantId: 'tenant-123',
+          tenantSlug: 'test-cafe'
+        };
+
+        const mockTenant = {
+          _id: 'tenant-123',
+          name: 'Test Cafe',
+          slug: 'test-cafe',
+          dbName: 'superkafe_test_cafe',
+          isActive: true,
+          selectedTheme: 'default',
+          hasSeenThemePopup: false
+        };
+
+        const mockEmployee = {
+          _id: 'employee-123',
+          email: 'test@example.com',
+          role: 'admin',
+          username: 'test'
+        };
+
+        const mockTenantDB = {
+          model: jest.fn().mockImplementation(() => ({
+            findOne: jest.fn().mockReturnValue({
+              lean: jest.fn().mockResolvedValue(mockEmployee)
+            })
+          }))
+        };
+
+        User.findOne = jest.fn().mockResolvedValue(mockUser);
+        Tenant.findById = jest.fn().mockResolvedValue(mockTenant);
+        Employee.findOne = jest.fn().mockReturnValue({ lean: jest.fn().mockResolvedValue(mockEmployee) });
+        bcrypt.compare = jest.fn().mockResolvedValue(true);
+        jwt.sign = jest.fn().mockReturnValue('mock-jwt-token');
+
+        req.body = {
+          email: 'test@example.com',
+          password: 'password123'
+        };
+
+        await login(req, res);
+
+        expect(res.json).toHaveBeenCalledWith(
+          expect.objectContaining({
+            success: true,
+            tenant: expect.objectContaining({
+              hasSeenThemePopup: false
+            })
+          })
+        );
+      });
+
+      it('should correctly populate theme values from database', async () => {
+        const mockUser = {
+          _id: 'user-123',
+          email: 'test@example.com',
+          password: 'hashed-password',
+          name: 'Test User',
+          authProvider: 'local',
+          isVerified: true,
+          hasCompletedSetup: true,
+          tenantId: 'tenant-123',
+          tenantSlug: 'test-cafe'
+        };
+
+        const mockTenant = {
+          _id: 'tenant-123',
+          name: 'Test Cafe',
+          slug: 'test-cafe',
+          dbName: 'superkafe_test_cafe',
+          isActive: true,
+          selectedTheme: 'light-coffee',
+          hasSeenThemePopup: true
+        };
+
+        const mockEmployee = {
+          _id: 'employee-123',
+          email: 'test@example.com',
+          role: 'admin',
+          username: 'test'
+        };
+
+        const mockTenantDB = {
+          model: jest.fn().mockImplementation(() => ({
+            findOne: jest.fn().mockReturnValue({
+              lean: jest.fn().mockResolvedValue(mockEmployee)
+            })
+          }))
+        };
+
+        User.findOne = jest.fn().mockResolvedValue(mockUser);
+        Tenant.findById = jest.fn().mockResolvedValue(mockTenant);
+        Employee.findOne = jest.fn().mockReturnValue({ lean: jest.fn().mockResolvedValue(mockEmployee) });
+        bcrypt.compare = jest.fn().mockResolvedValue(true);
+        jwt.sign = jest.fn().mockReturnValue('mock-jwt-token');
+
+        req.body = {
+          email: 'test@example.com',
+          password: 'password123'
+        };
+
+        await login(req, res);
+
+        // Verify Tenant.findById was called to fetch theme data
+        expect(Tenant.findById).toHaveBeenCalledWith('tenant-123');
+
+        // Verify response includes correct theme values from database
+        expect(res.json).toHaveBeenCalledWith(
+          expect.objectContaining({
+            success: true,
+            tenant: expect.objectContaining({
+              id: mockTenant._id,
+              name: mockTenant.name,
+              slug: mockTenant.slug,
+              selectedTheme: 'light-coffee',
+              hasSeenThemePopup: true
+            })
+          })
+        );
+      });
+    });
+
+    describe('googleAuth() - Theme data inclusion', () => {
+      it('should include selectedTheme field in Google auth response for user with tenant', async () => {
+        const mockUser = {
+          _id: 'user-123',
+          email: 'test@example.com',
+          name: 'Test User',
+          googleId: 'google-123',
+          authProvider: 'google',
+          isVerified: true,
+          hasCompletedSetup: true,
+          tenantId: 'tenant-123',
+          tenantSlug: 'test-cafe',
+          save: jest.fn().mockResolvedValue(true)
+        };
+
+        const mockTenant = {
+          _id: 'tenant-123',
+          name: 'Test Cafe',
+          slug: 'test-cafe',
+          dbName: 'superkafe_test_cafe',
+          isActive: true,
+          selectedTheme: 'default',
+          hasSeenThemePopup: false
+        };
+
+        const mockEmployee = {
+          _id: 'employee-123',
+          email: 'test@example.com',
+          role: 'admin'
+        };
+
+        const mockTenantDB = {
+          model: jest.fn().mockImplementation(() => ({
+            findOne: jest.fn().mockReturnValue({
+              lean: jest.fn().mockResolvedValue(mockEmployee)
+            })
+          }))
+        };
+
+        User.findOne = jest.fn().mockResolvedValue(mockUser);
+        Tenant.findById = jest.fn().mockResolvedValue(mockTenant);
+        Employee.findOne = jest.fn().mockReturnValue({ lean: jest.fn().mockResolvedValue(mockEmployee) });
+        jwt.sign = jest.fn().mockReturnValue('mock-jwt-token');
+
+        req.body = {
+          email: 'test@example.com',
+          name: 'Test User',
+          picture: 'https://example.com/photo.jpg',
+          idToken: 'google-token'
+        };
+
+        await googleAuth(req, res);
+
+        expect(res.json).toHaveBeenCalledWith(
+          expect.objectContaining({
+            success: true,
+            tenant: expect.objectContaining({
+              selectedTheme: 'default'
+            })
+          })
+        );
+      });
+
+      it('should include hasSeenThemePopup field in Google auth response for user with tenant', async () => {
+        const mockUser = {
+          _id: 'user-123',
+          email: 'test@example.com',
+          name: 'Test User',
+          googleId: 'google-123',
+          authProvider: 'google',
+          isVerified: true,
+          hasCompletedSetup: true,
+          tenantId: 'tenant-123',
+          tenantSlug: 'test-cafe',
+          save: jest.fn().mockResolvedValue(true)
+        };
+
+        const mockTenant = {
+          _id: 'tenant-123',
+          name: 'Test Cafe',
+          slug: 'test-cafe',
+          dbName: 'superkafe_test_cafe',
+          isActive: true,
+          selectedTheme: 'light-coffee',
+          hasSeenThemePopup: true
+        };
+
+        const mockEmployee = {
+          _id: 'employee-123',
+          email: 'test@example.com',
+          role: 'admin'
+        };
+
+        const mockTenantDB = {
+          model: jest.fn().mockImplementation(() => ({
+            findOne: jest.fn().mockReturnValue({
+              lean: jest.fn().mockResolvedValue(mockEmployee)
+            })
+          }))
+        };
+
+        User.findOne = jest.fn().mockResolvedValue(mockUser);
+        Tenant.findById = jest.fn().mockResolvedValue(mockTenant);
+        Employee.findOne = jest.fn().mockReturnValue({ lean: jest.fn().mockResolvedValue(mockEmployee) });
+        jwt.sign = jest.fn().mockReturnValue('mock-jwt-token');
+
+        req.body = {
+          email: 'test@example.com',
+          name: 'Test User',
+          picture: 'https://example.com/photo.jpg',
+          idToken: 'google-token'
+        };
+
+        await googleAuth(req, res);
+
+        expect(res.json).toHaveBeenCalledWith(
+          expect.objectContaining({
+            success: true,
+            tenant: expect.objectContaining({
+              hasSeenThemePopup: true
+            })
+          })
+        );
+      });
+    });
+
+    describe('verifyOTP() - Theme data inclusion', () => {
+      it('should include selectedTheme field in OTP verification response for user with tenant', async () => {
+        const mockUser = {
+          _id: 'user-123',
+          email: 'test@example.com',
+          name: 'Test User',
+          authProvider: 'local',
+          isVerified: false,
+          otpCode: '123456',
+          otpExpiry: new Date(Date.now() + 10 * 60 * 1000),
+          hasCompletedSetup: true,
+          tenantId: 'tenant-123',
+          tenantSlug: 'test-cafe',
+          save: jest.fn().mockResolvedValue(true)
+        };
+
+        const mockTenant = {
+          _id: 'tenant-123',
+          name: 'Test Cafe',
+          slug: 'test-cafe',
+          dbName: 'superkafe_test_cafe',
+          isActive: true,
+          selectedTheme: 'light-coffee',
+          hasSeenThemePopup: false
+        };
+
+        const mockEmployee = {
+          _id: 'employee-123',
+          email: 'test@example.com',
+          role: 'admin'
+        };
+
+        const mockTenantDB = {
+          model: jest.fn().mockImplementation(() => ({
+            findOne: jest.fn().mockReturnValue({
+              lean: jest.fn().mockResolvedValue(mockEmployee)
+            })
+          }))
+        };
+
+        User.findOne = jest.fn().mockResolvedValue(mockUser);
+        Tenant.findById = jest.fn().mockResolvedValue(mockTenant);
+        Employee.findOne = jest.fn().mockReturnValue({ lean: jest.fn().mockResolvedValue(mockEmployee) });
+        jwt.sign = jest.fn().mockReturnValue('mock-jwt-token');
+
+        req.body = {
+          email: 'test@example.com',
+          otpCode: '123456'
+        };
+
+        await verifyOTP(req, res);
+
+        expect(res.json).toHaveBeenCalledWith(
+          expect.objectContaining({
+            success: true,
+            tenant: expect.objectContaining({
+              selectedTheme: 'light-coffee'
+            })
+          })
+        );
+      });
+
+      it('should include hasSeenThemePopup field in OTP verification response for user with tenant', async () => {
+        const mockUser = {
+          _id: 'user-123',
+          email: 'test@example.com',
+          name: 'Test User',
+          authProvider: 'local',
+          isVerified: false,
+          otpCode: '123456',
+          otpExpiry: new Date(Date.now() + 10 * 60 * 1000),
+          hasCompletedSetup: true,
+          tenantId: 'tenant-123',
+          tenantSlug: 'test-cafe',
+          save: jest.fn().mockResolvedValue(true)
+        };
+
+        const mockTenant = {
+          _id: 'tenant-123',
+          name: 'Test Cafe',
+          slug: 'test-cafe',
+          dbName: 'superkafe_test_cafe',
+          isActive: true,
+          selectedTheme: 'default',
+          hasSeenThemePopup: true
+        };
+
+        const mockEmployee = {
+          _id: 'employee-123',
+          email: 'test@example.com',
+          role: 'admin'
+        };
+
+        const mockTenantDB = {
+          model: jest.fn().mockImplementation(() => ({
+            findOne: jest.fn().mockReturnValue({
+              lean: jest.fn().mockResolvedValue(mockEmployee)
+            })
+          }))
+        };
+
+        User.findOne = jest.fn().mockResolvedValue(mockUser);
+        Tenant.findById = jest.fn().mockResolvedValue(mockTenant);
+        Employee.findOne = jest.fn().mockReturnValue({ lean: jest.fn().mockResolvedValue(mockEmployee) });
+        jwt.sign = jest.fn().mockReturnValue('mock-jwt-token');
+
+        req.body = {
+          email: 'test@example.com',
+          otpCode: '123456'
+        };
+
+        await verifyOTP(req, res);
+
+        expect(res.json).toHaveBeenCalledWith(
+          expect.objectContaining({
+            success: true,
+            tenant: expect.objectContaining({
+              hasSeenThemePopup: true
+            })
+          })
+        );
+      });
+    });
+  });
 });
+
+

@@ -215,8 +215,23 @@ const login = async (req, res) => {
       hasCompletedSetup: user.hasCompletedSetup
     });
 
+    // Fetch tenant data if setup completed
+    let tenantData = null;
+    if (user.hasCompletedSetup && user.tenantId) {
+      const tenant = await Tenant.findById(user.tenantId);
+      if (tenant) {
+        tenantData = {
+          id: tenant._id,
+          name: tenant.name,
+          slug: tenant.slug,
+          selectedTheme: tenant.selectedTheme,
+          hasSeenThemePopup: tenant.hasSeenThemePopup
+        };
+      }
+    }
+
     // Response sukses
-    res.json({
+    const response = {
       success: true,
       message: 'Login berhasil',
       token: token,
@@ -229,7 +244,13 @@ const login = async (req, res) => {
         hasCompletedSetup: user.hasCompletedSetup,
         tenantSlug: user.tenantSlug
       }
-    });
+    };
+
+    if (tenantData) {
+      response.tenant = tenantData;
+    }
+
+    res.json(response);
 
   } catch (error) {
     console.error('[AUTH ERROR] Gagal login:', error);
@@ -338,8 +359,23 @@ const googleAuth = async (req, res) => {
       { expiresIn: '7d' }
     );
 
+    // Fetch tenant data if setup completed
+    let tenantData = null;
+    if (user.hasCompletedSetup && user.tenantId) {
+      const tenant = await Tenant.findById(user.tenantId);
+      if (tenant) {
+        tenantData = {
+          id: tenant._id,
+          name: tenant.name,
+          slug: tenant.slug,
+          selectedTheme: tenant.selectedTheme,
+          hasSeenThemePopup: tenant.hasSeenThemePopup
+        };
+      }
+    }
+
     // Response sukses
-    res.json({
+    const response = {
       success: true,
       message: isNewUser 
         ? 'Akun berhasil dibuat dengan Google!' 
@@ -355,7 +391,13 @@ const googleAuth = async (req, res) => {
         hasCompletedSetup: user.hasCompletedSetup,
         tenantSlug: user.tenantSlug
       }
-    });
+    };
+
+    if (tenantData) {
+      response.tenant = tenantData;
+    }
+
+    res.json(response);
 
   } catch (error) {
     console.error('[AUTH ERROR] Gagal Google auth:', error);
@@ -426,7 +468,22 @@ const verifyOTP = async (req, res) => {
       { expiresIn: '7d' }
     );
 
-    res.json({
+    // Fetch tenant data if setup completed
+    let tenantData = null;
+    if (user.hasCompletedSetup && user.tenantId) {
+      const tenant = await Tenant.findById(user.tenantId);
+      if (tenant) {
+        tenantData = {
+          id: tenant._id,
+          name: tenant.name,
+          slug: tenant.slug,
+          selectedTheme: tenant.selectedTheme,
+          hasSeenThemePopup: tenant.hasSeenThemePopup
+        };
+      }
+    }
+
+    const response = {
       success: true,
       message: 'Email berhasil diverifikasi!',
       token: token,
@@ -439,7 +496,13 @@ const verifyOTP = async (req, res) => {
         hasCompletedSetup: user.hasCompletedSetup,
         tenantSlug: user.tenantSlug
       }
-    });
+    };
+
+    if (tenantData) {
+      response.tenant = tenantData;
+    }
+
+    res.json(response);
 
   } catch (error) {
     console.error('[AUTH ERROR] Gagal verify OTP:', error);

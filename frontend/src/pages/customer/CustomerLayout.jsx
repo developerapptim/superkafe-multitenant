@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect } from 'react';
-import { Outlet, NavLink, useSearchParams } from 'react-router-dom';
+import { Outlet, NavLink, useSearchParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from "framer-motion";
 import { settingsAPI } from '../../services/api';
 import PullToRefresh from 'react-simple-pull-to-refresh';
@@ -13,6 +13,37 @@ import CartContext from '../../context/CartContext';
 function CustomerLayout() {
     const [searchParams, setSearchParams] = useSearchParams();
     const { triggerRefresh } = useRefresh();
+    const navigate = useNavigate();
+
+    // Check if user is authenticated as admin/owner
+    const [isAdminUser, setIsAdminUser] = useState(false);
+    const [tenantSlug, setTenantSlug] = useState(null);
+
+    useEffect(() => {
+        try {
+            const userStr = localStorage.getItem('user');
+            const slug = localStorage.getItem('tenant_slug');
+            
+            if (userStr && slug) {
+                const user = JSON.parse(userStr);
+                const userRole = user?.role || '';
+                
+                // Check if user is admin or owner
+                if (userRole === 'admin' || userRole === 'owner') {
+                    setIsAdminUser(true);
+                    setTenantSlug(slug);
+                }
+            }
+        } catch (err) {
+            console.error('Error checking admin status:', err);
+        }
+    }, []);
+
+    const handleBackToAdmin = () => {
+        if (tenantSlug) {
+            navigate(`/${tenantSlug}/admin/dashboard`);
+        }
+    };
 
     // Logic Sticky Session: URL > LocalStorage
     const getTableFromUrl = () => {
@@ -292,6 +323,18 @@ function CustomerLayout() {
 
                             {/* Table Badge and Login */}
                             <div className="flex items-center gap-4 ml-auto md:ml-0">
+                                {/* Back to Admin Button (Only for Admin/Owner) */}
+                                {isAdminUser && (
+                                    <button
+                                        onClick={handleBackToAdmin}
+                                        className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 hover:text-purple-200 text-sm border border-purple-500/30 transition-all"
+                                        title="Kembali ke Admin Panel"
+                                    >
+                                        <span>←</span>
+                                        <span>Admin Panel</span>
+                                    </button>
+                                )}
+
                                 {tableId && (
                                     <div className="hidden md:block px-3 py-1 rounded-full bg-purple-500/20 text-purple-300 text-sm border border-purple-500/30">
                                         🪑 Meja {tableId}
@@ -299,13 +342,15 @@ function CustomerLayout() {
                                 )}
 
                                 {/* Staff Login Button (Subtle/Glassmorphism) */}
-                                <NavLink
-                                    to="/login"
-                                    className="w-8 h-8 flex items-center justify-center rounded-full bg-white/5 hover:bg-white/10 text-white/20 hover:text-white/80 transition-all backdrop-blur-sm border border-transparent hover:border-white/20"
-                                    title="Staff Login"
-                                >
-                                    🔒
-                                </NavLink>
+                                {!isAdminUser && (
+                                    <NavLink
+                                        to="/login"
+                                        className="w-8 h-8 flex items-center justify-center rounded-full bg-white/5 hover:bg-white/10 text-white/20 hover:text-white/80 transition-all backdrop-blur-sm border border-transparent hover:border-white/20"
+                                        title="Staff Login"
+                                    >
+                                        🔒
+                                    </NavLink>
+                                )}
                             </div>
                         </div>
                     </div>
@@ -351,6 +396,24 @@ function CustomerLayout() {
                 {/* Bottom Navigation (Mobile Only) */}
                 <nav className="fixed bottom-0 left-0 right-0 z-50 bg-slate-900/90 backdrop-blur-md border-t border-slate-800 md:hidden">
                     <div className="max-w-md mx-auto md:max-w-7xl px-4 md:px-8 flex">
+                        {/* Back to Admin Button (Mobile - Only for Admin/Owner) */}
+                        {isAdminUser && (
+                            <button
+                                onClick={handleBackToAdmin}
+                                className="flex-1 relative group outline-none"
+                            >
+                                <div className="flex flex-col items-center py-3 transition-colors text-purple-400">
+                                    <motion.span
+                                        className="text-xl mb-1 relative z-10"
+                                        whileTap={{ scale: 0.8 }}
+                                    >
+                                        ⬅️
+                                    </motion.span>
+                                    <span className="text-xs relative z-10">Admin</span>
+                                </div>
+                            </button>
+                        )}
+
                         <NavLink
                             to={`/${tableId ? `?meja=${tableId}` : ''}`}
                             end

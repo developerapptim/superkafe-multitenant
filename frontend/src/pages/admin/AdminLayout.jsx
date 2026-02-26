@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from 'react';
 import toast from 'react-hot-toast';
 import useSWR from 'swr';
 import { motion } from 'framer-motion';
+import { jwtDecode } from 'jwt-decode';
 import api from '../../services/api';
 import Sidebar from '../../components/Sidebar';
 import CommandPalette from '../../components/CommandPalette';
@@ -10,6 +11,8 @@ import NotificationBell from '../../components/admin/NotificationBell';
 import OrderNotification from '../../components/OrderNotification'; // Global Order Notification
 import PullToRefresh from 'react-simple-pull-to-refresh';
 import { useRefresh } from '../../context/RefreshContext';
+import { ThemeProvider, useTheme } from '../../context/ThemeContext';
+import FirstTimeThemePopup from '../../components/admin/FirstTimeThemePopup';
 
 // Fetcher
 const fetcher = url => api.get(url).then(res => res.data);
@@ -21,6 +24,73 @@ function AdminLayout() {
     const { triggerRefresh } = useRefresh();
 
     const [showCmd, setShowCmd] = useState(false);
+
+    // Get User Role and Tenant Info
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    const isStaff = user.role === 'staf';
+
+    // Extract tenant information from JWT token for ThemeProvider
+    const [tenantInfo, setTenantInfo] = useState({ tenantId: null, initialTheme: 'default' });
+    
+    // First-time theme popup state
+    const [showThemePopup, setShowThemePopup] = useState(false);
+    const [hasSeenThemePopup, setHasSeenThemePopup] = useState(true); // Default to true to avoid flash
+
+    useEffect(() => {
+        const token = localStorage.getItem('token');
+        const tenantData = localStorage.getItem('tenant');
+        
+        if (token) {
+            try {
+                const decoded = jwtDecode(token);
+                const tenantId = decoded.tenantId;
+                
+                // Try to get initial theme from tenant data in localStorage
+                let initialTheme = 'default';
+                if (tenantData) {
+                    try {
+                        const tenant = JSON.parse(tenantData);
+                        initialTheme = tenant.selectedTheme || 'default';
+                        console.log('[AdminLayout] Loaded theme from localStorage:', initialTheme);
+                    } catch (parseError) {
+                        console.error('[AdminLayout] Failed to parse tenant data:', parseError);
+                    }
+                }
+                
+                setTenantInfo({
+                    tenantId: tenantId || null,
+                    initialTheme: initialTheme
+                });
+            } catch (error) {
+                console.error('[AdminLayout] Failed to decode token:', error);
+            }
+        }
+    }, []);
+
+    // Check if user should see first-time theme popup
+    useEffect(() => {
+        const checkThemePopup = async () => {
+            if (!tenantInfo.tenantId) return;
+            
+            try {
+                const response = await api.get(`/tenants/${tenantInfo.tenantId}/theme`);
+                const hasSeenPopup = response.data.hasSeenThemePopup;
+                
+                setHasSeenThemePopup(hasSeenPopup);
+                
+                // Show popup if user hasn't seen it yet
+                if (!hasSeenPopup) {
+                    setShowThemePopup(true);
+                }
+            } catch (error) {
+                console.error('[AdminLayout] Failed to check theme popup status:', error);
+                // Default to not showing popup on error
+                setHasSeenThemePopup(true);
+            }
+        };
+
+        checkThemePopup();
+    }, [tenantInfo.tenantId]);
 
     // Global Keyboard Shortcut (Ctrl + K)
     useEffect(() => {
@@ -37,10 +107,6 @@ function AdminLayout() {
     const [showShiftModal, setShowShiftModal] = useState(false);
     const [shiftData, setShiftData] = useState({ startCash: '' });
     const { data: currentShift, mutate: mutateShift } = useSWR('/shifts/current', fetcher);
-
-    // Get User Role
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
-    const isStaff = user.role === 'staf';
 
     // Effects to check shift status
     useEffect(() => {
@@ -98,15 +164,75 @@ function AdminLayout() {
         }
     });
 
+    // Handle theme selection from first-time popup
+    const handleThemeSelect = async (themeName) => {
+        if (!tenantInfo.tenantId) return;
+        
+        try {
+            // Update theme via API and mark popup as seen
+            await api.put(`/tenants/${tenantInfo.tenantId}/theme`, { 
+                theme: themeName,
+                markPopupSeen: true 
+            });
+            
+            // Update localStorage tenant data
+            const tenantData = localStorage.getItem('tenant');
+            if (tenantData) {
+                try {
+                    const tenant = JSON.parse(tenantData);
+                    tenant.selectedTheme = themeName;
+                    tenant.hasSeenThemePopup = true;
+                    localStorage.setItem('tenant', JSON.stringify(tenant));
+                } catch (parseError) {
+                    console.error('[AdminLayout] Failed to update tenant data in localStorage:', parseError);
+                }
+            }
+            
+            // Mark popup as seen
+            setHasSeenThemePopup(true);
+            setShowThemePopup(false);
+            
+            toast.success('Tema berhasil disimpan!');
+            
+            // Reload page to apply theme
+            window.location.reload();
+        } catch (error) {
+            console.error('[AdminLayout] Failed to save theme:', error);
+            toast.error('Gagal menyimpan tema');
+        }
+    };
+
+    // Handle skip button (use default theme)
+    const handleSkipThemeSelection = async () => {
+        if (!tenantInfo.tenantId) return;
+        
+        try {
+            // Mark popup as seen without changing theme
+            await api.put(`/tenants/${tenantInfo.tenantId}/theme`, { 
+                theme: 'default',
+                markPopupSeen: true 
+            });
+            
+            setHasSeenThemePopup(true);
+            setShowThemePopup(false);
+        } catch (error) {
+            console.error('[AdminLayout] Failed to mark popup as seen:', error);
+            // Still close popup even if API fails
+            setHasSeenThemePopup(true);
+            setShowThemePopup(false);
+        }
+    };
+
     return (
-        <div
-            id="adminPage"
-            className="flex h-screen overflow-hidden bg-gray-900"
-            ref={constraintsRef}
-            style={{
-                background: 'linear-gradient(135deg, #1E1B4B 0%, #0F0A1F 50%, #1E1B4B 100%)',
-            }}
-        >
+        <ThemeProvider initialTheme={tenantInfo.initialTheme} tenantId={tenantInfo.tenantId}>
+            <div
+                id="adminPage"
+                className="flex h-screen overflow-hidden bg-gray-900"
+                ref={constraintsRef}
+                style={{
+                    background: 'linear-gradient(135deg, #1E1B4B 0%, #0F0A1F 50%, #1E1B4B 100%)',
+                }}
+            >
             {/* Sidebar Wrapper */}
             <OrderNotification /> {/* Global Sound/Toast Listener */}
             <div className={`${isSidebarCollapsed ? 'w-0 lg:w-20' : 'w-20 lg:w-64'} flex-shrink-0 h-full transition-all duration-300 relative`}>
@@ -272,7 +398,15 @@ function AdminLayout() {
                     </div>
                 </div>
             )}
+
+            {/* First-Time Theme Selection Popup */}
+            <FirstTimeThemePopup
+                isOpen={showThemePopup}
+                onThemeSelect={handleThemeSelect}
+                onSkip={handleSkipThemeSelection}
+            />
         </div>
+        </ThemeProvider>
     );
 }
 

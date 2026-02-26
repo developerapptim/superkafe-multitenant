@@ -1,4 +1,4 @@
-﻿const User = require('../models/User');
+const User = require('../models/User');
 const Tenant = require('../models/Tenant');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
@@ -22,7 +22,25 @@ exports.globalLogin = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Tenant tidak ditemukan' });
     }
     const token = jwt.sign({ userId: user._id, tenantId: user.tenantId, tenantSlug: tenant.slug, role: user.role, email: user.email }, process.env.JWT_SECRET, { expiresIn: '24h' });
-    res.json({ success: true, token, user: { id: user._id, name: user.name, email: user.email, role: user.role, tenantId: user.tenantId, tenantSlug: tenant.slug }, tenant: { id: tenant._id, slug: tenant.slug, name: tenant.businessName } });
+    res.json({ 
+      success: true, 
+      token, 
+      user: { 
+        id: user._id, 
+        name: user.name, 
+        email: user.email, 
+        role: user.role, 
+        tenantId: user.tenantId, 
+        tenantSlug: tenant.slug 
+      }, 
+      tenant: { 
+        id: tenant._id, 
+        slug: tenant.slug, 
+        name: tenant.businessName,
+        selectedTheme: tenant.selectedTheme,
+        hasSeenThemePopup: tenant.hasSeenThemePopup
+      } 
+    });
   } catch (error) {
     console.error('Global login error:', error);
     res.status(500).json({ success: false, message: 'Terjadi kesalahan saat login' });

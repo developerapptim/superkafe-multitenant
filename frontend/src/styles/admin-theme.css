@@ -1,0 +1,151 @@
+/**
+ * Admin Theme Styles
+ * 
+ * This file defines CSS classes that use theme CSS variables.
+ * These styles are scoped to admin components only.
+ * 
+ * Feature: Seamless Branding Integration
+ * Requirements: 8.1, 8.2
+ * 
+ * CSS Variables (set by ThemeContext):
+ * - --bg-main: Main background color
+ * - --bg-sidebar: Sidebar background color
+ * - --accent-color: Accent/primary color
+ * - --text-primary: Primary text color
+ */
+
+/* Admin-scoped theme classes */
+.admin-bg-main {
+  background-color: var(--bg-main, #0F0A1F);
+}
+
+.admin-bg-sidebar {
+  background-color: var(--bg-sidebar, #1E1B4B);
+}
+
+.admin-bg-accent {
+  background-color: var(--accent-color, #8B5CF6);
+}
+
+.admin-text-primary {
+  color: var(--text-primary, #FFFFFF);
+}
+
+.admin-border-accent {
+  border-color: var(--accent-color, #8B5CF6);
+}
+
+/* Admin gradient backgrounds using theme colors */
+.admin-gradient-bg {
+  background: linear-gradient(135deg, var(--bg-sidebar, #1E1B4B) 0%, var(--bg-main, #0F0A1F) 50%, var(--bg-sidebar, #1E1B4B) 100%);
+}
+
+/* Admin card with theme-aware background */
+.admin-card {
+  background-color: var(--bg-sidebar, #1E1B4B);
+  border: 1px solid rgba(139, 92, 246, 0.2);
+}
+
+/* Admin button with theme-aware accent color */
+.admin-button-primary {
+  background: linear-gradient(135deg, var(--accent-color, #8B5CF6) 0%, var(--accent-color, #8B5CF6) 100%);
+  color: var(--text-primary, #FFFFFF);
+}
+
+/* Admin input with theme-aware background */
+.admin-input {
+  background-color: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(139, 92, 246, 0.3);
+  color: var(--text-primary, #FFFFFF);
+}
+
+.admin-input:focus {
+  border-color: var(--accent-color, #8B5CF6);
+}
+
+/**
+ * Light Theme Shadow Enhancements
+ * 
+ * When bgMain is white (#FFFFFF), add subtle shadows to cards, panels, and containers
+ * for better visual depth and readability.
+ * 
+ * Feature: Seamless Branding Integration
+ * Requirements: 5.5, 6.1
+ * Task: 9.1
+ */
+
+/* Shadow styles for light backgrounds */
+.admin-card-shadow {
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+}
+
+.admin-panel-shadow {
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+.admin-container-shadow {
+  box-shadow: 0 2px 4px 0 rgba(0, 0, 0, 0.08), 0 1px 2px 0 rgba(0, 0, 0, 0.04);
+}
+
+/* Enhanced card styling with conditional shadows */
+.admin-card {
+  background-color: var(--bg-sidebar, #1E1B4B);
+  border: 1px solid rgba(139, 92, 246, 0.2);
+}
+
+/* Apply shadows when light-coffee theme is active (bgMain is white) */
+[data-theme="light-coffee"] .admin-card,
+[data-theme="light-coffee"] .admin-card-shadow {
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+}
+
+[data-theme="light-coffee"] .admin-panel-shadow {
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+[data-theme="light-coffee"] .admin-container-shadow {
+  box-shadow: 0 2px 4px 0 rgba(0, 0, 0, 0.08), 0 1px 2px 0 rgba(0, 0, 0, 0.04);
+}
+
+/* Enhanced borders for light theme */
+[data-theme="light-coffee"] .admin-card {
+  border: 1px solid rgba(160, 82, 45, 0.15);
+  background-color: var(--bg-sidebar, #4E342E);
+}
+
+/* Light theme specific adjustments for better contrast */
+[data-theme="light-coffee"] .admin-input {
+  background-color: rgba(0, 0, 0, 0.02);
+  border: 1px solid rgba(160, 82, 45, 0.2);
+  color: var(--text-primary, #2D2D2D);
+}
+
+[data-theme="light-coffee"] .admin-input:focus {
+  border-color: var(--accent-color, #A0522D);
+  box-shadow: 0 0 0 3px rgba(160, 82, 45, 0.1);
+}
+
+/* Sidebar text should be white on dark brown background for readability */
+[data-theme="light-coffee"] .admin-bg-sidebar,
+[data-theme="light-coffee"] .admin-bg-sidebar * {
+  color: #FFFFFF;
+}
+
+/* Ensure main content area uses dark text on white background */
+[data-theme="light-coffee"] .admin-bg-main {
+  color: var(--text-primary, #2D2D2D);
+}
+
+/**
+ * IMPORTANT: Customer View Isolation
+ * 
+ * Customer-facing components (MenuCustomer.jsx, etc.) should NOT import this CSS file.
+ * They should continue using their own hardcoded color values to maintain visual independence.
+ * 
+ * Customer views use:
+ * - Purple/dark blue color scheme (hardcoded)
+ * - No CSS variables
+ * - Separate styling approach
+ * 
+ * This ensures that admin theme changes do NOT affect customer views.
+ */

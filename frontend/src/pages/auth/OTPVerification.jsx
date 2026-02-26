@@ -97,6 +97,11 @@ const OTPVerification = () => {
         localStorage.setItem('token', response.data.token);
         localStorage.setItem('user', JSON.stringify(response.data.user));
         
+        // Simpan tenant data jika ada (termasuk theme)
+        if (response.data.tenant) {
+          localStorage.setItem('tenant', JSON.stringify(response.data.tenant));
+        }
+        
         // Redirect ke setup wizard (user belum punya tenant)
         setTimeout(() => {
           navigate('/setup-cafe');

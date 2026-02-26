@@ -188,6 +188,11 @@ const SimpleRegister = () => {
               // Simpan token dan user data
               localStorage.setItem('token', backendResponse.data.token);
               localStorage.setItem('user', JSON.stringify(backendResponse.data.user));
+              
+              // Simpan tenant data jika ada (termasuk theme)
+              if (backendResponse.data.tenant) {
+                localStorage.setItem('tenant', JSON.stringify(backendResponse.data.tenant));
+              }
 
               // Show success message
               if (backendResponse.data.isNewUser) {

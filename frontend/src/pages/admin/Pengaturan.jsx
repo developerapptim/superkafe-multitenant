@@ -3,8 +3,11 @@ import useSWR, { mutate } from 'swr';
 import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaChevronDown, FaChevronUp, FaCircle } from 'react-icons/fa';
+import { jwtDecode } from 'jwt-decode';
 import api, { settingsAPI, userAPI } from '../../services/api';
 import { useRefresh } from '../../context/RefreshContext';
+import { useTheme } from '../../context/ThemeContext';
+import ThemeSelector from '../../components/admin/ThemeSelector';
 
 // Fetcher
 const fetcher = url => api.get(url).then(res => res.data);
@@ -54,6 +57,24 @@ function Pengaturan() {
     const { data: settingsData, error } = useSWR('/settings', fetcher);
     const isLoading = !settingsData && !error;
     const [saving, setSaving] = useState(false);
+
+    // Theme management
+    const { currentTheme, setTheme, isLoading: themeLoading } = useTheme();
+    const [tenantId, setTenantId] = useState(null);
+    const [themeSaving, setThemeSaving] = useState(false);
+
+    // Get tenantId from JWT token
+    useEffect(() => {
+        const token = localStorage.getItem('token');
+        if (token) {
+            try {
+                const decoded = jwtDecode(token);
+                setTenantId(decoded.tenantId);
+            } catch (error) {
+                console.error('[Pengaturan] Failed to decode token:', error);
+            }
+        }
+    }, []);
 
     // State to track open accordion section
     // Default open: 'profile'
@@ -262,6 +283,36 @@ function Pengaturan() {
         setOpenSection(openSection === id ? null : id);
     };
 
+    // Handle theme change
+    const handleThemeChange = async (themeName) => {
+        if (!tenantId) {
+            toast.error('Tenant ID tidak ditemukan');
+            return;
+        }
+
+        const toastId = toast.loading('Menyimpan tema...');
+        try {
+            setThemeSaving(true);
+            
+            // Update theme via API
+            await api.put(`/tenants/${tenantId}/theme`, { theme: themeName });
+            
+            // Update theme in context (this will apply CSS variables)
+            const success = await setTheme(themeName);
+            
+            if (success) {
+                toast.success('Tema berhasil disimpan!', { id: toastId });
+            } else {
+                toast.error('Gagal menerapkan tema', { id: toastId });
+            }
+        } catch (error) {
+            console.error('[Pengaturan] Failed to save theme:', error);
+            toast.error(error.response?.data?.error || 'Gagal menyimpan tema', { id: toastId });
+        } finally {
+            setThemeSaving(false);
+        }
+    };
+
     if (isLoading) {
         return (
             <section className="p-4 md:p-6 space-y-6">
@@ -347,6 +398,39 @@ function Pengaturan() {
                             value={settings.address}
                             onChange={(e) => setSettings({ ...settings, address: e.target.value })}
                             className="w-full px-4 py-2 rounded-lg bg-white/5 border border-purple-500/30 text-white"
+                        />
+                    </div>
+                </div>
+            </AccordionSection>
+
+            {/* Theme Settings */}
+            <AccordionSection
+                id="theme"
+                title="Mode Tampilan"
+                icon="🎨"
+                isOpen={openSection === 'theme'}
+                onToggle={() => toggleSection('theme')}
+                isDirty={false} // Theme changes are saved immediately
+            >
+                <div className="space-y-4">
+                    <div className="p-4 bg-white/5 rounded-xl border border-purple-500/20">
+                        <p className="text-sm text-gray-400 mb-4">
+                            Pilih tema tampilan yang sesuai dengan preferensi Anda. Perubahan akan diterapkan secara langsung.
+                        </p>
+                        
+                        {/* Current Theme Display */}
+                        <div className="mb-4 p-3 bg-purple-500/10 rounded-lg border border-purple-500/30">
+                            <p className="text-xs text-gray-400 mb-1">Tema Aktif Saat Ini:</p>
+                            <p className="text-lg font-bold text-purple-300">
+                                {currentTheme === 'default' ? '🌙 Default (Dark Purple)' : '☕ Light Coffee'}
+                            </p>
+                        </div>
+
+                        {/* Theme Selector Component */}
+                        <ThemeSelector
+                            currentTheme={currentTheme}
+                            onThemeChange={handleThemeChange}
+                            disabled={themeSaving || themeLoading}
                         />
                     </div>
                 </div>
