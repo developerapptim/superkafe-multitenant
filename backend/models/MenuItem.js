@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 const tenantScopingPlugin = require('../plugins/tenantScopingPlugin');
 
 const MenuItemSchema = new mongoose.Schema({
-    id: { type: String, required: true, unique: true },
+    id: { type: String, required: true },
     name: { type: String, required: true },
     description: String,
     price: { type: Number, required: true },
@@ -12,6 +12,9 @@ const MenuItemSchema = new mongoose.Schema({
     is_active: { type: Boolean, default: true },
     use_stock_check: { type: Boolean, default: true },
     order: { type: Number, default: 0 },
+
+    // Tenant-scoped unique id index will be added below
+
     label: {
         type: String,
         enum: ['none', 'best-seller', 'signature', 'new'],
@@ -32,8 +35,12 @@ const MenuItemSchema = new mongoose.Schema({
 
 // MenuItemSchema.pre('validate', function (next) {
 //     console.log('🔍 Validating MenuItem:', this);
-//     next();
 // });
+
+// Tenant-scoped compound indexes
+MenuItemSchema.index({ tenantId: 1, id: 1 }, { unique: true });
+
+
 
 // Apply tenant scoping plugin for automatic tenant isolation
 MenuItemSchema.plugin(tenantScopingPlugin);

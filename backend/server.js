@@ -60,7 +60,32 @@ app.use('/', express.static(path.join(__dirname, 'public', 'customer')));
 // ===== DATABASE =====
 const MONGODB_URI = process.env.MONGODB_URI;
 mongoose.connect(MONGODB_URI, { useNewUrlParser: true, useUnifiedTopology: true })
-  .then(() => console.log(`✅ Connected to MongoDB (${MONGODB_URI.includes('mongodb+srv') ? 'Atlas' : 'Local'})`))
+  .then(async () => {
+    console.log(`✅ Connected to MongoDB (${MONGODB_URI.includes('mongodb+srv') ? 'Atlas' : 'Local'})`);
+    // [TEMPORARY MIGRATION] Drop global unique indexes that cause multitenant seeding issues
+    try {
+      const db = mongoose.connection.db;
+      if (db) {
+        const collections = ['categories', 'menuitems', 'tables'];
+        for (const col of collections) {
+          try {
+            const collection = db.collection(col);
+            const indexes = await collection.indexes();
+            if (indexes.some(idx => idx.name === 'id_1')) {
+              await collection.dropIndex('id_1');
+              console.log(`✅ Dropped global id_1 index from ${col}`);
+            }
+            if (col === 'tables' && indexes.some(idx => idx.name === 'number_1')) {
+              await collection.dropIndex('number_1');
+              console.log(`✅ Dropped global number_1 index from ${col}`);
+            }
+          } catch (e) { /* collection might not exist yet */ }
+        }
+      }
+    } catch (err) {
+      console.error('⚠️ Could not check/drop global indexes:', err.message);
+    }
+  })
   .catch(err => {
     console.error('❌ MongoDB connection error:', err);
     process.exit(1);
@@ -119,7 +144,7 @@ app.use('/api', require('./routes/marketingRoutes')); // Marketing: vouchers, ba
 // This must be after all routes to catch errors from route handlers
 app.use((err, req, res, next) => {
   const requestId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-  
+
   // Handle tenant scoping errors
   if (err.code === 'TENANT_MISMATCH') {
     console.error('[TENANT SCOPING ERROR] Cross-tenant modification attempt', {
@@ -137,13 +162,13 @@ app.use((err, req, res, next) => {
       userAgent: req.headers['user-agent'],
       timestamp: new Date().toISOString()
     });
-    
+
     return res.status(err.statusCode || 403).json({
       success: false,
       message: 'Unauthorized access to tenant data'
     });
   }
-  
+
   // Handle validation errors
   if (err.name === 'ValidationError') {
     console.warn('[VALIDATION ERROR]', {
@@ -153,13 +178,13 @@ app.use((err, req, res, next) => {
       path: req.path,
       timestamp: new Date().toISOString()
     });
-    
+
     return res.status(400).json({
       success: false,
       message: err.message
     });
   }
-  
+
   // Handle all other errors
   console.error('[UNHANDLED ERROR]', {
     requestId,
@@ -178,7 +203,7 @@ app.use((err, req, res, next) => {
     userAgent: req.headers['user-agent'],
     timestamp: new Date().toISOString()
   });
-  
+
   // Send generic error message to client (don't leak stack trace)
   res.status(err.statusCode || 500).json({
     success: false,

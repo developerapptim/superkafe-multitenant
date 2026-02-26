@@ -2,8 +2,8 @@ const mongoose = require('mongoose');
 const tenantScopingPlugin = require('../plugins/tenantScopingPlugin');
 
 const TableSchema = new mongoose.Schema({
-    id: { type: String, required: true, unique: true },
-    number: { type: String, required: true, unique: true },
+    id: { type: String, required: true },
+    number: { type: String, required: true },
     capacity: { type: Number, default: 4 },
     status: { type: String, enum: ['available', 'occupied', 'reserved'], default: 'available' },
     location: { type: String, default: 'indoor' }, // indoor/outdoor
@@ -12,6 +12,8 @@ const TableSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 // Tenant-scoped compound indexes for optimal query performance
+TableSchema.index({ tenantId: 1, id: 1 }, { unique: true });
+TableSchema.index({ tenantId: 1, number: 1 }, { unique: true });
 TableSchema.index({ tenantId: 1, createdAt: -1 }); // Time-based queries per tenant
 TableSchema.index({ tenantId: 1, status: 1 }); // Status-based queries per tenant
 
