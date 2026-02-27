@@ -33,8 +33,7 @@ function Pegawai() {
         salary: '',
         role_access: [],
         status: 'active',
-        username: '',
-        password: ''
+        pin: ''
     });
 
     const { data: employeesData } = useSWR('/employees', employeesFetcher);
@@ -76,7 +75,7 @@ function Pegawai() {
         setFormData({
             name: '', role: 'staf', phone: '', address: '',
             salary: '',
-            status: 'active', username: '', password: ''
+            status: 'active', pin: ''
         });
         setShowModal(true);
     };
@@ -95,8 +94,7 @@ function Pegawai() {
             address: emp.address || '',
             salary: emp.salary || '',
             status: emp.status || 'active',
-            username: emp.username || '',
-            password: ''
+            pin: ''
         });
         setShowModal(true);
     };
@@ -120,8 +118,11 @@ function Pegawai() {
                 // Staf: limited operational access
                 payload.role_access = ['Dashboard', 'POS', 'Meja', 'Menu', 'Pelanggan', 'Inventori', 'Gramasi'];
             }
-            if (!payload.username?.trim()) delete payload.username;
-            if (!payload.password) delete payload.password;
+            // Map pin to pin_code for backend compatibility
+            if (payload.pin) {
+                payload.pin_code = payload.pin;
+            }
+            delete payload.pin;
 
 
             if (editingEmployee) {
@@ -507,37 +508,27 @@ function Pegawai() {
                                 </p>
                             </div>
 
-                            {/* Login Credentials */}
-                            {/* Login Credentials - Now available for all roles */}
+                            {/* Login Credentials - PIN Only for Shared Tablet */}
                             <div className="p-4 bg-purple-900/20 rounded-xl border border-purple-500/20 space-y-3">
-                                <h4 className="text-sm font-bold text-purple-300 flex items-center gap-2">🔐 Login Access</h4>
-                                <div>
-                                    <label className="block text-sm text-gray-400 mb-1">Username {formData.role !== 'admin' && <span className="text-xs text-gray-500">(Wajib untuk login Dashboard)</span>}</label>
-                                    <input
-                                        type="text"
-                                        value={formData.username}
-                                        onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-                                        className="w-full px-4 py-2 rounded-lg bg-white/5 border border-purple-500/30 text-white"
-                                        placeholder="Username login"
-                                    />
-                                </div>
+                                <h4 className="text-sm font-bold text-purple-300 flex items-center gap-2">🔐 PIN Login (Tablet Kasir)</h4>
                                 <div>
                                     <label className="block text-sm text-gray-400 mb-1">
-                                        Password {formData.role !== 'admin' && <span className="text-xs text-gray-500">(Opsional, bisa pakai PIN)</span>}
-                                        {editingEmployee && <span className="text-xs text-gray-500 ml-1">(Kosongkan jika tidak ubah)</span>}
+                                        PIN (6 Digit) {editingEmployee && <span className="text-xs text-gray-500 ml-1">(Kosongkan jika tidak ubah)</span>}
                                     </label>
-                                    <div className="relative">
-                                        <input
-                                            type={showPassword ? "text" : "password"}
-                                            value={formData.password}
-                                            onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                                            className="w-full px-4 py-2 rounded-lg bg-white/5 border border-purple-500/30 text-white pr-10"
-                                            placeholder={editingEmployee ? "******" : "Password"}
-                                        />
-                                        <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white">
-                                            {showPassword ? '👁️' : '🔒'}
-                                        </button>
-                                    </div>
+                                    <input
+                                        type="text"
+                                        inputMode="numeric"
+                                        pattern="[0-9]*"
+                                        maxLength={6}
+                                        value={formData.pin}
+                                        onChange={(e) => {
+                                            const val = e.target.value.replace(/\D/g, '').slice(0, 6);
+                                            setFormData({ ...formData, pin: val });
+                                        }}
+                                        className="w-full px-4 py-2 rounded-lg bg-white/5 border border-purple-500/30 text-white tracking-[0.5em] text-center text-lg font-mono"
+                                        placeholder={editingEmployee ? '••••••' : '000000'}
+                                    />
+                                    <p className="text-xs text-gray-500 mt-1">PIN digunakan untuk login cepat di Tablet Kasir (Lock Screen)</p>
                                 </div>
                             </div>
 

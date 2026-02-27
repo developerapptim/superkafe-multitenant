@@ -7,6 +7,9 @@ import toast from 'react-hot-toast';
 import { usePendingOrdersCount } from '../hooks/usePendingOrdersCount';
 import { useTenant } from './TenantRouter';
 
+// Import admin theme generated CSS classes
+import '../styles/admin-theme.css';
+
 // Fetcher
 const fetcher = url => api.get(url).then(res => res.data);
 
@@ -37,11 +40,11 @@ const baseMenuItems = [
       { path: '/admin/data-center', label: 'Pusat Data' }
     ]
   },
-  { 
-    path: '/c/menu', 
-    icon: '👁️', 
-    label: 'Lihat Tampilan Customer', 
-    section: 'customerPreview', 
+  {
+    path: '/',
+    icon: '👁️',
+    label: 'Lihat Tampilan Customer',
+    section: 'customerPreview',
     access: 'Menu',
     roles: ['admin', 'owner']
   },
@@ -58,9 +61,9 @@ function Sidebar({ onLogout, isCollapsed, toggleSidebar }) {
     console.warn('[Sidebar] TenantRouter context not available, using localStorage fallback');
     tenantSlug = localStorage.getItem('tenant_slug');
   }
-  
+
   const navigate = useNavigate();
-  
+
   const [settings, setSettings] = useState(() => {
     const saved = localStorage.getItem('appSettings');
     return saved ? JSON.parse(saved) : {
@@ -69,23 +72,23 @@ function Sidebar({ onLogout, isCollapsed, toggleSidebar }) {
       logo: 'https://res.cloudinary.com/dhjqb65mf/image/upload/v1770018588/Picsart_26-02-02_15-46-53-772_vw9xc3.png'
     };
   });
-  
+
   // Generate tenant-specific menu items
   const menuItems = useMemo(() => {
     // Fallback: use localStorage tenant_slug if useTenant() returns undefined
     const effectiveTenantSlug = tenantSlug || localStorage.getItem('tenant_slug');
-    
+
     console.log('[Sidebar] Generating menu items:', {
       tenantSlug,
       effectiveTenantSlug,
       baseMenuItemsCount: baseMenuItems.length
     });
-    
+
     if (!effectiveTenantSlug) {
       console.warn('[Sidebar] No tenant slug available, using base paths');
       return baseMenuItems;
     }
-    
+
     const generated = baseMenuItems.map(item => {
       if (item.children) {
         return {
@@ -101,7 +104,7 @@ function Sidebar({ onLogout, isCollapsed, toggleSidebar }) {
         path: `/${effectiveTenantSlug}${item.path}`
       };
     });
-    
+
     console.log('[Sidebar] Generated menu items:', generated.length);
     return generated;
   }, [tenantSlug]);
@@ -126,7 +129,7 @@ function Sidebar({ onLogout, isCollapsed, toggleSidebar }) {
   let user = {};
   let userRole = 'staf';
   let userRoleAccess = [];
-  
+
   try {
     const userStr = localStorage.getItem('user');
     if (userStr) {
@@ -141,7 +144,7 @@ function Sidebar({ onLogout, isCollapsed, toggleSidebar }) {
     userRole = 'admin';
     userRoleAccess = ['*'];
   }
-  
+
   // Debug logging
   console.log('[Sidebar Debug]', {
     tenantSlug,
@@ -151,7 +154,7 @@ function Sidebar({ onLogout, isCollapsed, toggleSidebar }) {
     menuItemsCount: menuItems.length,
     user
   });
-  
+
   const location = useLocation();
   const [expanded, setExpanded] = useState({ settings: true });
 
@@ -188,33 +191,65 @@ function Sidebar({ onLogout, isCollapsed, toggleSidebar }) {
 
       return false;
     });
-    
+
     console.log('[Sidebar] Filtered items:', {
       totalMenuItems: menuItems.length,
       filteredCount: filtered.length,
       userRole,
       userRoleAccess
     });
-    
+
     return filtered;
   }, [menuItems, userLoaded, user, userRole, userRoleAccess]);
 
   const [showCloseShiftModal, setShowCloseShiftModal] = useState(false);
+  const [showAdminLogoutModal, setShowAdminLogoutModal] = useState(false);
   const [endCash, setEndCash] = useState('');
   const { data: currentShift } = useSWR('/shifts/current', fetcher);
 
   const handleLogoutClick = () => {
-    // Admin/Owner Bypass: Don't show "Close Shift" popup
-    if ((userRole === 'admin' || userRole === 'owner') && currentShift) {
-      onLogout();
+    const isAdminOrOwner = userRole === 'admin' || userRole === 'owner';
+
+    if (isAdminOrOwner) {
+      // Admin/Owner: Show role-aware popup (Keluar Akun vs Login Kasir)
+      setShowAdminLogoutModal(true);
       return;
     }
 
+    // Staff: Close shift if active, then go to Lock Screen
     if (currentShift) {
       setShowCloseShiftModal(true);
     } else {
-      onLogout();
+      // No active shift — go directly to Lock Screen
+      handleStaffLogout();
     }
+  };
+
+  // Staff logout: clear session, redirect to Lock Screen
+  const handleStaffLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    localStorage.removeItem('isPersonalDevice');
+    // Keep tenant_slug so Lock Screen knows which tenant to load staff from
+    toast.success('Sesi ditutup. Silakan login kembali.');
+    navigate('/auth/device-login');
+  };
+
+  // Admin: Full Logout → clear everything → back to login page
+  const handleAdminFullLogout = () => {
+    setShowAdminLogoutModal(false);
+    onLogout();
+  };
+
+  // Admin: Switch to Kasir mode → keep tenant_slug → go to Lock Screen  
+  const handleAdminToKasir = () => {
+    setShowAdminLogoutModal(false);
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    localStorage.removeItem('isPersonalDevice');
+    // Keep tenant_slug for Lock Screen tenant binding
+    toast.success('Beralih ke mode Kasir...');
+    navigate('/auth/device-login');
   };
 
   const handleCloseShift = async (e) => {
@@ -224,7 +259,7 @@ function Sidebar({ onLogout, isCollapsed, toggleSidebar }) {
         endCash: Number(endCash)
       });
       toast.success('Shift ditutup. Sampai jumpa!');
-      onLogout();
+      handleStaffLogout();
     } catch (err) {
       console.error(err);
       toast.error('Gagal menutup shift');
@@ -243,19 +278,19 @@ function Sidebar({ onLogout, isCollapsed, toggleSidebar }) {
   return (
     <aside
       id="sidebar"
-      className="h-full w-full bg-[#1E1B4B]/95 backdrop-blur-xl border-r border-purple-500/20 flex flex-col transition-all duration-300 shadow-2xl relative"
+      className="h-full w-full admin-bg-sidebar/95 backdrop-blur-xl border-r admin-border-accent flex flex-col transition-all duration-300 shadow-2xl relative"
     >
       {/* Header */}
       <div
         onClick={toggleSidebar}
-        className="hidden lg:flex h-16 items-center justify-center lg:justify-start px-2 lg:px-4 border-b border-purple-500/30 bg-[#151235] cursor-pointer hover:bg-white/5 transition-colors group relative overflow-hidden"
+        className="hidden lg:flex h-16 items-center justify-center lg:justify-start px-2 lg:px-4 border-b admin-border-accent admin-bg-sidebar cursor-pointer hover:brightness-110 transition-colors group relative overflow-hidden"
         title={isCollapsed ? "Klik untuk expand" : "Klik untuk collapse"}
       >
         <div className={`flex items-center gap-3 transition-all duration-300 ${isCollapsed ? 'justify-center w-full' : ''}`}>
           <img
             src={settings.logo}
             alt="Logo"
-            className="w-8 h-8 rounded bg-transparent object-cover shrink-0 shadow-lg group-hover:scale-105 transition-transform"
+            className="theme-aware-logo w-8 h-8 rounded bg-transparent object-cover shrink-0 shadow-lg group-hover:scale-105 transition-transform"
           />
           <div className={`overflow-hidden transition-all duration-300 ${isCollapsed ? 'w-0 opacity-0' : 'w-auto opacity-100 hidden lg:block'}`}>
             <h1 className="font-bold text-white text-sm whitespace-nowrap">{settings.businessName}</h1>
@@ -328,12 +363,16 @@ function Sidebar({ onLogout, isCollapsed, toggleSidebar }) {
               <li key={item.section}>
                 <NavLink
                   to={item.path}
-                  className={({ isActive }) =>
-                    `flex items-center gap-3 px-2 lg:px-3 py-3 rounded-lg transition-colors duration-200 ${isActive
+                  className={({ isActive }) => {
+                    const isCustomerPreview = item.path === '/';
+                    if (isCustomerPreview) {
+                      return `flex items-center gap-3 px-2 lg:px-3 py-3 rounded-lg transition-colors duration-200 text-gray-300 hover:bg-white/10 hover:text-white justify-center lg:justify-start relative`;
+                    }
+                    return `flex items-center gap-3 px-2 lg:px-3 py-3 rounded-lg transition-colors duration-200 ${isActive
                       ? 'bg-purple-600 text-white shadow-lg'
                       : 'text-gray-300 hover:bg-white/10 hover:text-white'
-                    } justify-center lg:justify-start relative`
-                  }
+                      } justify-center lg:justify-start relative`;
+                  }}
                   title={item.label}
                 >
                   <span className="text-lg lg:text-xl shrink-0 leading-none relative">
@@ -366,7 +405,7 @@ function Sidebar({ onLogout, isCollapsed, toggleSidebar }) {
       </nav>
 
       {/* Footer / Logout */}
-      <div className={`p-4 border-t border-purple-500/30 bg-[#151235] transition-all duration-300 ${isCollapsed ? 'hidden lg:flex justify-center' : 'block'}`}>
+      <div className={`p-4 border-t admin-border-accent admin-bg-main transition-all duration-300 ${isCollapsed ? 'hidden lg:flex justify-center' : 'block'}`}>
         <button
           onClick={handleLogoutClick}
           className={`w-full flex items-center gap-3 px-2 lg:px-3 py-2 rounded-lg text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-colors justify-center lg:justify-start`}
@@ -380,8 +419,8 @@ function Sidebar({ onLogout, isCollapsed, toggleSidebar }) {
       {/* Close Shift Modal - Using Portal to escape Sidebar constraints */}
       {showCloseShiftModal && createPortal(
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-          <div className="bg-[#1E1B4B] p-6 rounded-2xl w-full max-w-sm border border-purple-500/30 shadow-2xl relative animate-in fade-in zoom-in duration-200">
-            <h3 className="text-xl font-bold mb-4 text-white">Tutup Shift & Keluar</h3>
+          <div className="admin-bg-sidebar p-6 rounded-2xl w-full max-w-sm border admin-border-accent shadow-2xl relative animate-in fade-in zoom-in duration-200">
+            <h3 className="text-xl font-bold mb-4 admin-text-primary">Tutup Shift & Keluar</h3>
             <p className="text-gray-400 text-sm mb-4">Masukkan total uang tunai di laci saat ini.</p>
 
             <form onSubmit={handleCloseShift} className="space-y-4">
@@ -391,7 +430,7 @@ function Sidebar({ onLogout, isCollapsed, toggleSidebar }) {
                   type="number"
                   value={endCash}
                   onChange={(e) => setEndCash(e.target.value)}
-                  className="w-full px-4 py-2 mt-1 rounded bg-white/10 border border-purple-500/30 text-white focus:outline-none focus:border-purple-500"
+                  className="w-full px-4 py-2 mt-1 rounded admin-input focus:outline-none"
                   placeholder="0"
                   required
                   autoFocus
@@ -413,6 +452,62 @@ function Sidebar({ onLogout, isCollapsed, toggleSidebar }) {
                 </button>
               </div>
             </form>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* Admin Logout Popup - "Keluar Akun" vs "Login Kasir" */}
+      {showAdminLogoutModal && createPortal(
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+          <div className="admin-bg-sidebar p-6 rounded-2xl w-full max-w-sm border admin-border-accent shadow-2xl relative animate-in fade-in zoom-in duration-200">
+            <div className="text-center mb-6">
+              <div className="w-16 h-16 bg-purple-500/20 rounded-full flex items-center justify-center mx-auto mb-3 text-3xl">
+                🚪
+              </div>
+              <h3 className="text-xl font-bold admin-text-primary">Apa yang ingin Anda lakukan?</h3>
+              <p className="text-gray-400 text-sm mt-2">
+                Pilih antara keluar sepenuhnya atau beralih ke mode Kasir untuk staf.
+              </p>
+            </div>
+
+            <div className="space-y-3">
+              {/* Option 1: Switch to Kasir (Lock Screen) */}
+              <button
+                onClick={handleAdminToKasir}
+                className="w-full flex items-center gap-4 p-4 rounded-xl bg-blue-500/10 border border-blue-500/30 hover:bg-blue-500/20 transition-all group"
+              >
+                <div className="w-12 h-12 rounded-full bg-blue-500/20 flex items-center justify-center text-2xl group-hover:scale-110 transition-transform">
+                  🧾
+                </div>
+                <div className="text-left">
+                  <p className="font-bold text-white">Login Kasir</p>
+                  <p className="text-xs text-gray-400">Buka layar Ganti Kasir (Lock Screen) untuk staf</p>
+                </div>
+              </button>
+
+              {/* Option 2: Full Logout */}
+              <button
+                onClick={handleAdminFullLogout}
+                className="w-full flex items-center gap-4 p-4 rounded-xl bg-red-500/10 border border-red-500/30 hover:bg-red-500/20 transition-all group"
+              >
+                <div className="w-12 h-12 rounded-full bg-red-500/20 flex items-center justify-center text-2xl group-hover:scale-110 transition-transform">
+                  🔓
+                </div>
+                <div className="text-left">
+                  <p className="font-bold text-white">Keluar Akun</p>
+                  <p className="text-xs text-gray-400">Logout total, kembali ke halaman login utama</p>
+                </div>
+              </button>
+
+              {/* Cancel */}
+              <button
+                onClick={() => setShowAdminLogoutModal(false)}
+                className="w-full py-2.5 rounded-xl bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white text-sm font-medium transition-all"
+              >
+                Batal
+              </button>
+            </div>
           </div>
         </div>,
         document.body

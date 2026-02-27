@@ -9,16 +9,24 @@ function MenuCustomer() {
     const { tableId } = useOutletContext();
     const { cart, addToCart, updateQty } = useCart();
     const navigate = useNavigate();
-    const { tenantSlug } = useParams();
+    const { slug } = useParams();
 
-    // Check if user is admin (for "Back to Admin" button)
-    const [isAdmin, setIsAdmin] = useState(false);
+    // Check if user is admin or staff (for "Back" button visibility)
+    const [isStaffOrAdmin, setIsStaffOrAdmin] = useState(false);
+    const [userRole, setUserRole] = useState('');
+    const [actualTenantSlug, setActualTenantSlug] = useState(slug || '');
+
     useEffect(() => {
         try {
             const userStr = localStorage.getItem('user');
+            const tenantSlugStore = localStorage.getItem('tenant_slug');
+            if (tenantSlugStore) setActualTenantSlug(tenantSlugStore);
+
             if (userStr) {
                 const user = JSON.parse(userStr);
-                setIsAdmin(user?.role === 'admin' || user?.role === 'owner');
+                const role = user?.role || '';
+                setUserRole(role);
+                setIsStaffOrAdmin(['admin', 'owner', 'staf', 'kasir'].includes(role));
             }
         } catch (err) {
             console.error('Error parsing user:', err);
@@ -90,7 +98,9 @@ function MenuCustomer() {
 
     // Filter menu items
     const filteredItems = menuItems.filter(item => {
-        if (activeCategory === 'all') return true;
+        const matchSearch = !search || item.name?.toLowerCase().includes(search.toLowerCase());
+
+        if (activeCategory === 'all') return matchSearch;
 
         const selectedCat = categories.find(c => c.id === activeCategory);
         if (!selectedCat) return false;
@@ -102,8 +112,6 @@ function MenuCustomer() {
 
         const matchCategory = matchId || matchName;
 
-        const matchSearch = !search ||
-            item.name?.toLowerCase().includes(search.toLowerCase());
         return matchCategory && matchSearch;
     });
 
@@ -163,38 +171,6 @@ function MenuCustomer() {
 
     return (
         <div className="py-4 space-y-4">
-            {/* Admin Preview Mode Indicator & Back Button */}
-            {isAdmin && (
-                <motion.div
-                    initial={{ opacity: 0, y: -20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="fixed top-4 right-4 z-50 flex flex-col gap-2"
-                >
-                    {/* Preview Mode Badge */}
-                    <div className="bg-gradient-to-r from-purple-600 to-blue-600 text-white px-4 py-2 rounded-full shadow-2xl border border-white/20 flex items-center gap-2 backdrop-blur-xl">
-                        <span className="text-lg">👁️</span>
-                        <span className="text-sm font-bold">Mode Preview</span>
-                    </div>
-                    
-                    {/* Back to Admin Button */}
-                    <button
-                        onClick={() => {
-                            // Close current tab if opened from admin panel
-                            if (window.opener) {
-                                window.close();
-                            } else {
-                                // Navigate back to admin dashboard
-                                navigate(`/${tenantSlug}/admin/dashboard`);
-                            }
-                        }}
-                        className="bg-white/10 hover:bg-white/20 backdrop-blur-xl text-white px-4 py-2 rounded-full shadow-2xl border border-white/20 flex items-center gap-2 transition-all hover:scale-105 active:scale-95"
-                    >
-                        <span className="text-lg">🔙</span>
-                        <span className="text-sm font-medium">Kembali ke Dashboard</span>
-                    </button>
-                </motion.div>
-            )}
-
             {/* Banner Slider */}
             {banners.length > 0 && (
                 <div className="relative rounded-xl overflow-hidden border border-purple-500/20 h-36 md:h-48">
@@ -280,15 +256,16 @@ function MenuCustomer() {
                 </div>
             ) : (
                 <motion.div
+                    key={activeCategory + '-' + search}
                     className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6"
                     initial="hidden"
                     animate="visible"
                     variants={{
                         hidden: {},
-                        visible: { transition: { staggerChildren: 0.06 } }
+                        visible: { transition: { staggerChildren: 0.05 } }
                     }}
                 >
-                    <AnimatePresence mode='popLayout'>
+                    <AnimatePresence mode="popLayout">
                         {filteredItems.map((item, index) => {
                             const cartQty = getCartQty(item.id);
                             const isSoldOut = item.status === 'SOLD_OUT';

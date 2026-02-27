@@ -16,7 +16,7 @@ export const isTokenExpired = (token) => {
   try {
     const decoded = jwtDecode(token);
     const currentTime = Date.now() / 1000; // Convert to seconds
-    
+
     // Check if token has exp claim and if it's expired
     if (decoded.exp && decoded.exp < currentTime) {
       console.log('[AUTH] Token expired', {
@@ -25,7 +25,7 @@ export const isTokenExpired = (token) => {
       });
       return true;
     }
-    
+
     return false;
   } catch (error) {
     console.error('[AUTH] Failed to decode token:', error);
@@ -40,14 +40,13 @@ export const isTokenExpired = (token) => {
 export const checkActiveSession = () => {
   try {
     const token = localStorage.getItem('token');
-    const tenantSlug = localStorage.getItem('tenant_slug');
+    let tenantSlug = localStorage.getItem('tenant_slug');
     const userStr = localStorage.getItem('user');
 
-    // Check if all required data exists
-    if (!token || !tenantSlug || !userStr) {
+    // Check if required data exists (tenantSlug might be null if user hasn't completed setup)
+    if (!token || !userStr) {
       console.log('[AUTH] Incomplete session data', {
         hasToken: !!token,
-        hasTenantSlug: !!tenantSlug,
         hasUser: !!userStr
       });
       return null;
@@ -58,6 +57,19 @@ export const checkActiveSession = () => {
       console.log('[AUTH] Token expired, clearing session');
       clearAuthSession();
       return null;
+    }
+
+    // Auto-repair tenantSlug from token (source of truth)
+    try {
+      const decoded = jwtDecode(token);
+      const actualTenant = decoded.tenantSlug || decoded.tenant;
+      if (actualTenant && actualTenant !== tenantSlug) {
+        console.log('[AUTH] Auto-repairing tenant_slug from token', { old: tenantSlug, new: actualTenant });
+        tenantSlug = actualTenant;
+        localStorage.setItem('tenant_slug', actualTenant);
+      }
+    } catch (e) {
+      console.error('[AUTH] Failed to decode token for tenant check', e);
     }
 
     // Parse user data safely
@@ -109,7 +121,7 @@ export const clearAuthSession = () => {
 export const getDashboardUrl = () => {
   const session = checkActiveSession();
   if (!session) return null;
-  
+
   return `/${session.tenantSlug}/admin/dashboard`;
 };
 

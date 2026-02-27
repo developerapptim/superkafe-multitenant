@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { io } from 'socket.io-client';
+import { API_BASE_URL } from '../services/api';
 
 const SocketContext = createContext(null);
 
@@ -12,19 +13,19 @@ export const SocketProvider = ({ children }) => {
 
     useEffect(() => {
         // Get API URL from environment
-        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5001/api';
-        
+        const apiUrl = API_BASE_URL || 'http://localhost:5001/api';
+
         // Remove /api suffix to get base URL for socket connection
         const baseUrl = apiUrl.replace('/api', '');
-        
+
         // Determine socket URL based on environment
         let socketUrl;
-        
+
         if (import.meta.env.PROD || window.location.protocol === 'https:') {
             // Production: Use HTTPS without port
             // Example: https://superkafe.com
             socketUrl = baseUrl.replace('http:', 'https:');
-            
+
             // Remove port if present (e.g., :5001)
             socketUrl = socketUrl.replace(/:\d+/, '');
         } else {

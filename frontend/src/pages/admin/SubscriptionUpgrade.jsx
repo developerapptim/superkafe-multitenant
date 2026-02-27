@@ -11,7 +11,8 @@ import { paymentAPI } from '../../services/api';
 const SubscriptionUpgrade = () => {
   const [pricing, setPricing] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [selectedPlan, setSelectedPlan] = useState('monthly');
+  const [selectedPlan, setSelectedPlan] = useState('bisnis');
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('NQ'); // Default: QRIS
   const [processing, setProcessing] = useState(false);
 
   useEffect(() => {
@@ -39,18 +40,18 @@ const SubscriptionUpgrade = () => {
       const tenantSlug = localStorage.getItem('tenant_slug');
       const user = JSON.parse(localStorage.getItem('user') || '{}');
 
+      // Kirim planType dan paymentMethod — harga dihitung AMAN di backend
       const response = await paymentAPI.createInvoice({
         tenantSlug,
         planType: selectedPlan,
+        paymentMethod: selectedPaymentMethod,
         email: user.email || 'admin@example.com',
         customerName: user.name || 'Admin',
-        phoneNumber: '08123456789'
+        phoneNumber: user.phone || '08123456789'
       });
 
       if (response.data.success) {
-        toast.success('Redirect ke halaman pembayaran...');
-        
-        // Redirect ke payment URL
+        toast.success('Membuka gateway pembayaran...');
         window.location.href = response.data.data.paymentUrl;
       }
     } catch (error) {
@@ -74,58 +75,58 @@ const SubscriptionUpgrade = () => {
 
   const plans = [
     {
-      id: 'monthly',
-      name: 'Bulanan',
-      price: pricing?.monthly?.amount || 99000,
-      duration: '30 Hari',
-      description: 'Cocok untuk mencoba',
+      id: 'starter',
+      name: 'Starter',
+      price: pricing?.starter?.amount || 225000,
+      duration: '/ Bulan',
+      description: 'Solusi awal yang tepat untuk memulai digitalisasi kafe Anda.',
       features: [
-        'Akses penuh semua fitur',
-        'Dashboard analitik',
-        'Support email',
-        'Update gratis'
+        'Akses lengkap kasir (POS)',
+        'Laporan penjualan',
+        'Manajemen stok',
+        'Support online'
       ]
     },
     {
-      id: 'quarterly',
-      name: '3 Bulan',
-      price: pricing?.quarterly?.amount || 270000,
-      duration: '90 Hari',
-      description: 'Hemat 10%',
-      badge: 'Populer',
-      features: [
-        'Semua fitur Bulanan',
-        'Hemat Rp 27.000',
-        'Priority support',
-        'Training gratis'
-      ]
-    },
-    {
-      id: 'yearly',
-      name: 'Tahunan',
-      price: pricing?.yearly?.amount || 990000,
-      duration: '365 Hari',
-      description: 'Hemat 20%',
+      id: 'bisnis',
+      name: 'Bisnis',
+      originalPrice: 2500000,
+      price: pricing?.bisnis?.amount || 2000000,
+      duration: '/ Tahun',
+      description: 'Pilihan favorit. Solusi komprehensif untuk operasional maksimal.',
       badge: 'Best Value',
       features: [
-        'Semua fitur 3 Bulan',
-        'Hemat Rp 198.000',
-        'Dedicated support',
-        'Custom features'
+        'Semua fitur Starter',
+        'Laporan finansial komplit',
+        'Multi-outlet (Coming Soon)',
+        'Priority Support + Pelatihan'
+      ]
+    },
+    {
+      id: 'lifetime',
+      name: 'Lifetime',
+      price: pricing?.lifetime?.amount || 7500000,
+      duration: 'Sekali Bayar',
+      description: 'Bayar sekali, pakai selamanya. Pilihan investasi terbaik.',
+      features: [
+        'Semua fitur Bisnis',
+        'Akses selamanya tanpa biaya tambahan',
+        'Fitur eksklusif & prioritas rilis',
+        'Priority Support'
       ]
     }
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-purple-50 p-6">
+    <div className="min-h-screen admin-bg-main p-6 admin-text-primary">
       <div className="max-w-6xl mx-auto">
         {/* Header */}
         <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold text-gray-900 mb-4">
-            Upgrade ke Premium
+          <h1 className="text-4xl font-bold mb-4">
+            Pilih Paket Berlangganan
           </h1>
-          <p className="text-lg text-gray-600">
-            Pilih paket yang sesuai dengan kebutuhan bisnis Anda
+          <p className="text-lg opacity-80">
+            Tingkatkan bisnis Anda dengan fitur lengkap dari Warkop Santai
           </p>
         </div>
 
@@ -135,93 +136,130 @@ const SubscriptionUpgrade = () => {
             <motion.div
               key={plan.id}
               whileHover={{ scale: 1.02 }}
-              className={`relative backdrop-blur-xl bg-white/80 border-2 rounded-3xl p-8 shadow-xl transition-all cursor-pointer ${
-                selectedPlan === plan.id
-                  ? 'border-purple-500 shadow-purple-500/50'
-                  : 'border-gray-200 hover:border-purple-300'
-              }`}
+              className={`relative backdrop-blur-xl admin-bg-sidebar border-2 rounded-3xl p-8 shadow-xl transition-all cursor-pointer ${selectedPlan === plan.id
+                ? 'border-purple-500 shadow-purple-500/30'
+                : 'admin-border-accent hover:border-purple-300/50'
+                }`}
               onClick={() => setSelectedPlan(plan.id)}
             >
               {/* Badge */}
               {plan.badge && (
                 <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
-                  <span className="px-4 py-1 bg-gradient-to-r from-purple-500 to-blue-500 text-white text-sm font-semibold rounded-full shadow-lg">
+                  <span className="px-4 py-1 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-sm font-bold rounded-full shadow-lg whitespace-nowrap">
                     {plan.badge}
                   </span>
                 </div>
               )}
 
               {/* Plan Name */}
-              <div className="text-center mb-6">
-                <h3 className="text-2xl font-bold text-gray-900 mb-2">
+              <div className="text-center mb-6 mt-2">
+                <h3 className="text-2xl font-bold mb-2">
                   {plan.name}
                 </h3>
-                <p className="text-sm text-gray-600">{plan.description}</p>
+                <p className="text-sm opacity-70 px-2 h-10 flex items-center justify-center text-balance">{plan.description}</p>
               </div>
 
               {/* Price */}
               <div className="text-center mb-6">
-                <div className="text-4xl font-bold text-gray-900 mb-2">
+                {plan.originalPrice && (
+                  <div className="text-sm opacity-50 line-through mb-1">
+                    Rp {plan.originalPrice.toLocaleString('id-ID')}
+                  </div>
+                )}
+                <div className="text-4xl font-bold text-amber-500 mb-2">
                   Rp {plan.price.toLocaleString('id-ID')}
                 </div>
-                <div className="text-sm text-gray-600">{plan.duration}</div>
+                <div className="text-sm opacity-80">{plan.duration}</div>
               </div>
 
               {/* Features */}
-              <ul className="space-y-3 mb-6">
+              <ul className="space-y-4 mb-8">
                 {plan.features.map((feature, index) => (
-                  <li key={index} className="flex items-center gap-2 text-gray-700">
-                    <FiCheck className="text-green-500 flex-shrink-0" />
-                    <span className="text-sm">{feature}</span>
+                  <li key={index} className="flex items-start gap-3">
+                    <FiCheck className="text-green-500 mt-1 flex-shrink-0" />
+                    <span className="text-sm leading-relaxed opacity-90">{feature}</span>
                   </li>
                 ))}
               </ul>
 
               {/* Select Indicator */}
-              {selectedPlan === plan.id && (
-                <div className="absolute top-4 right-4">
-                  <div className="w-6 h-6 bg-purple-500 rounded-full flex items-center justify-center">
-                    <FiCheck className="text-white" size={16} />
-                  </div>
-                </div>
-              )}
+              <div className="absolute bottom-6 left-0 right-0 px-8">
+                <button className={`w-full py-3 rounded-xl font-bold transition-all ${selectedPlan === plan.id
+                  ? 'bg-amber-600 text-white shadow-lg shadow-amber-500/30'
+                  : 'bg-white/10 hover:bg-white/20 text-inherit'
+                  }`}>
+                  {selectedPlan === plan.id ? 'Terpilih' : 'Pilih Paket'}
+                </button>
+              </div>
             </motion.div>
           ))}
         </div>
 
-        {/* Payment Info */}
-        <div className="backdrop-blur-xl bg-white/80 border border-gray-200 rounded-2xl p-6 mb-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-            <FiShield className="text-purple-500" />
-            Metode Pembayaran
+        {/* Payment Method Selector */}
+        <div className="backdrop-blur-xl admin-bg-sidebar border admin-border-accent rounded-2xl p-6 mb-6">
+          <h3 className="text-lg font-bold mb-5 flex items-center gap-2">
+            <FiCreditCard className="text-purple-500" />
+            Pilih Metode Pembayaran
           </h3>
-          <div className="grid md:grid-cols-3 gap-4 text-sm text-gray-600">
-            <div className="flex items-center gap-2">
-              <FiCreditCard className="text-purple-500" />
-              <span>Virtual Account</span>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+            {[
+              { code: 'NQ', name: 'QRIS', emoji: '📱', desc: 'Scan & bayar' },
+              { code: 'B1', name: 'BCA', emoji: '🏦', desc: 'Virtual Account' },
+              { code: 'BV', name: 'BNI', emoji: '🏦', desc: 'Virtual Account' },
+              { code: 'M2', name: 'Mandiri', emoji: '🏦', desc: 'Virtual Account' },
+              { code: 'BR', name: 'BRI', emoji: '🏦', desc: 'Virtual Account' },
+              { code: 'OV', name: 'OVO', emoji: '💜', desc: 'E-Wallet' },
+              { code: 'DA', name: 'DANA', emoji: '💙', desc: 'E-Wallet' },
+              { code: 'SP', name: 'ShopeePay', emoji: '🛒', desc: 'E-Wallet' },
+            ].map((method) => (
+              <button
+                key={method.code}
+                onClick={() => setSelectedPaymentMethod(method.code)}
+                className={`flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-all text-center ${selectedPaymentMethod === method.code
+                    ? 'border-purple-500 bg-purple-500/10 shadow-purple-500/20 shadow-lg'
+                    : 'admin-border-accent bg-black/10 hover:bg-white/5 hover:border-purple-300/40'
+                  }`}
+              >
+                <span className="text-2xl">{method.emoji}</span>
+                <span className="font-bold text-sm">{method.name}</span>
+                <span className="text-xs opacity-60">{method.desc}</span>
+                {selectedPaymentMethod === method.code && (
+                  <span className="text-xs text-purple-400 font-semibold">✓ Terpilih</span>
+                )}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Security Trust Badges */}
+        <div className="backdrop-blur-xl admin-bg-sidebar border admin-border-accent rounded-2xl p-5 mb-6">
+          <div className="grid md:grid-cols-3 gap-4 text-sm opacity-80">
+            <div className="flex items-center gap-3 bg-black/10 p-3 rounded-xl">
+              <FiShield className="text-purple-500 flex-shrink-0" size={20} />
+              <span>Transaksi terenkripsi & aman</span>
             </div>
-            <div className="flex items-center gap-2">
-              <FiCreditCard className="text-purple-500" />
-              <span>E-Wallet</span>
+            <div className="flex items-center gap-3 bg-black/10 p-3 rounded-xl">
+              <FiCheck className="text-purple-500 flex-shrink-0" size={20} />
+              <span>Aktivasi otomatis setelah pembayaran</span>
             </div>
-            <div className="flex items-center gap-2">
-              <FiClock className="text-purple-500" />
-              <span>Aktivasi Otomatis</span>
+            <div className="flex items-center gap-3 bg-black/10 p-3 rounded-xl">
+              <FiClock className="text-purple-500 flex-shrink-0" size={20} />
+              <span>Invoice berlaku 60 menit</span>
             </div>
           </div>
         </div>
 
         {/* Action Button */}
-        <div className="text-center">
+        <div className="text-center pt-4">
           <button
             onClick={handleUpgrade}
             disabled={processing}
-            className="px-12 py-4 bg-gradient-to-r from-purple-500 to-blue-500 text-white font-semibold rounded-xl hover:shadow-lg hover:shadow-purple-500/50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full md:w-auto px-16 py-4 rounded-xl text-lg font-bold admin-button-primary hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed transform hover:-translate-y-1"
           >
-            {processing ? 'Memproses...' : 'Lanjutkan Pembayaran'}
+            {processing ? 'Membuka Gateway Pembayaran...' : 'Lanjutkan Pembayaran Sekarang'}
           </button>
-          <p className="text-sm text-gray-600 mt-4">
-            Anda akan diarahkan ke halaman pembayaran Duitku
+          <p className="text-sm opacity-60 mt-4">
+            Anda akan diarahkan ke antarmuka pembayaran aman (Duitku)
           </p>
         </div>
       </div>

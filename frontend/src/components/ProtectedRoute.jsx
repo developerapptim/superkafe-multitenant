@@ -117,10 +117,13 @@ const ProtectedRoute = ({ children, allowedRoles, requireTenant = true }) => {
                 timestamp: new Date().toISOString()
             });
 
-            // If user tries to access restricted area, redirect to their main dashboard
+            // If user tries to access restricted area, redirect based on role
             if (requireTenant && userTenantSlug) {
                 toast.error('Anda tidak memiliki izin untuk mengakses halaman ini');
-                return <Navigate to={`/${userTenantSlug}/admin/dashboard`} replace />;
+                // Staff roles → Kasir (POS). Admin roles → Dashboard.
+                const isStaffRole = ['staf', 'kasir', 'waiter', 'kitchen', 'barista'].includes(userRole);
+                const redirectPath = isStaffRole ? 'kasir' : 'dashboard';
+                return <Navigate to={`/${userTenantSlug}/admin/${redirectPath}`} replace />;
             }
             return <Navigate to="/admin/dashboard" replace />;
         }

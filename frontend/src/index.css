@@ -9,9 +9,10 @@ body {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
-  background: linear-gradient(135deg, #1E1B4B 0%, #0F0A1F 50%, #1E1B4B 100%);
+  /* Use CSS variables for theme support, with fallback to original dark purple */
+  background: var(--bg-body-gradient, linear-gradient(135deg, #1E1B4B 0%, #0F0A1F 50%, #1E1B4B 100%));
   min-height: 100vh;
-  color: white;
+  color: var(--text-primary, white);
 }
 
 #root {
@@ -25,29 +26,30 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-  background: #1E1B4B;
+  background: var(--bg-scrollbar-track, #1E1B4B);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #6B21A8;
+  background: var(--bg-scrollbar-thumb, #6B21A8);
   border-radius: 3px;
 }
 
 /* Hide Scrollbar */
 .scrollbar-hide::-webkit-scrollbar {
-    display: none;
+  display: none;
 }
 
 .scrollbar-hide {
-    -ms-overflow-style: none;
-    scrollbar-width: none;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
 
 /* Glass effect */
 .glass {
-  background: rgba(30, 27, 75, 0.8);
+  background: var(--bg-glass, rgba(30, 27, 75, 0.8));
   backdrop-filter: blur(10px);
-  border: 1px solid rgba(139, 92, 246, 0.2);
+  border: 1px solid var(--border-glass, rgba(139, 92, 246, 0.2));
+  color: var(--text-primary, white);
 }
 
 /* Animations */

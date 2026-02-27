@@ -109,31 +109,171 @@
 
 /* Enhanced borders for light theme */
 [data-theme="light-coffee"] .admin-card {
-  border: 1px solid rgba(160, 82, 45, 0.15);
-  background-color: var(--bg-sidebar, #4E342E);
+  border: 1px solid rgba(140, 98, 68, 0.15);
 }
 
 /* Light theme specific adjustments for better contrast */
 [data-theme="light-coffee"] .admin-input {
-  background-color: rgba(0, 0, 0, 0.02);
-  border: 1px solid rgba(160, 82, 45, 0.2);
-  color: var(--text-primary, #2D2D2D);
+  background-color: rgba(255, 255, 255, 0.6);
+  border: 1px solid rgba(140, 98, 68, 0.2);
+  color: var(--text-primary);
 }
 
 [data-theme="light-coffee"] .admin-input:focus {
-  border-color: var(--accent-color, #A0522D);
-  box-shadow: 0 0 0 3px rgba(160, 82, 45, 0.1);
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 3px rgba(140, 98, 68, 0.1);
 }
 
-/* Sidebar text should be white on dark brown background for readability */
-[data-theme="light-coffee"] .admin-bg-sidebar,
-[data-theme="light-coffee"] .admin-bg-sidebar * {
-  color: #FFFFFF;
+/* Sidebar text uses primary text color gracefully */
+[data-theme="light-coffee"] .admin-bg-sidebar {
+  color: var(--text-primary);
 }
 
 /* Ensure main content area uses dark text on white background */
 [data-theme="light-coffee"] .admin-bg-main {
-  color: var(--text-primary, #2D2D2D);
+  color: var(--text-primary);
+}
+
+/**
+ * IMPORTANT: Global Light Coffee Overrides
+ * 
+ * Hijacks common hardcoded Tailwind classes (like text-white) to behave
+ * perfectly in the light theme without breaking existing component code.
+ */
+[data-theme="light-coffee"] {
+  /* Redefine root CSS variables for index.css elements */
+  --bg-body-gradient: var(--bg-main);
+  --bg-glass: rgba(235, 227, 222, 0.9);
+  /* #EBE3DE Latte Sidebar color */
+  --border-glass: rgba(140, 98, 68, 0.2);
+  /* #8C6244 Coffee accent */
+  --text-secondary: #5D4037;
+  /* Darkened from rgba for extreme clarity */
+
+  /* Scrollbar Overrides for Light Coffee */
+  --bg-scrollbar-track: #EBE3DE;
+  /* Latte track */
+  --bg-scrollbar-thumb: #D4A373;
+  /* Golden Caramel thumb */
+}
+
+/* Override hardcoded text-white forcing invisible text */
+[data-theme="light-coffee"] .text-white {
+  color: var(--text-primary) !important;
+}
+
+/* Force gray text to use muted dark typography instead of light gray */
+[data-theme="light-coffee"] .text-gray-200,
+[data-theme="light-coffee"] .text-gray-300,
+[data-theme="light-coffee"] .text-gray-400 {
+  color: var(--text-secondary) !important;
+}
+
+/* Intercept semi-transparent white/black backgrounds inside cards/tables */
+[data-theme="light-coffee"] .bg-white\/5,
+[data-theme="light-coffee"] .bg-white\/10,
+[data-theme="light-coffee"] .bg-black\/20,
+[data-theme="light-coffee"] .bg-\[\#1a1625\] {
+  background-color: rgba(253, 248, 245, 0.6) !important;
+  /* Soft cream */
+  border: 1px solid rgba(140, 98, 68, 0.1) !important;
+}
+
+/* Fix table headers and arbitrary purple fills */
+[data-theme="light-coffee"] .bg-\[\#0F0A1F\],
+[data-theme="light-coffee"] .bg-\[\#1A1A2E\],
+[data-theme="light-coffee"] .bg-\[\#1e1e2d\] {
+  background-color: var(--bg-sidebar) !important;
+  color: var(--text-primary) !important;
+  border-bottom: 2px solid #D4A373 !important;
+  /* Caramel border */
+}
+
+/* Ensure table header text isn't stuck light gray */
+[data-theme="light-coffee"] th.text-gray-200 {
+  color: var(--text-primary) !important;
+  font-weight: 700 !important;
+}
+
+/* Override borders */
+[data-theme="light-coffee"] .border-white\/5,
+[data-theme="light-coffee"] .border-white\/10,
+[data-theme="light-coffee"] .border-gray-700\/50,
+[data-theme="light-coffee"] .border-gray-700\/30 {
+  border-color: rgba(140, 98, 68, 0.15) !important;
+}
+
+/* =======================================================================
+   MASSIVE PURPLE & BLUE ERADICATION ENGINE
+   Overrides 300+ hardcoded Tailwind classes instantly when theme is active
+   ======================================================================= */
+
+/* Custom Logo Replacement for Light Coffee */
+[data-theme="light-coffee"] .theme-aware-logo {
+  content: url('https://res.cloudinary.com/dhjqb65mf/image/upload/q_auto,f_auto,w_150/v1771859487/SuperKafe_i51g7i.png') !important;
+}
+
+/* Text colors */
+[data-theme="light-coffee"] [class*="text-purple-"],
+[data-theme="light-coffee"] [class*="text-blue-"],
+[data-theme="light-coffee"] [class*="text-indigo-"] {
+  color: var(--accent-color) !important;
+}
+
+/* Solid Backgrounds & 3-Color Gradients */
+[data-theme="light-coffee"] [class*="bg-purple-"]:not([class*="\/"]),
+[data-theme="light-coffee"] [class*="bg-blue-"]:not([class*="\/"]),
+[data-theme="light-coffee"] [class*="bg-indigo-"]:not([class*="\/"]) {
+  background-image: none !important;
+  background-color: var(--accent-color) !important;
+  color: #FFFFFF !important;
+}
+
+/* Luxurious 3-Stage Gradient for Buttons/Tabs */
+[data-theme="light-coffee"] [class*="bg-gradient-to-"],
+[data-theme="light-coffee"] [class*="from-purple-"]:not([class*="\/"]):not(.bg-clip-text),
+[data-theme="light-coffee"] [class*="to-blue-"]:not([class*="\/"]):not(.bg-clip-text),
+[data-theme="light-coffee"] [class*="to-indigo-"]:not([class*="\/"]):not(.bg-clip-text) {
+  /* Espresso -> Mocha -> Golden Caramel */
+  background-image: linear-gradient(135deg, #3E2723 0%, #8C6244 50%, #D4A373 100%) !important;
+  color: #FFFFFF !important;
+  box-shadow: 0 4px 15px rgba(62, 39, 35, 0.25) !important;
+  border: none !important;
+}
+
+/* Semi-transparent Backgrounds (e.g., bg-purple-500/10) */
+[data-theme="light-coffee"] [class*="bg-purple-"][class*="\/"],
+[data-theme="light-coffee"] [class*="bg-blue-"][class*="\/"],
+[data-theme="light-coffee"] [class*="from-purple-"][class*="\/"],
+[data-theme="light-coffee"] [class*="to-blue-"][class*="\/"] {
+  background-image: none !important;
+  background-color: rgba(109, 76, 65, 0.08) !important;
+  color: var(--accent-color) !important;
+}
+
+/* Borders and Rings */
+[data-theme="light-coffee"] [class*="border-purple-"],
+[data-theme="light-coffee"] [class*="border-blue-"],
+[data-theme="light-coffee"] [class*="border-indigo-"],
+[data-theme="light-coffee"] [class*="ring-purple-"],
+[data-theme="light-coffee"] [class*="ring-blue-"] {
+  border-color: rgba(109, 76, 65, 0.25) !important;
+  --tw-ring-color: rgba(109, 76, 65, 0.25) !important;
+}
+
+/* Box Shadows */
+[data-theme="light-coffee"] [class*="shadow-purple-"],
+[data-theme="light-coffee"] [class*="shadow-blue-"],
+[data-theme="light-coffee"] [class*="shadow-indigo-"] {
+  --tw-shadow-color: rgba(109, 76, 65, 0.2) !important;
+  --tw-shadow: var(--tw-shadow-colored) !important;
+}
+
+/* Gradient Text Fixes (e.g. Dashboard big numbers, PesananSaya highlights) */
+[data-theme="light-coffee"] .bg-clip-text {
+  background-image: none !important;
+  -webkit-text-fill-color: var(--accent-color) !important;
+  color: var(--accent-color) !important;
 }
 
 /**

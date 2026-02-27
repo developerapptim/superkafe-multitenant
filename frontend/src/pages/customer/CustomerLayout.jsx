@@ -10,27 +10,31 @@ import CartContext from '../../context/CartContext';
 // Cart Context removed (imported)
 // export const useCart removed (imported)
 
+import '../../styles/customer-theme.css'; // Inject CSS Engine
+
 function CustomerLayout() {
     const [searchParams, setSearchParams] = useSearchParams();
     const { triggerRefresh } = useRefresh();
     const navigate = useNavigate();
 
-    // Check if user is authenticated as admin/owner
-    const [isAdminUser, setIsAdminUser] = useState(false);
+    // Check if user is authenticated as admin/owner/staff
+    const [isStaffOrAdmin, setIsStaffOrAdmin] = useState(false);
+    const [userRole, setUserRole] = useState('');
     const [tenantSlug, setTenantSlug] = useState(null);
 
     useEffect(() => {
         try {
             const userStr = localStorage.getItem('user');
             const slug = localStorage.getItem('tenant_slug');
-            
+
             if (userStr && slug) {
                 const user = JSON.parse(userStr);
-                const userRole = user?.role || '';
-                
-                // Check if user is admin or owner
-                if (userRole === 'admin' || userRole === 'owner') {
-                    setIsAdminUser(true);
+                const role = user?.role || 'admin';
+                setUserRole(role);
+
+                // Check if user is admin, owner, or staff
+                if (['admin', 'owner', 'staf', 'kasir'].includes(role)) {
+                    setIsStaffOrAdmin(true);
                     setTenantSlug(slug);
                 }
             }
@@ -41,7 +45,8 @@ function CustomerLayout() {
 
     const handleBackToAdmin = () => {
         if (tenantSlug) {
-            navigate(`/${tenantSlug}/admin/dashboard`);
+            const path = ['admin', 'owner'].includes(userRole) ? 'dashboard' : 'kasir';
+            navigate(`/${tenantSlug}/admin/${path}`);
         }
     };
 
@@ -94,7 +99,19 @@ function CustomerLayout() {
     const [cart, setCart] = useState([]);
     const [settings, setSettings] = useState(() => {
         const saved = localStorage.getItem('appSettings');
-        return saved ? JSON.parse(saved) : {
+        if (saved) {
+            try {
+                const parsed = JSON.parse(saved);
+                // Synchronously inject theme to prevent FOUC (Flash of Unstyled Content) on refresh
+                if (parsed.customerTheme) {
+                    document.documentElement.setAttribute('data-customer-theme', parsed.customerTheme);
+                }
+                return parsed;
+            } catch (e) {
+                console.error("Failed to parse settings", e);
+            }
+        }
+        return {
             businessName: 'SuperKafe',
             tagline: 'Sistem Manajemen Kafe Modern',
             logo: 'https://res.cloudinary.com/dhjqb65mf/image/upload/v1770018588/Picsart_26-02-02_15-46-53-772_vw9xc3.png'
@@ -110,13 +127,19 @@ function CustomerLayout() {
         try {
             const res = await settingsAPI.getPublic();
             if (res.data) {
+                const targetTheme = res.data.customerTheme || 'default';
                 const newSettings = {
                     ...res.data,
+                    customerTheme: targetTheme,
                     businessName: res.data.name || res.data.businessName || 'SuperKafe',
                     tagline: res.data.tagline || 'Sistem Manajemen Kafe Modern',
                     logo: res.data.logo || 'https://res.cloudinary.com/dhjqb65mf/image/upload/v1770018588/Picsart_26-02-02_15-46-53-772_vw9xc3.png'
                 };
                 setSettings(newSettings);
+
+                // Mount theme to DOM exclusively for customer UI
+                document.documentElement.setAttribute('data-customer-theme', targetTheme);
+
                 localStorage.setItem('appSettings', JSON.stringify(newSettings));
             }
         } catch (err) {
@@ -174,7 +197,7 @@ function CustomerLayout() {
 
     return (
         <CartContext.Provider value={cartValue}>
-            <div className="h-screen flex flex-col overflow-hidden bg-gradient-to-b from-[#1E1B4B] via-[#0F0A1F] to-[#1E1B4B] text-white">
+            <div className="customer-view h-screen flex flex-col overflow-hidden bg-gradient-to-b from-[#1E1B4B] via-[#0F0A1F] to-[#1E1B4B] text-white transition-colors duration-500">
                 {/* Header */}
                 <header className="sticky top-0 z-40 bg-[#1E1B4B]/90 backdrop-blur-lg border-b border-purple-500/20 flex-shrink-0">
                     <div className="max-w-md mx-auto md:max-w-7xl px-4 md:px-8 py-3">
@@ -210,7 +233,7 @@ function CustomerLayout() {
                             {/* Desktop Navigation (Right) */}
                             <nav className="hidden md:flex items-center gap-8 ml-auto mr-8">
                                 <NavLink
-                                    to={`/${tableId ? `?meja=${tableId}` : ''}`}
+                                    to={`./${tableId ? `?meja=${tableId}` : ''}`}
                                     end
                                     className="relative py-2 group outline-none"
                                 >
@@ -235,7 +258,7 @@ function CustomerLayout() {
                                 </NavLink>
 
                                 <NavLink
-                                    to={`/keranjang${tableId ? `?meja=${tableId}` : ''}`}
+                                    to={`keranjang${tableId ? `?meja=${tableId}` : ''}`}
                                     className="relative py-2 group flex items-center gap-2 outline-none"
                                 >
                                     {({ isActive }) => (
@@ -254,7 +277,7 @@ function CustomerLayout() {
                                                         initial={{ scale: 0 }}
                                                         animate={{ scale: 1 }}
                                                         exit={{ scale: 0 }}
-                                                        className="w-5 h-5 bg-red-500 rounded-full text-xs flex items-center justify-center text-white font-bold relative z-10 shadow-lg shadow-red-500/30"
+                                                        className="w-5 h-5 bg-red-500 rounded-full text-xs flex items-center justify-center text-white font-bold relative z-10 shadow-lg shadow-red-500/30 theme-cart-badge"
                                                     >
                                                         {cartCount}
                                                     </motion.span>
@@ -273,7 +296,7 @@ function CustomerLayout() {
                                 </NavLink>
 
                                 <NavLink
-                                    to={`/pesanan${tableId ? `?meja=${tableId}` : ''}`}
+                                    to={`pesanan${tableId ? `?meja=${tableId}` : ''}`}
                                     className="relative py-2 group outline-none"
                                 >
                                     {({ isActive }) => (
@@ -297,7 +320,7 @@ function CustomerLayout() {
                                 </NavLink>
 
                                 <NavLink
-                                    to={`/bantuan${tableId ? `?meja=${tableId}` : ''}`}
+                                    to={`bantuan${tableId ? `?meja=${tableId}` : ''}`}
                                     className="relative py-2 group outline-none"
                                 >
                                     {({ isActive }) => (
@@ -321,36 +344,15 @@ function CustomerLayout() {
                                 </NavLink>
                             </nav>
 
-                            {/* Table Badge and Login */}
+                            {/* Table Badge */}
                             <div className="flex items-center gap-4 ml-auto md:ml-0">
-                                {/* Back to Admin Button (Only for Admin/Owner) */}
-                                {isAdminUser && (
-                                    <button
-                                        onClick={handleBackToAdmin}
-                                        className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 hover:text-purple-200 text-sm border border-purple-500/30 transition-all"
-                                        title="Kembali ke Admin Panel"
-                                    >
-                                        <span>←</span>
-                                        <span>Admin Panel</span>
-                                    </button>
-                                )}
-
                                 {tableId && (
-                                    <div className="hidden md:block px-3 py-1 rounded-full bg-purple-500/20 text-purple-300 text-sm border border-purple-500/30">
+                                    <div className="hidden md:block px-3 py-1 rounded-full bg-purple-500/20 text-purple-300 text-sm border border-purple-500/30 theme-table-badge">
                                         🪑 Meja {tableId}
                                     </div>
                                 )}
 
-                                {/* Staff Login Button (Subtle/Glassmorphism) */}
-                                {!isAdminUser && (
-                                    <NavLink
-                                        to="/login"
-                                        className="w-8 h-8 flex items-center justify-center rounded-full bg-white/5 hover:bg-white/10 text-white/20 hover:text-white/80 transition-all backdrop-blur-sm border border-transparent hover:border-white/20"
-                                        title="Staff Login"
-                                    >
-                                        🔒
-                                    </NavLink>
-                                )}
+                                {/* Staff Login Button (Subtle/Glassmorphism) - Removed as per user request */}
                             </div>
                         </div>
                     </div>
@@ -361,18 +363,44 @@ function CustomerLayout() {
                         onRefresh={triggerRefresh}
                         className="h-full w-full overflow-y-auto"
                         pullingContent={
-                            <div className="w-full flex justify-center items-center py-4 bg-transparent text-purple-400">
+                            <div className="w-full flex justify-center items-center py-4 bg-transparent text-purple-400 theme-ptr-text">
                                 <span className="animate-bounce">⬇️ Tarik untuk menyegarkan</span>
                             </div>
                         }
                         refreshingContent={
                             <div className="w-full flex justify-center items-center py-4 bg-transparent">
-                                <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-purple-500"></div>
+                                <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-purple-500 theme-ptr-spinner"></div>
                             </div>
                         }
                         resistance={2.5}
                     >
                         <div className="max-w-md mx-auto md:max-w-7xl px-4 md:px-8 pb-24 pt-4">
+                            {/* Global Staff/Admin Preview Mode Indicator & Back Button */}
+                            {isStaffOrAdmin && (
+                                <motion.div
+                                    initial={{ opacity: 0, y: -10 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    className="relative z-50 mb-6 flex flex-col sm:flex-row gap-3 items-center justify-between p-4 rounded-xl bg-purple-900/40 border border-purple-500/30 admin-preview-banner"
+                                >
+                                    <div className="flex items-center gap-3 w-full sm:w-auto">
+                                        <div className="w-10 h-10 rounded-full bg-purple-600 flex items-center justify-center flex-shrink-0 admin-preview-icon">
+                                            <span className="text-xl">👁️</span>
+                                        </div>
+                                        <div>
+                                            <p className="text-sm font-bold text-white admin-preview-text">Anda Sedang Melihat Sebagai Admin/Staff</p>
+                                        </div>
+                                    </div>
+
+                                    <button
+                                        onClick={handleBackToAdmin}
+                                        className="w-full sm:w-auto px-5 py-2.5 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white font-medium rounded-lg flex items-center justify-center gap-2 transition-all shadow-lg shadow-purple-500/20 admin-preview-btn"
+                                    >
+                                        <span>⬅️</span>
+                                        <span>{['admin', 'owner'].includes(userRole) ? 'Kembali ke Admin' : 'Kembali ke Panel Kasir'}</span>
+                                    </button>
+                                </motion.div>
+                            )}
+
                             <Outlet context={{ tableId, settings, isTableLocked, clearScannedTable }} />
 
                             {/* Branding */}
@@ -396,26 +424,10 @@ function CustomerLayout() {
                 {/* Bottom Navigation (Mobile Only) */}
                 <nav className="fixed bottom-0 left-0 right-0 z-50 bg-slate-900/90 backdrop-blur-md border-t border-slate-800 md:hidden">
                     <div className="max-w-md mx-auto md:max-w-7xl px-4 md:px-8 flex">
-                        {/* Back to Admin Button (Mobile - Only for Admin/Owner) */}
-                        {isAdminUser && (
-                            <button
-                                onClick={handleBackToAdmin}
-                                className="flex-1 relative group outline-none"
-                            >
-                                <div className="flex flex-col items-center py-3 transition-colors text-purple-400">
-                                    <motion.span
-                                        className="text-xl mb-1 relative z-10"
-                                        whileTap={{ scale: 0.8 }}
-                                    >
-                                        ⬅️
-                                    </motion.span>
-                                    <span className="text-xs relative z-10">Admin</span>
-                                </div>
-                            </button>
-                        )}
+                        {/* Mobile Back to Admin button removed; now handled by global top banner */}
 
                         <NavLink
-                            to={`/${tableId ? `?meja=${tableId}` : ''}`}
+                            to={`./${tableId ? `?meja=${tableId}` : ''}`}
                             end
                             className="flex-1 relative group outline-none"
                         >
@@ -441,7 +453,7 @@ function CustomerLayout() {
                         </NavLink>
 
                         <NavLink
-                            to={`/keranjang${tableId ? `?meja=${tableId}` : ''}`}
+                            to={`keranjang${tableId ? `?meja=${tableId}` : ''}`}
                             className="flex-1 relative group outline-none"
                         >
                             {({ isActive }) => (
@@ -468,7 +480,7 @@ function CustomerLayout() {
                                                     initial={{ scale: 0 }}
                                                     animate={{ scale: 1 }}
                                                     exit={{ scale: 0 }}
-                                                    className="absolute -top-1 -right-2 w-5 h-5 bg-red-500 rounded-full text-xs flex items-center justify-center text-white font-bold border-2 border-[#1E1B4B]"
+                                                    className="absolute -top-1 -right-2 w-5 h-5 bg-red-500 rounded-full text-xs flex items-center justify-center text-white font-bold border-2 border-[#1E1B4B] theme-cart-badge"
                                                 >
                                                     {cartCount}
                                                 </motion.span>
@@ -481,7 +493,7 @@ function CustomerLayout() {
                         </NavLink>
 
                         <NavLink
-                            to={`/pesanan${tableId ? `?meja=${tableId}` : ''}`}
+                            to={`pesanan${tableId ? `?meja=${tableId}` : ''}`}
                             className="flex-1 relative group outline-none"
                         >
                             {({ isActive }) => (
@@ -506,7 +518,7 @@ function CustomerLayout() {
                         </NavLink>
 
                         <NavLink
-                            to={`/bantuan${tableId ? `?meja=${tableId}` : ''}`}
+                            to={`bantuan${tableId ? `?meja=${tableId}` : ''}`}
                             className="flex-1 relative group outline-none"
                         >
                             {({ isActive }) => (

@@ -15,8 +15,9 @@ import { themePresets } from '../../config/themeStyles';
  * @param {string} props.currentTheme - Currently selected theme name
  * @param {Function} props.onThemeChange - Callback when theme is selected
  * @param {boolean} props.disabled - Whether the selector is disabled (during loading)
+ * @param {boolean} props.disablePreview - Whether to disable hover live preview on the screen
  */
-const ThemeSelector = ({ currentTheme, onThemeChange, disabled = false }) => {
+const ThemeSelector = ({ currentTheme, onThemeChange, disabled = false, disablePreview = false, isCustomerSelector = false }) => {
     const [isPreviewActive, setIsPreviewActive] = useState(false);
     const originalThemeRef = useRef({});
 
@@ -31,7 +32,7 @@ const ThemeSelector = ({ currentTheme, onThemeChange, disabled = false }) => {
      * Stores original values to revert later
      */
     const applyThemePreview = (themeName) => {
-        if (disabled || themeName === currentTheme) return;
+        if (disabled || disablePreview || themeName === currentTheme) return;
 
         const root = document.documentElement;
         const themeConfig = themePresets[themeName];
@@ -77,17 +78,18 @@ const ThemeSelector = ({ currentTheme, onThemeChange, disabled = false }) => {
         <div className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {Object.entries(themePresets).map(([themeKey, themeConfig]) => {
+                    if (themeConfig.isCustomerOnly && !isCustomerSelector) return null;
+
                     const isSelected = currentTheme === themeKey;
                     const isHovering = isPreviewActive && !isSelected;
-                    
+
                     return (
                         <motion.div
                             key={themeKey}
                             whileHover={!disabled ? { scale: 1.02 } : {}}
                             whileTap={!disabled ? { scale: 0.98 } : {}}
-                            className={`relative cursor-pointer transition-all ${
-                                disabled ? 'opacity-50 cursor-not-allowed' : ''
-                            }`}
+                            className={`relative cursor-pointer transition-all ${disabled ? 'opacity-50 cursor-not-allowed' : ''
+                                }`}
                             onClick={() => handleThemeSelect(themeKey)}
                             onMouseEnter={() => applyThemePreview(themeKey)}
                             onMouseLeave={revertThemePreview}
@@ -107,11 +109,10 @@ const ThemeSelector = ({ currentTheme, onThemeChange, disabled = false }) => {
                             {/* Radio Button */}
                             <div className="absolute top-4 right-4 z-10">
                                 <div
-                                    className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${
-                                        isSelected
-                                            ? 'border-purple-500 bg-purple-500'
-                                            : 'border-gray-400 bg-transparent'
-                                    }`}
+                                    className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${isSelected
+                                        ? 'border-purple-500 bg-purple-500'
+                                        : 'border-gray-400 bg-transparent'
+                                        }`}
                                 >
                                     {isSelected && (
                                         <motion.div
@@ -125,15 +126,14 @@ const ThemeSelector = ({ currentTheme, onThemeChange, disabled = false }) => {
 
                             {/* Theme Preview Card */}
                             <div
-                                className={`p-6 rounded-xl border-2 transition-all ${
-                                    isSelected
-                                        ? 'border-purple-500 shadow-lg shadow-purple-500/20'
-                                        : 'border-white/10 hover:border-white/20'
-                                }`}
+                                className={`p-6 rounded-xl border-2 transition-all ${isSelected
+                                    ? 'border-purple-500 shadow-lg shadow-purple-500/20'
+                                    : 'border-white/10 hover:border-white/20'
+                                    }`}
                             >
                                 {/* Theme Name */}
                                 <h4 className="font-bold text-lg mb-2">{themeConfig.name}</h4>
-                                
+
                                 {/* Theme Description */}
                                 <p className="text-sm text-gray-400 mb-4">
                                     {themeKey === 'default'
@@ -183,7 +183,7 @@ const ThemeSelector = ({ currentTheme, onThemeChange, disabled = false }) => {
                                     <div className="flex items-center gap-3">
                                         <div
                                             className="w-12 h-12 rounded-lg border border-white/20 flex items-center justify-center"
-                                            style={{ 
+                                            style={{
                                                 backgroundColor: themeConfig.bgMain,
                                                 color: themeConfig.textPrimary
                                             }}

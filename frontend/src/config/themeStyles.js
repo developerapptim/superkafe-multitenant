@@ -19,9 +19,17 @@ export const themePresets = {
   'light-coffee': {
     name: 'Light Coffee',
     bgMain: '#FFFFFF',
-    bgSidebar: '#4E342E',
-    accentColor: '#A0522D',
-    textPrimary: '#2D2D2D'
+    bgSidebar: '#F3EBE6',
+    accentColor: '#6D4C41',
+    textPrimary: '#3E2723'
+  },
+  'merah-putih': {
+    name: 'Merah Putih',
+    isCustomerOnly: true,
+    bgMain: '#FFFDF7',
+    bgSidebar: '#D32F2F',
+    accentColor: '#FFC107',
+    textPrimary: '#3E2723'
   }
 };
 

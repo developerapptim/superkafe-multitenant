@@ -1,11 +1,38 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { clearAuthSession } from '../../utils/authHelper';
+import { jwtDecode } from 'jwt-decode';
 
 const UnauthorizedAccess = () => {
   const navigate = useNavigate();
+  const [userDashboardUrl, setUserDashboardUrl] = useState(null);
+
+  useEffect(() => {
+    // Check if user is actually logged in to determine the right actions
+    const token = localStorage.getItem('token');
+    if (token) {
+      try {
+        const decoded = jwtDecode(token);
+        const actualTenant = decoded.tenantSlug || decoded.tenant;
+        if (actualTenant) {
+          setUserDashboardUrl(`/${actualTenant}/admin/dashboard`);
+        }
+      } catch (err) {
+        console.error('Invalid token in UnauthorizedAccess', err);
+      }
+    }
+  }, []);
 
   const handleGoToLogin = () => {
+    // Clear session so they don't get auto-redirected back into the loop
+    clearAuthSession();
     navigate('/auth/login');
+  };
+
+  const handleGoToMyDashboard = () => {
+    if (userDashboardUrl) {
+      navigate(userDashboardUrl);
+    }
   };
 
   const handleGoBack = () => {
@@ -36,7 +63,7 @@ const UnauthorizedAccess = () => {
         }}>
           🚫
         </div>
-        
+
         <h1 style={{
           fontSize: '24px',
           fontWeight: '600',
@@ -45,7 +72,7 @@ const UnauthorizedAccess = () => {
         }}>
           Unauthorized Access
         </h1>
-        
+
         <p style={{
           fontSize: '16px',
           color: '#666',
@@ -61,11 +88,32 @@ const UnauthorizedAccess = () => {
           justifyContent: 'center',
           flexWrap: 'wrap'
         }}>
+          {userDashboardUrl && (
+            <button
+              onClick={handleGoToMyDashboard}
+              style={{
+                padding: '12px 24px',
+                backgroundColor: '#10B981', // Emerald green 
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                fontSize: '16px',
+                fontWeight: '500',
+                cursor: 'pointer',
+                transition: 'background-color 0.2s'
+              }}
+              onMouseOver={(e) => e.target.style.backgroundColor = '#059669'}
+              onMouseOut={(e) => e.target.style.backgroundColor = '#10B981'}
+            >
+              Go to My Dashboard
+            </button>
+          )}
+
           <button
             onClick={handleGoToLogin}
             style={{
               padding: '12px 24px',
-              backgroundColor: '#4F46E5',
+              backgroundColor: userDashboardUrl ? '#EF4444' : '#4F46E5', // Red if logged in (logout), Indigo if not
               color: 'white',
               border: 'none',
               borderRadius: '8px',
@@ -74,12 +122,12 @@ const UnauthorizedAccess = () => {
               cursor: 'pointer',
               transition: 'background-color 0.2s'
             }}
-            onMouseOver={(e) => e.target.style.backgroundColor = '#4338CA'}
-            onMouseOut={(e) => e.target.style.backgroundColor = '#4F46E5'}
+            onMouseOver={(e) => e.target.style.backgroundColor = userDashboardUrl ? '#DC2626' : '#4338CA'}
+            onMouseOut={(e) => e.target.style.backgroundColor = userDashboardUrl ? '#EF4444' : '#4F46E5'}
           >
-            Go to Login
+            {userDashboardUrl ? 'Logout & Switch Account' : 'Go to Login'}
           </button>
-          
+
           <button
             onClick={handleGoBack}
             style={{

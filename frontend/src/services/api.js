@@ -9,7 +9,7 @@ function decodeJWT(token) {
     try {
         const parts = token.split('.');
         if (parts.length !== 3) return null;
-        
+
         const payload = parts[1];
         const decoded = atob(payload.replace(/-/g, '+').replace(/_/g, '/'));
         return JSON.parse(decoded);
@@ -19,9 +19,15 @@ function decodeJWT(token) {
     }
 }
 
-// Create axios instance with dynamic baseURL for development & production
+// Determine API URL based on current environment/hostname
+const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+export const API_BASE_URL = isLocal
+    ? `http://${window.location.hostname}:5001/api`
+    : (import.meta.env.VITE_API_URL || 'https://superkafe.com/api');
+
+// Create axios instance with dynamic baseURL
 const api = axios.create({
-    baseURL: import.meta.env.VITE_API_URL || (import.meta.env.DEV ? `http://${window.location.hostname}:5001/api` : ''),
+    baseURL: API_BASE_URL,
     withCredentials: true, // Required for cookies/sessions across domains
     headers: {
         'Content-Type': 'application/json',
@@ -42,7 +48,7 @@ api.interceptors.request.use((config) => {
     const token = localStorage.getItem('token');
     if (token) {
         config.headers['Authorization'] = `Bearer ${token}`;
-        
+
         // 4. Extract tenant info from JWT and add to headers
         const decoded = decodeJWT(token);
         if (decoded) {
@@ -66,16 +72,15 @@ api.interceptors.request.use((config) => {
     }
 
     // 5. Fallback: Extract tenant slug from URL path if not in JWT
-    // URL format: /:tenantSlug/admin/* or /:tenantSlug/dashboard/*
+    // Covers all paths like /:tenantSlug, /:tenantSlug/keranjang, /:tenantSlug/admin
     if (!config.headers['x-tenant-slug'] && !config.headers['x-tenant-id']) {
-        const pathMatch = window.location.pathname.match(/^\/([^\/]+)\/(admin|dashboard)/);
+        const pathMatch = window.location.pathname.match(/^\/([^\/]+)(?:\/|$)/);
         if (pathMatch && pathMatch[1]) {
             const tenantSlug = pathMatch[1];
             // Exclude reserved paths
-            const reservedPaths = ['login', 'register', 'setup', 'auth', 'api', 'admin', 'customer'];
+            const reservedPaths = ['login', 'register', 'setup-cafe', 'auth', 'api', 'assets'];
             if (!reservedPaths.includes(tenantSlug)) {
                 config.headers['x-tenant-slug'] = tenantSlug;
-                console.log('[API] Using tenant slug from URL:', tenantSlug);
             }
         }
     }

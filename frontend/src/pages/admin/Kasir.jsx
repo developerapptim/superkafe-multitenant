@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import toast from 'react-hot-toast';
 import useSWR, { mutate } from 'swr';
-import api, { menuAPI, ordersAPI, tablesAPI, shiftAPI } from '../../services/api';
+import api, { menuAPI, ordersAPI, tablesAPI, shiftAPI, API_BASE_URL } from '../../services/api';
 import PrintButton from '../../components/PrintButton';
 import { useSocket } from '../../context/SocketContext';
 import useOfflineSync from '../../hooks/useOfflineSync'; // New: Offline Hook
@@ -1561,7 +1561,7 @@ function Kasir() {
                                 ✕
                             </button>
                             <img
-                                src={selectedProof.startsWith('http') ? selectedProof : `${import.meta.env.VITE_API_URL}${selectedProof}`}
+                                src={selectedProof.startsWith('http') ? selectedProof : `${API_BASE_URL}${selectedProof}`}
                                 alt="Bukti Pembayaran"
                                 className="w-full h-full object-contain rounded-xl shadow-2xl border border-white/10 bg-black/50"
                                 onError={(e) => {
@@ -1571,7 +1571,7 @@ function Kasir() {
                             />
                             <div className="mt-4 flex gap-3">
                                 <a
-                                    href={selectedProof.startsWith('http') ? selectedProof : `${import.meta.env.VITE_API_URL}${selectedProof}`}
+                                    href={selectedProof.startsWith('http') ? selectedProof : `${API_BASE_URL}${selectedProof}`}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors"

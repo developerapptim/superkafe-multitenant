@@ -1,0 +1,618 @@
+/* =========================================================================
+   CUSTOMER STOREFRONT THEME OVERRIDE ENGINE
+   Aesthetics: Clean White, Soft Cream, Espresso Brown
+   ========================================================================= */
+
+/* Base Light Coffee Variables */
+[data-customer-theme="light-coffee"] {
+    --customer-bg-main: #FAFAFA;
+    /* Pure clean off-white */
+    --customer-bg-card: #FFFFFF;
+    /* Pure white for cards */
+    --customer-text-dark: #3A1F13;
+    /* Darkest Espresso (Primary Text) */
+    --customer-text-muted: #5D4037;
+    /* Mocha (Secondary Text) */
+    --customer-accent-dark: #3E2723;
+    /* Espresso (Header/Footer/Primary Buttons) */
+    --customer-accent-cream: #FFF4E6;
+    /* Warm Cream for header & inputs */
+    --customer-border: rgba(62, 39, 35, 0.08);
+    /* Very soft border */
+
+    /* Scrollbar */
+    --bg-scrollbar-track: var(--customer-bg-main);
+    --bg-scrollbar-thumb: rgba(62, 39, 35, 0.2);
+}
+
+/* =========================================================================
+   1. GLOBAL LAYOUT OVERRIDES (CRITICAL OVERRIDES VS ADMIN THEME)
+   ========================================================================= */
+/* Kill any gradient inherited from admin-theme.css wildcard rules */
+[data-customer-theme="light-coffee"] .customer-view,
+[data-customer-theme="light-coffee"] .customer-view [class*="bg-gradient-to-"],
+[data-customer-theme="light-coffee"] .customer-view [class*="from-purple-"],
+[data-customer-theme="light-coffee"] .customer-view [class*="bg-purple-"] {
+    background-image: none !important;
+}
+
+[data-customer-theme="light-coffee"] .customer-view {
+    background: var(--customer-bg-main) !important;
+    background-color: var(--customer-bg-main) !important;
+    color: var(--customer-text-dark) !important;
+}
+
+/* Default border resets */
+[data-customer-theme="light-coffee"] .customer-view * {
+    border-color: var(--customer-border);
+}
+
+
+/* =========================================================================
+   2. HEADER & NAVIGATION 
+   ========================================================================= */
+[data-customer-theme="light-coffee"] .customer-view header {
+    background: var(--customer-accent-dark) !important;
+    background-color: var(--customer-accent-dark) !important;
+    color: var(--customer-accent-cream) !important;
+    border-bottom: none !important;
+    box-shadow: 0 4px 15px rgba(62, 39, 35, 0.2) !important;
+}
+
+[data-customer-theme="light-coffee"] .customer-view header h1,
+[data-customer-theme="light-coffee"] .customer-view header p {
+    color: var(--customer-accent-cream) !important;
+    -webkit-text-fill-color: var(--customer-accent-cream) !important;
+    background: none !important;
+}
+
+[data-customer-theme="light-coffee"] .customer-view header nav a {
+    color: rgba(255, 244, 230, 0.6) !important;
+}
+
+[data-customer-theme="light-coffee"] .customer-view header nav a.text-white {
+    color: var(--customer-accent-cream) !important;
+    border-bottom-color: var(--customer-accent-cream) !important;
+    font-weight: 700;
+}
+
+[data-customer-theme="light-coffee"] .customer-view header .theme-aware-logo {
+    background: rgba(255, 244, 230, 0.1) !important;
+    border: none !important;
+    box-shadow: none !important;
+}
+
+[data-customer-theme="light-coffee"] .customer-view header .theme-table-badge {
+    background: rgba(255, 244, 230, 0.15) !important;
+    color: var(--customer-accent-cream) !important;
+    border-color: rgba(255, 244, 230, 0.2) !important;
+}
+
+/* =========================================================================
+   3. MOBILE BOTTOM NAVIGATION
+   ========================================================================= */
+[data-customer-theme="light-coffee"] .customer-view nav.fixed.bottom-0 {
+    background: var(--customer-accent-dark) !important;
+    border-top: none !important;
+}
+
+[data-customer-theme="light-coffee"] .customer-view nav.fixed.bottom-0 .text-gray-400 {
+    color: var(--customer-bg-main) !important;
+    opacity: 0.5;
+}
+
+[data-customer-theme="light-coffee"] .customer-view nav.fixed.bottom-0 .text-blue-400 {
+    color: #FFFFFF !important;
+    opacity: 1 !important;
+}
+
+[data-customer-theme="light-coffee"] .customer-view nav.fixed.bottom-0 .bg-blue-500\/20 {
+    background-color: var(--customer-accent-muted) !important;
+    opacity: 0.2;
+}
+
+/* =========================================================================
+   PULL TO REFRESH
+   ========================================================================= */
+[data-customer-theme="light-coffee"] .customer-view .theme-ptr-text {
+    color: var(--customer-text-muted) !important;
+}
+
+[data-customer-theme="light-coffee"] .customer-view .theme-ptr-spinner {
+    border-top-color: var(--customer-text-dark) !important;
+    border-bottom-color: var(--customer-text-dark) !important;
+}
+
+
+/* =========================================================================
+   4. SEARCH, FILTERS, CATEGORIES
+   ========================================================================= */
+/* Search Bar & Inputs */
+[data-customer-theme="light-coffee"] .customer-view input[type="text"],
+[data-customer-theme="light-coffee"] .customer-view input[type="tel"],
+[data-customer-theme="light-coffee"] .customer-view select {
+    background: var(--customer-accent-cream) !important;
+    border: 1px solid var(--customer-border) !important;
+    color: var(--customer-text-dark) !important;
+    box-shadow: none !important;
+    border-radius: 12px !important;
+}
+
+[data-customer-theme="light-coffee"] .customer-view input::placeholder {
+    color: var(--customer-text-muted) !important;
+}
+
+/* Category Pills - Inactive */
+[data-customer-theme="light-coffee"] .customer-view .overflow-x-auto button,
+[data-customer-theme="light-coffee"] .customer-view .flex.gap-2 button.bg-white\/10 {
+    background: var(--customer-accent-cream) !important;
+    background-color: var(--customer-accent-cream) !important;
+    color: var(--customer-text-dark) !important;
+    border: 1px solid var(--customer-border) !important;
+    box-shadow: none !important;
+    border-radius: 12px !important;
+    font-weight: 500 !important;
+}
+
+/* Category Pills - Active */
+[data-customer-theme="light-coffee"] .customer-view .overflow-x-auto button.bg-gradient-to-r,
+[data-customer-theme="light-coffee"] .customer-view .flex.gap-2 button.text-white {
+    background: var(--customer-accent-dark) !important;
+    background-color: var(--customer-accent-dark) !important;
+    color: #FFFFFF !important;
+    border: none !important;
+}
+
+/* 
+ * The active category uses a motion.div absolute positioned background.
+ * Because we stripped all gradients, it becomes transparent. We must color it manually. 
+ */
+[data-customer-theme="light-coffee"] .customer-view .overflow-x-auto button .bg-gradient-to-r {
+    background-color: var(--customer-accent-dark) !important;
+}
+
+/* =========================================================================
+   5. PRODUCT CARDS & TEXT
+   ========================================================================= */
+/* Cards — Enhanced shadow for tablet readability */
+[data-customer-theme="light-coffee"] .customer-view .grid>div,
+[data-customer-theme="light-coffee"] .customer-view .space-y-3>div,
+[data-customer-theme="light-coffee"] .customer-view .bg-white\/5 {
+    background: var(--customer-bg-card) !important;
+    background-color: var(--customer-bg-card) !important;
+    border: 1px solid rgba(62, 39, 35, 0.06) !important;
+    box-shadow: 0 2px 8px rgba(62, 39, 35, 0.06), 0 8px 24px rgba(62, 39, 35, 0.04) !important;
+    border-radius: 16px !important;
+}
+
+/* Typography Overrides */
+[data-customer-theme="light-coffee"] .customer-view h3,
+[data-customer-theme="light-coffee"] .customer-view h2,
+[data-customer-theme="light-coffee"] .customer-view h1 {
+    color: var(--customer-text-dark) !important;
+    font-weight: 700 !important;
+}
+
+[data-customer-theme="light-coffee"] .customer-view p.text-gray-400,
+[data-customer-theme="light-coffee"] .customer-view span.text-gray-400,
+[data-customer-theme="light-coffee"] .customer-view button.text-gray-400 {
+    color: var(--customer-text-muted) !important;
+}
+
+/* Original Price (Strikethrough) */
+[data-customer-theme="light-coffee"] .customer-view .line-through {
+    color: var(--customer-text-muted) !important;
+    opacity: 0.6;
+}
+
+/* Current Price & Stock */
+[data-customer-theme="light-coffee"] .customer-view .text-purple-400,
+[data-customer-theme="light-coffee"] .customer-view .text-green-400,
+[data-customer-theme="light-coffee"] .customer-view .text-purple-300,
+[data-customer-theme="light-coffee"] .customer-view span.font-bold {
+    color: var(--customer-text-dark) !important;
+    font-weight: 800 !important;
+}
+
+/* Primary Action Buttons (+ Tambah, Checkout) */
+[data-customer-theme="light-coffee"] .customer-view button.bg-gradient-to-r,
+[data-customer-theme="light-coffee"] .customer-view button.bg-purple-600 {
+    background-image: none !important;
+    background: var(--customer-accent-dark) !important;
+    background-color: var(--customer-accent-dark) !important;
+    color: #FFFFFF !important;
+    border: none !important;
+    box-shadow: none !important;
+    border-radius: 12px !important;
+    font-weight: 600 !important;
+}
+
+[data-customer-theme="light-coffee"] .customer-view button.bg-gradient-to-r:hover,
+[data-customer-theme="light-coffee"] .customer-view button.bg-purple-600:hover {
+    background: #2E1B15 !important;
+    background-color: #2E1B15 !important;
+}
+
+/* Quantity Adjusters (+ / -) */
+[data-customer-theme="light-coffee"] .customer-view .bg-white\/10.rounded-lg {
+    background: var(--customer-accent-cream) !important;
+    border: 1px solid var(--customer-border) !important;
+}
+
+[data-customer-theme="light-coffee"] .customer-view .bg-white\/10.rounded-lg button {
+    color: var(--customer-text-dark) !important;
+}
+
+/* =========================================================================
+   6. BANNERS & BADGES
+   ========================================================================= */
+/* Promo Banner Dots */
+[data-customer-theme="light-coffee"] .customer-view .bg-white\/40 {
+    background: var(--customer-border) !important;
+}
+
+[data-customer-theme="light-coffee"] .customer-view .bg-white.w-5 {
+    background: var(--customer-accent-dark) !important;
+}
+
+/* Preview Mode / Cart Badges */
+[data-customer-theme="light-coffee"] .customer-view .bg-gradient-to-r.from-purple-600.to-blue-600.shadow-2xl {
+    background-image: none !important;
+    background: var(--customer-bg-card) !important;
+    color: var(--customer-text-dark) !important;
+    border: 1px solid var(--customer-border) !important;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08) !important;
+}
+
+/* Badges (like QTY badge on card) */
+[data-customer-theme="light-coffee"] .customer-view .bg-purple-600.text-white.rounded-full {
+    background: var(--customer-accent-dark) !important;
+    color: #FFFFFF !important;
+}
+
+/* Skeleton Loaders (Pulse) */
+[data-customer-theme="light-coffee"] .customer-view .animate-pulse {
+    background: var(--customer-accent-cream) !important;
+}
+
+/* =========================================================================
+   7. SHOPPING CART (KERANJANG) & CHECKOUT
+   ========================================================================= */
+/* Checkout / Cart Panel */
+[data-customer-theme="light-coffee"] .customer-view .bg-black\/20.border-white\/10 {
+    background: var(--customer-accent-cream) !important;
+    border: 1px solid var(--customer-border) !important;
+    color: var(--customer-text-dark) !important;
+    box-shadow: none !important;
+}
+
+[data-customer-theme="light-coffee"] .customer-view .bg-black\/20.border-white\/10 h3 {
+    color: var(--customer-text-dark) !important;
+}
+
+/* Payment Method Buttons - Inactive */
+[data-customer-theme="light-coffee"] .customer-view button.bg-white\/5.border-white\/10 {
+    background: var(--customer-bg-card) !important;
+    border: 1px solid var(--customer-border) !important;
+    color: var(--customer-text-dark) !important;
+}
+
+/* Payment Method Buttons - Active */
+[data-customer-theme="light-coffee"] .customer-view button.border-purple-500 {
+    background: var(--customer-accent-cream) !important;
+    border: 2px solid var(--customer-accent-dark) !important;
+    color: var(--customer-text-dark) !important;
+}
+
+/* =========================================================================
+   8. ADMIN PREVIEW BANNER
+   ========================================================================= */
+[data-customer-theme="light-coffee"] .customer-view .admin-preview-banner {
+    background: rgba(62, 39, 35, 0.05) !important;
+    border: 1px solid var(--customer-border) !important;
+}
+
+[data-customer-theme="light-coffee"] .customer-view .admin-preview-icon {
+    background: var(--customer-accent-dark) !important;
+}
+
+[data-customer-theme="light-coffee"] .customer-view .admin-preview-text {
+    color: var(--customer-text-dark) !important;
+}
+
+[data-customer-theme="light-coffee"] .customer-view .admin-preview-btn {
+    background-image: none !important;
+    background: var(--customer-accent-dark) !important;
+    color: #FFFFFF !important;
+    box-shadow: none !important;
+}
+
+
+/* =========================================================================
+   =========================================================================
+   THEME 2: MERAH PUTIH (Energetic F&B / Fast Food)
+   Palette: Red #D32F2F, Yellow #FFC107, White #FFFDF7, Dark #3E2723
+   =========================================================================
+   ========================================================================= */
+
+/* Base Variables */
+[data-customer-theme="merah-putih"] {
+    --mkp-bg-main: #FFFDF7;
+    --mkp-bg-card: #FFFFFF;
+    --mkp-text-dark: #3E2723;
+    --mkp-text-muted: #795548;
+    --mkp-accent-red: #D32F2F;
+    --mkp-accent-red-dark: #B71C1C;
+    --mkp-accent-yellow: #FFC107;
+    --mkp-accent-yellow-light: #FFF8E1;
+    --mkp-border: rgba(211, 47, 47, 0.08);
+
+    /* Scrollbar */
+    --bg-scrollbar-track: var(--mkp-bg-main);
+    --bg-scrollbar-thumb: rgba(211, 47, 47, 0.3);
+}
+
+/* 1. GLOBAL LAYOUT */
+[data-customer-theme="merah-putih"] .customer-view,
+[data-customer-theme="merah-putih"] .customer-view [class*="bg-gradient-to-"],
+[data-customer-theme="merah-putih"] .customer-view [class*="from-purple-"],
+[data-customer-theme="merah-putih"] .customer-view [class*="bg-purple-"] {
+    background-image: none !important;
+}
+
+[data-customer-theme="merah-putih"] .customer-view {
+    background: var(--mkp-bg-main) !important;
+    background-color: var(--mkp-bg-main) !important;
+    color: var(--mkp-text-dark) !important;
+}
+
+[data-customer-theme="merah-putih"] .customer-view * {
+    border-color: var(--mkp-border);
+}
+
+/* 2. HEADER & NAVIGATION */
+[data-customer-theme="merah-putih"] .customer-view header {
+    background: var(--mkp-accent-red) !important;
+    background-color: var(--mkp-accent-red) !important;
+    color: #FFFFFF !important;
+    border-bottom: 3px solid var(--mkp-accent-yellow) !important;
+    box-shadow: 0 2px 12px rgba(211, 47, 47, 0.25) !important;
+}
+
+[data-customer-theme="merah-putih"] .customer-view header h1,
+[data-customer-theme="merah-putih"] .customer-view header p {
+    color: #FFFFFF !important;
+    -webkit-text-fill-color: #FFFFFF !important;
+    background: none !important;
+}
+
+[data-customer-theme="merah-putih"] .customer-view header nav a {
+    color: rgba(255, 255, 255, 0.7) !important;
+}
+
+[data-customer-theme="merah-putih"] .customer-view header nav a.text-white {
+    color: #FFFFFF !important;
+    border-bottom-color: var(--mkp-accent-yellow) !important;
+    font-weight: 700;
+}
+
+[data-customer-theme="merah-putih"] .customer-view header .theme-aware-logo {
+    background: rgba(255, 255, 255, 0.15) !important;
+    border: none !important;
+    border-radius: 12px !important;
+}
+
+/* 3. MOBILE BOTTOM NAVIGATION */
+[data-customer-theme="merah-putih"] .customer-view nav.fixed.bottom-0 {
+    background: var(--mkp-accent-red) !important;
+    border-top: 3px solid var(--mkp-accent-yellow) !important;
+}
+
+[data-customer-theme="merah-putih"] .customer-view nav.fixed.bottom-0 .text-gray-400 {
+    color: rgba(255, 255, 255, 0.6) !important;
+}
+
+[data-customer-theme="merah-putih"] .customer-view nav.fixed.bottom-0 .text-blue-400 {
+    color: #FFFFFF !important;
+    font-weight: 700 !important;
+}
+
+[data-customer-theme="merah-putih"] .customer-view nav.fixed.bottom-0 .bg-blue-500\/20 {
+    background-color: var(--mkp-accent-red-dark) !important;
+    opacity: 1 !important;
+}
+
+/* PULL TO REFRESH */
+[data-customer-theme="merah-putih"] .customer-view .theme-ptr-text {
+    color: var(--mkp-accent-red) !important;
+}
+
+[data-customer-theme="merah-putih"] .customer-view .theme-ptr-spinner {
+    border-top-color: var(--mkp-accent-red) !important;
+    border-bottom-color: var(--mkp-accent-red) !important;
+}
+
+/* 4. SEARCH, FILTERS, CATEGORIES */
+[data-customer-theme="merah-putih"] .customer-view input[type="text"],
+[data-customer-theme="merah-putih"] .customer-view input[type="tel"],
+[data-customer-theme="merah-putih"] .customer-view select {
+    background: var(--mkp-accent-yellow-light) !important;
+    border: 1px solid var(--mkp-border) !important;
+    color: var(--mkp-text-dark) !important;
+    box-shadow: none !important;
+    border-radius: 12px !important;
+}
+
+[data-customer-theme="merah-putih"] .customer-view input::placeholder {
+    color: var(--mkp-text-muted) !important;
+}
+
+/* Category Pills - Inactive */
+[data-customer-theme="merah-putih"] .customer-view .overflow-x-auto button,
+[data-customer-theme="merah-putih"] .customer-view .flex.gap-2 button.bg-white\/10 {
+    background: var(--mkp-accent-yellow-light) !important;
+    background-color: var(--mkp-accent-yellow-light) !important;
+    color: var(--mkp-text-dark) !important;
+    border: 1px solid rgba(255, 193, 7, 0.3) !important;
+    box-shadow: none !important;
+    border-radius: 12px !important;
+    font-weight: 500 !important;
+}
+
+/* Category Pills - Active */
+[data-customer-theme="merah-putih"] .customer-view .overflow-x-auto button.bg-gradient-to-r,
+[data-customer-theme="merah-putih"] .customer-view .flex.gap-2 button.text-white {
+    background: var(--mkp-accent-red) !important;
+    background-color: var(--mkp-accent-red) !important;
+    color: #FFFFFF !important;
+    border: none !important;
+    box-shadow: 0 2px 8px rgba(211, 47, 47, 0.3) !important;
+}
+
+[data-customer-theme="merah-putih"] .customer-view .overflow-x-auto button .bg-gradient-to-r {
+    background-color: var(--mkp-accent-red) !important;
+}
+
+/* 5. PRODUCT CARDS & TEXT */
+[data-customer-theme="merah-putih"] .customer-view .grid>div,
+[data-customer-theme="merah-putih"] .customer-view .space-y-3>div,
+[data-customer-theme="merah-putih"] .customer-view .bg-white\/5 {
+    background: var(--mkp-bg-card) !important;
+    background-color: var(--mkp-bg-card) !important;
+    border: 1px solid rgba(211, 47, 47, 0.05) !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04), 0 8px 24px rgba(211, 47, 47, 0.04) !important;
+    border-radius: 16px !important;
+}
+
+[data-customer-theme="merah-putih"] .customer-view h3,
+[data-customer-theme="merah-putih"] .customer-view h2,
+[data-customer-theme="merah-putih"] .customer-view h1 {
+    color: var(--mkp-text-dark) !important;
+    font-weight: 700 !important;
+}
+
+[data-customer-theme="merah-putih"] .customer-view p.text-gray-400,
+[data-customer-theme="merah-putih"] .customer-view span.text-gray-400,
+[data-customer-theme="merah-putih"] .customer-view button.text-gray-400 {
+    color: var(--mkp-text-muted) !important;
+}
+
+[data-customer-theme="merah-putih"] .customer-view .line-through {
+    color: var(--mkp-text-muted) !important;
+    opacity: 0.6;
+}
+
+[data-customer-theme="merah-putih"] .customer-view .text-purple-400,
+[data-customer-theme="merah-putih"] .customer-view .text-green-400,
+[data-customer-theme="merah-putih"] .customer-view .text-purple-300,
+[data-customer-theme="merah-putih"] .customer-view span.font-bold {
+    color: var(--mkp-accent-red) !important;
+    font-weight: 800 !important;
+}
+
+/* Primary Action Buttons */
+[data-customer-theme="merah-putih"] .customer-view button.bg-gradient-to-r,
+[data-customer-theme="merah-putih"] .customer-view button.bg-purple-600 {
+    background-image: none !important;
+    background: var(--mkp-accent-red) !important;
+    background-color: var(--mkp-accent-red) !important;
+    color: #FFFFFF !important;
+    border: none !important;
+    box-shadow: 0 2px 8px rgba(211, 47, 47, 0.3) !important;
+    border-radius: 12px !important;
+    font-weight: 600 !important;
+}
+
+[data-customer-theme="merah-putih"] .customer-view button.bg-gradient-to-r:hover,
+[data-customer-theme="merah-putih"] .customer-view button.bg-purple-600:hover {
+    background: var(--mkp-accent-red-dark) !important;
+    background-color: var(--mkp-accent-red-dark) !important;
+}
+
+/* Quantity Adjusters */
+[data-customer-theme="merah-putih"] .customer-view .bg-white\/10.rounded-lg {
+    background: var(--mkp-accent-yellow-light) !important;
+    border: 1px solid rgba(255, 193, 7, 0.3) !important;
+}
+
+[data-customer-theme="merah-putih"] .customer-view .bg-white\/10.rounded-lg button {
+    color: var(--mkp-text-dark) !important;
+}
+
+/* 6. BANNERS & BADGES */
+[data-customer-theme="merah-putih"] .customer-view .bg-white\/40 {
+    background: var(--mkp-border) !important;
+}
+
+[data-customer-theme="merah-putih"] .customer-view .bg-white.w-5 {
+    background: var(--mkp-accent-red) !important;
+}
+
+[data-customer-theme="merah-putih"] .customer-view .bg-gradient-to-r.from-purple-600.to-blue-600.shadow-2xl {
+    background-image: none !important;
+    background: var(--mkp-accent-yellow-light) !important;
+    color: var(--mkp-text-dark) !important;
+    border: 2px solid var(--mkp-accent-yellow) !important;
+    box-shadow: 0 4px 15px rgba(255, 193, 7, 0.15) !important;
+}
+
+[data-customer-theme="merah-putih"] .customer-view .bg-purple-600.text-white.rounded-full {
+    background: var(--mkp-accent-red) !important;
+    color: #FFFFFF !important;
+}
+
+/* Cart Notification Badge */
+[data-customer-theme="merah-putih"] .customer-view .theme-cart-badge {
+    background: var(--mkp-accent-yellow) !important;
+    color: var(--mkp-text-dark) !important;
+    border-color: var(--mkp-accent-red) !important;
+}
+
+[data-customer-theme="merah-putih"] .customer-view .animate-pulse {
+    background: var(--mkp-accent-yellow-light) !important;
+}
+
+/* 7. SHOPPING CART & CHECKOUT */
+[data-customer-theme="merah-putih"] .customer-view .bg-black\/20.border-white\/10 {
+    background: var(--mkp-accent-yellow-light) !important;
+    border: 1px solid rgba(255, 193, 7, 0.3) !important;
+    color: var(--mkp-text-dark) !important;
+    box-shadow: none !important;
+}
+
+[data-customer-theme="merah-putih"] .customer-view .bg-black\/20.border-white\/10 h3 {
+    color: var(--mkp-text-dark) !important;
+}
+
+[data-customer-theme="merah-putih"] .customer-view button.bg-white\/5.border-white\/10 {
+    background: var(--mkp-bg-card) !important;
+    border: 1px solid var(--mkp-border) !important;
+    color: var(--mkp-text-dark) !important;
+}
+
+[data-customer-theme="merah-kuning-putih"] .customer-view button.border-purple-500 {
+    background: var(--mkp-accent-yellow-light) !important;
+    border: 2px solid var(--mkp-accent-red) !important;
+    color: var(--mkp-text-dark) !important;
+}
+
+/* 8. ADMIN PREVIEW BANNER */
+[data-customer-theme="merah-kuning-putih"] .customer-view .admin-preview-banner {
+    background: rgba(255, 193, 7, 0.15) !important;
+    border: 1px solid rgba(211, 47, 47, 0.2) !important;
+}
+
+[data-customer-theme="merah-kuning-putih"] .customer-view .admin-preview-icon {
+    background: var(--mkp-accent-red) !important;
+}
+
+[data-customer-theme="merah-kuning-putih"] .customer-view .admin-preview-text {
+    color: var(--mkp-text-dark) !important;
+}
+
+[data-customer-theme="merah-kuning-putih"] .customer-view .admin-preview-btn {
+    background-image: none !important;
+    background: var(--mkp-accent-red) !important;
+    color: #FFFFFF !important;
+    box-shadow: 0 2px 8px rgba(211, 47, 47, 0.3) !important;
+}

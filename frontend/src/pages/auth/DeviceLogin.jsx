@@ -28,7 +28,7 @@ const DeviceLogin = () => {
     try {
       // Check localStorage untuk tenant_slug
       const savedSlug = localStorage.getItem('tenant_slug');
-      
+
       if (!savedSlug) {
         // Device belum terdaftar, redirect ke global login
         toast.error('Device belum terdaftar. Silakan login dengan email terlebih dahulu.');
@@ -40,9 +40,9 @@ const DeviceLogin = () => {
 
       // Fetch staff list
       const response = await api.get(`/auth/staff-list/${savedSlug}`);
-      
+
       if (response.data.success) {
-        setStaffList(response.data.data);
+        setStaffList(response.data.staff || response.data.data || []);
         setTenantName(response.data.tenantName);
       }
     } catch (error) {
@@ -77,7 +77,7 @@ const DeviceLogin = () => {
         localStorage.setItem('user', JSON.stringify(user));
 
         toast.success(`Selamat datang, ${user.name}!`);
-        
+
         // Redirect ke admin dashboard via legacy route (will redirect to tenant-specific)
         setTimeout(() => {
           navigate('/admin');
@@ -85,7 +85,7 @@ const DeviceLogin = () => {
       }
     } catch (error) {
       console.error('PIN login error:', error);
-      
+
       if (error.response?.status === 401) {
         toast.error('PIN salah');
         setPin('');
@@ -132,9 +132,9 @@ const DeviceLogin = () => {
         {/* Header */}
         <div className="text-center mb-8">
           <div className="flex items-center justify-center mb-4">
-            <img 
-              src="https://res.cloudinary.com/dhjqb65mf/image/upload/v1771859487/SuperKafe_i51g7i.png" 
-              alt="SuperKafe Logo" 
+            <img
+              src="https://res.cloudinary.com/dhjqb65mf/image/upload/v1771859487/SuperKafe_i51g7i.png"
+              alt="SuperKafe Logo"
               className="h-16 w-auto"
             />
           </div>
@@ -154,7 +154,7 @@ const DeviceLogin = () => {
             >
               {/* Staff Grid */}
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                {staffList.map((staff) => (
+                {(staffList || []).map((staff) => (
                   <motion.button
                     key={staff.id}
                     whileHover={{ scale: 1.05 }}
@@ -175,7 +175,7 @@ const DeviceLogin = () => {
                           staff.name.charAt(0).toUpperCase()
                         )}
                       </div>
-                      
+
                       {/* Name */}
                       <div className="text-center">
                         <p className="font-semibold text-gray-900">{staff.name}</p>
