@@ -3963,7 +3963,7 @@
       }
     }
 
-    // ===== CASH DRAWER =====
+    // ===== CASH ddDRAWER =====
 
     // Open cash drawer with logging
     function openCashDrawer() {
