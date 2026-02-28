@@ -12518,7 +12518,7 @@
     </div>
   </div>
 
-  <!-- Expense Modal (Kas Kecil) -->
+  <!-- Expense Modal (Kas Keciil) -->
   <div id="expenseModal"
     class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-[100] backdrop-blur-sm">
     <div class="bg-gray-800 rounded-2xl w-full max-w-md p-6 border border-gray-700 shadow-2xl">
