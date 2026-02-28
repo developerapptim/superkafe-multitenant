@@ -54,11 +54,17 @@ jobs:
           API_KEY: ${{ secrets.API_KEY }}
           SMTP_USER: ${{ secrets.SMTP_USER }}
           SMTP_PASS: ${{ secrets.SMTP_PASS }}
+          DUITKU_MERCHANT_CODE: ${{ secrets.DUITKU_MERCHANT_CODE }}
+          DUITKU_API_KEY: ${{ secrets.DUITKU_API_KEY }}
+          DUITKU_MODE: ${{ secrets.DUITKU_MODE }}
+          DUITKU_CALLBACK_URL: ${{ secrets.DUITKU_CALLBACK_URL }}
+          FRONTEND_URL: ${{ secrets.FRONTEND_URL }}
+          BACKEND_URL: ${{ secrets.BACKEND_URL }}
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           password: ${{ secrets.SSH_PASSWORD }}
-          envs: MONGODB_URI,JWT_SECRET,API_KEY,SMTP_USER,SMTP_PASS
+          envs: MONGODB_URI,JWT_SECRET,API_KEY,SMTP_USER,SMTP_PASS,DUITKU_MERCHANT_CODE,DUITKU_API_KEY,DUITKU_MODE,DUITKU_CALLBACK_URL,FRONTEND_URL,BACKEND_URL
           script: |
             cd /root/superkafe-multitenant
             git fetch --all
@@ -71,6 +77,11 @@ jobs:
             echo "SMTP_PASS=$SMTP_PASS" >> backend/.env
             echo "PORT=5001" >> backend/.env
             echo "NODE_ENV=production" >> backend/.env
+            echo "DUITKU_MERCHANT_CODE=$DUITKU_MERCHANT_CODE" >> backend/.env
+            echo "DUITKU_API_KEY=$DUITKU_API_KEY" >> backend/.env
+            echo "DUITKU_MODE=$DUITKU_MODE" >> backend/.env
+            echo "BACKEND_URL=$BACKEND_URL" >> backend/.env
+            echo "DUITKU_CALLBACK_URL=$DUITKU_CALLBACK_URL" >> backend/.env
 
             docker compose down --remove-orphans
             docker compose pull
