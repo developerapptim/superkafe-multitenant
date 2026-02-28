@@ -14,21 +14,25 @@ class DuitkuProvider {
     this.apiKey = config.apiKey;
     this.mode = config.mode || 'sandbox'; // sandbox or production
 
-    // Set base URL berdasarkan mode
+    // Set base URL berdasarkan mode.
+    // Sandbox URL: https://sandbox.duitku.com/webapi/api/merchant/v2
+    // Production URL: https://passport.duitku.com/webapi/api/merchant/v2
     this.baseURL = this.mode === 'production'
       ? 'https://passport.duitku.com/webapi/api/merchant/v2'
       : 'https://sandbox.duitku.com/webapi/api/merchant/v2';
 
-    console.log(`[DUITKU] Initialized in ${this.mode} mode`);
+    console.log(`[DUITKU] Initialized in ${this.mode} mode. BaseURL: ${this.baseURL}`);
   }
 
   /**
-   * Generate MD5 signature untuk Duitku
+   * Generate MD5 signature untuk Duitku Inquiry
    * Format: MD5(merchantCode + merchantOrderId + amount + apiKey)
    */
   generateSignature(merchantOrderId, amount) {
-    const string = `${this.merchantCode}${merchantOrderId}${amount}${this.apiKey}`;
-    return crypto.createHash('md5').update(string).digest('hex');
+    const stringToHash = `${this.merchantCode}${merchantOrderId}${amount}${this.apiKey}`;
+    console.log('[DUITKU DEBUG] String to Hash (Inquiry):', stringToHash);
+
+    return crypto.createHash('md5').update(stringToHash).digest('hex');
   }
 
   /**
@@ -81,15 +85,15 @@ class DuitkuProvider {
         expiryPeriod: expiryPeriod
       };
 
-      console.log('[DUITKU] Creating invoice (Hosted Payment Page)', {
-        merchantOrderId,
-        amount,
-        mode: this.mode
-      });
+      console.log('[DUITKU DEBUG] Raw Payload sent to Axios:', JSON.stringify(payload, null, 2));
+
+      // Payload URL check
+      const endpoint = `${this.baseURL}/inquiry`;
+      console.log('[DUITKU DEBUG] Hitting Endpoint:', endpoint);
 
       // Call Duitku API
       const response = await axios.post(
-        `${this.baseURL}/inquiry`,
+        endpoint,
         payload,
         {
           headers: {
