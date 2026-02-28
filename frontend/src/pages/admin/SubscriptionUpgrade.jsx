@@ -1,18 +1,23 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { FiCheck, FiCreditCard, FiClock, FiShield } from 'react-icons/fi';
+import { FiCheck, FiClock, FiShield, FiExternalLink } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import { paymentAPI } from '../../services/api';
 
 /**
  * Subscription Upgrade Page
  * Halaman untuk upgrade dari trial ke paid subscription
+ * 
+ * Architecture: Hosted Payment Page
+ * - User memilih paket di halaman ini
+ * - Setelah klik "Lanjutkan Pembayaran", user diarahkan ke halaman Duitku
+ * - User memilih metode pembayaran langsung di halaman resmi Duitku
+ * - Setelah pembayaran berhasil, callback otomatis mengupdate status tenant
  */
 const SubscriptionUpgrade = () => {
   const [pricing, setPricing] = useState(null);
   const [loading, setLoading] = useState(true);
   const [selectedPlan, setSelectedPlan] = useState('bisnis');
-  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('NQ'); // Default: QRIS
   const [processing, setProcessing] = useState(false);
 
   useEffect(() => {
@@ -40,18 +45,18 @@ const SubscriptionUpgrade = () => {
       const tenantSlug = localStorage.getItem('tenant_slug');
       const user = JSON.parse(localStorage.getItem('user') || '{}');
 
-      // Kirim planType dan paymentMethod — harga dihitung AMAN di backend
+      // Kirim planType saja — harga dihitung AMAN di backend
+      // Tidak kirim paymentMethod — user pilih langsung di halaman Duitku
       const response = await paymentAPI.createInvoice({
         tenantSlug,
         planType: selectedPlan,
-        paymentMethod: selectedPaymentMethod,
         email: user.email || 'admin@example.com',
         customerName: user.name || 'Admin',
         phoneNumber: user.phone || '08123456789'
       });
 
       if (response.data.success) {
-        toast.success('Membuka gateway pembayaran...');
+        toast.success('Membuka halaman pembayaran Duitku...');
         window.location.href = response.data.data.paymentUrl;
       }
     } catch (error) {
@@ -126,7 +131,7 @@ const SubscriptionUpgrade = () => {
             Pilih Paket Berlangganan
           </h1>
           <p className="text-lg opacity-80">
-            Tingkatkan bisnis Anda dengan fitur lengkap dari Warkop Santai
+            Tingkatkan bisnis Anda dengan fitur lengkap dari SuperKafe
           </p>
         </div>
 
@@ -195,42 +200,6 @@ const SubscriptionUpgrade = () => {
           ))}
         </div>
 
-        {/* Payment Method Selector */}
-        <div className="backdrop-blur-xl admin-bg-sidebar border admin-border-accent rounded-2xl p-6 mb-6">
-          <h3 className="text-lg font-bold mb-5 flex items-center gap-2">
-            <FiCreditCard className="text-purple-500" />
-            Pilih Metode Pembayaran
-          </h3>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-            {[
-              { code: 'NQ', name: 'QRIS', emoji: '📱', desc: 'Scan & bayar' },
-              { code: 'B1', name: 'BCA', emoji: '🏦', desc: 'Virtual Account' },
-              { code: 'BV', name: 'BNI', emoji: '🏦', desc: 'Virtual Account' },
-              { code: 'M2', name: 'Mandiri', emoji: '🏦', desc: 'Virtual Account' },
-              { code: 'BR', name: 'BRI', emoji: '🏦', desc: 'Virtual Account' },
-              { code: 'OV', name: 'OVO', emoji: '💜', desc: 'E-Wallet' },
-              { code: 'DA', name: 'DANA', emoji: '💙', desc: 'E-Wallet' },
-              { code: 'SP', name: 'ShopeePay', emoji: '🛒', desc: 'E-Wallet' },
-            ].map((method) => (
-              <button
-                key={method.code}
-                onClick={() => setSelectedPaymentMethod(method.code)}
-                className={`flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-all text-center ${selectedPaymentMethod === method.code
-                    ? 'border-purple-500 bg-purple-500/10 shadow-purple-500/20 shadow-lg'
-                    : 'admin-border-accent bg-black/10 hover:bg-white/5 hover:border-purple-300/40'
-                  }`}
-              >
-                <span className="text-2xl">{method.emoji}</span>
-                <span className="font-bold text-sm">{method.name}</span>
-                <span className="text-xs opacity-60">{method.desc}</span>
-                {selectedPaymentMethod === method.code && (
-                  <span className="text-xs text-purple-400 font-semibold">✓ Terpilih</span>
-                )}
-              </button>
-            ))}
-          </div>
-        </div>
-
         {/* Security Trust Badges */}
         <div className="backdrop-blur-xl admin-bg-sidebar border admin-border-accent rounded-2xl p-5 mb-6">
           <div className="grid md:grid-cols-3 gap-4 text-sm opacity-80">
@@ -256,10 +225,20 @@ const SubscriptionUpgrade = () => {
             disabled={processing}
             className="w-full md:w-auto px-16 py-4 rounded-xl text-lg font-bold admin-button-primary hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed transform hover:-translate-y-1"
           >
-            {processing ? 'Membuka Gateway Pembayaran...' : 'Lanjutkan Pembayaran Sekarang'}
+            {processing ? (
+              <span className="flex items-center justify-center gap-2">
+                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                Membuka Halaman Pembayaran...
+              </span>
+            ) : (
+              <span className="flex items-center justify-center gap-2">
+                <FiExternalLink size={20} />
+                Lanjutkan Pembayaran Sekarang
+              </span>
+            )}
           </button>
           <p className="text-sm opacity-60 mt-4">
-            Anda akan diarahkan ke antarmuka pembayaran aman (Duitku)
+            Anda akan diarahkan ke halaman pembayaran resmi Duitku untuk memilih metode pembayaran
           </p>
         </div>
       </div>

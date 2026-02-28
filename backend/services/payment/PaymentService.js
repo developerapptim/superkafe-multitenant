@@ -29,11 +29,11 @@ class PaymentService {
           apiKey: process.env.DUITKU_API_KEY,
           mode: process.env.DUITKU_MODE || 'sandbox'
         });
-      
+
       // Future providers bisa ditambahkan di sini
       // case 'midtrans':
       //   return new MidtransProvider({ ... });
-      
+
       default:
         throw new Error(`Unsupported payment provider: ${providerName}`);
     }
@@ -48,7 +48,7 @@ class PaymentService {
     try {
       const {
         tenantSlug,
-        planType = 'monthly', // monthly, quarterly, yearly
+        planType = 'starter', // starter, bisnis, lifetime
         email,
         customerName,
         phoneNumber
@@ -61,13 +61,19 @@ class PaymentService {
         throw new Error('Tenant tidak ditemukan');
       }
 
-      // Tentukan harga berdasarkan plan
+      // PENTING: Harga selalu ditentukan dari server, JANGAN dari frontend
       const pricing = this.getPricing(planType);
 
       // Generate unique order ID
       const merchantOrderId = `SUB-${tenantSlug.toUpperCase()}-${Date.now()}`;
 
-      // Prepare payment parameters
+      // Ambil Callback URL dari environment (explicit, lebih reliable)
+      const callbackUrl = process.env.DUITKU_CALLBACK_URL
+        || `${process.env.BACKEND_URL || 'https://superkafe.com'}/api/payments/callback`;
+
+      const returnUrl = `${process.env.FRONTEND_URL || 'https://superkafe.com'}/admin`;
+
+      // Prepare payment parameters (tanpa paymentMethod = Hosted Payment Page)
       const paymentParams = {
         merchantOrderId,
         amount: pricing.amount,
@@ -75,12 +81,12 @@ class PaymentService {
         email: email,
         customerName: customerName || tenant.name,
         phoneNumber: phoneNumber || '08123456789',
-        callbackUrl: `${process.env.BACKEND_URL || 'http://localhost:5001'}/api/payments/callback`,
-        returnUrl: `${process.env.FRONTEND_URL || 'http://localhost:5002'}/admin/subscription/success`,
+        callbackUrl: callbackUrl,
+        returnUrl: returnUrl,
         expiryPeriod: 60 // 60 menit
       };
 
-      console.log('[PAYMENT SERVICE] Creating subscription payment', {
+      console.log('[PAYMENT SERVICE] Creating subscription payment (Hosted Payment Page)', {
         tenantSlug,
         planType,
         amount: pricing.amount,
@@ -230,25 +236,48 @@ class PaymentService {
    * @returns {Object} Pricing info
    */
   getPricing(planType) {
+    // SECURITY: Harga WAJIB ditentukan di server — jangan pernah percaya nilai dari frontend
     const pricing = {
+      // === Paket Baru (Starter / Bisnis / Lifetime) ===
+      starter: {
+        amount: 225000,
+        description: 'Paket Starter SuperKafe - 30 Hari',
+        duration: 30
+      },
+      bisnis: {
+        amount: 2000000,
+        description: 'Paket Bisnis SuperKafe - 365 Hari (Hemat Rp 500.000)',
+        duration: 365
+      },
+      lifetime: {
+        amount: 7500000,
+        description: 'Paket Lifetime SuperKafe - Tanpa Batas Waktu',
+        duration: 36500 // ~100 tahun
+      },
+      // === Legacy plan names (backward compatibility) ===
       monthly: {
-        amount: 99000,
-        description: 'Paket Bulanan SuperKafe - 30 Hari',
+        amount: 225000,
+        description: 'Paket Starter SuperKafe - 30 Hari',
         duration: 30
       },
       quarterly: {
-        amount: 270000,
-        description: 'Paket 3 Bulan SuperKafe - 90 Hari (Hemat 10%)',
+        amount: 600000,
+        description: 'Paket 3 Bulan SuperKafe - 90 Hari',
         duration: 90
       },
       yearly: {
-        amount: 990000,
-        description: 'Paket Tahunan SuperKafe - 365 Hari (Hemat 20%)',
+        amount: 2000000,
+        description: 'Paket Bisnis SuperKafe - 365 Hari',
         duration: 365
       }
     };
 
-    return pricing[planType] || pricing.monthly;
+    const plan = pricing[planType];
+    if (!plan) {
+      console.warn(`[PAYMENT SERVICE] Unknown planType '${planType}', falling back to 'starter'`);
+      return pricing.starter;
+    }
+    return plan;
   }
 
   /**

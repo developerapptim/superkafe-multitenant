@@ -2,12 +2,14 @@ const express = require('express');
 const router = express.Router();
 const SettingsController = require('../controllers/SettingsController');
 const { checkJwt } = require('../middleware/auth');
+const tenantResolver = require('../middleware/tenantResolver');
 
 // Public
-router.get('/public', SettingsController.getPublicSettings);
+router.get('/public', tenantResolver, SettingsController.getPublicSettings);
 
 // Protected
 router.use(checkJwt);
+router.use(tenantResolver);
 
 router.get('/', SettingsController.getSettings);
 router.post('/', SettingsController.updateSettings);

@@ -32,7 +32,7 @@ const ProtectedRoute = ({ children, allowedRoles, requireTenant = true }) => {
 
     // 1. Check Authentication
     if (!token) {
-        return <Navigate to="/login" state={{ from: location }} replace />;
+        return <Navigate to="/auth/login" state={{ from: location }} replace />;
     }
 
     // 2. Decode JWT token to get user info
@@ -41,7 +41,7 @@ const ProtectedRoute = ({ children, allowedRoles, requireTenant = true }) => {
         localStorage.removeItem('token');
         localStorage.removeItem('user');
         toast.error('Sesi Anda tidak valid. Silakan login kembali.');
-        return <Navigate to="/login" replace />;
+        return <Navigate to="/auth/login" replace />;
     }
 
     // Extract user info from JWT token (source of truth)
@@ -63,7 +63,7 @@ const ProtectedRoute = ({ children, allowedRoles, requireTenant = true }) => {
         if (!userTenantSlug) {
             console.warn('[ProtectedRoute] User has no tenant assigned');
             toast.error('Akun Anda belum terhubung dengan kafe. Silakan hubungi admin.');
-            return <Navigate to="/login" replace />;
+            return <Navigate to="/auth/login" replace />;
         }
 
         // 4. Validate slug format (alphanumeric with hyphens only)
@@ -106,7 +106,7 @@ const ProtectedRoute = ({ children, allowedRoles, requireTenant = true }) => {
                 timestamp: new Date().toISOString()
             });
             toast.error('Akun Anda tidak memiliki role. Silakan hubungi admin.');
-            return <Navigate to="/login" replace />;
+            return <Navigate to="/auth/login" replace />;
         }
 
         if (!allowedRoles.includes(userRole)) {

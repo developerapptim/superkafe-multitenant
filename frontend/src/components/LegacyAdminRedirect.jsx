@@ -41,13 +41,13 @@ const LegacyAdminRedirect = () => {
 
     // If not authenticated, redirect to login
     if (!token) {
-        return <Navigate to="/login" state={{ from: location }} replace />;
+        return <Navigate to="/auth/login" state={{ from: location }} replace />;
     }
 
     // Extract tenant slug from JWT and redirect
     try {
         const decoded = jwtDecode(token);
-        
+
         // Check if user has tenant information
         if (!decoded.tenant) {
             // User hasn't completed setup, redirect to setup wizard
@@ -57,14 +57,14 @@ const LegacyAdminRedirect = () => {
         // Preserve the sub-path if any (e.g., /admin/menu -> /{slug}/admin/menu)
         const subPath = location.pathname.replace('/admin', '');
         const newPath = `/${decoded.tenant}/admin${subPath}`;
-        
+
         return <Navigate to={newPath} replace />;
     } catch (error) {
         console.error('Failed to decode JWT token:', error);
         // Invalid token, clear storage and redirect to login
         localStorage.removeItem('token');
         localStorage.removeItem('user');
-        return <Navigate to="/login" replace />;
+        return <Navigate to="/auth/login" replace />;
     }
 };
 

@@ -19,18 +19,14 @@ function decodeJWT(token) {
     }
 }
 
-// Determine API URL based on current environment/hostname
-const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-export const API_BASE_URL = isLocal
-    ? `http://${window.location.hostname}:5001/api`
-    : (import.meta.env.VITE_API_URL || 'https://superkafe.com/api');
+export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001/api';
 
 // Create axios instance with dynamic baseURL
 const api = axios.create({
     baseURL: API_BASE_URL,
     withCredentials: true, // Required for cookies/sessions across domains
     headers: {
-        'Content-Type': 'application/json',
+        'Content-Type': 'application/json'
     },
 });
 

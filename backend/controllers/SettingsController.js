@@ -19,12 +19,17 @@ const getSettings = async (req, res) => {
 const getPublicSettings = async (req, res) => {
     try {
         // Tenant scoping is automatic via plugin
-        // Get key-value settings (branding)
-        const settings = await Setting.find({ key: { $in: ['businessName', 'tagline', 'logo', 'showLogo'] } });
+        // Get key-value settings (branding & customer theme)
+        const settings = await Setting.find({ key: { $in: ['businessName', 'tagline', 'logo', 'showLogo', 'customerTheme'] } });
         const settingsMap = {};
         settings.forEach(s => {
             settingsMap[s.key] = s.value;
         });
+
+        // Fallback: If customerTheme is not set explicitly in settings, use the tenant's selectedTheme
+        if (!settingsMap.customerTheme && req.tenant && req.tenant.selectedTheme) {
+            settingsMap.customerTheme = req.tenant.selectedTheme;
+        }
 
         // Also get singleton Settings for loyalty & payment info needed by customer app
         const singletonSettings = await Settings.findOne({ key: 'businessSettings' }).lean();
@@ -155,10 +160,10 @@ const uploadSound = async (req, res) => {
 };
 
 module.exports = {
-  getSettings,
-  getPublicSettings,
-  updateSettings,
-  addUnit,
-  removeUnit,
-  uploadSound
+    getSettings,
+    getPublicSettings,
+    updateSettings,
+    addUnit,
+    removeUnit,
+    uploadSound
 };

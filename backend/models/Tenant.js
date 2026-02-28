@@ -32,7 +32,7 @@ const tenantSchema = new mongoose.Schema({
   trialExpiresAt: {
     type: Date,
     required: true,
-    default: function() {
+    default: function () {
       // Set trial 10 hari dari sekarang
       const now = new Date();
       return new Date(now.getTime() + (10 * 24 * 60 * 60 * 1000));
@@ -45,7 +45,7 @@ const tenantSchema = new mongoose.Schema({
   // Theme Customization Fields
   selectedTheme: {
     type: String,
-    enum: ['default', 'light-coffee'],
+    enum: ['default', 'light-coffee', 'merah-kuning-putih'],
     default: 'default'
   },
   hasSeenThemePopup: {
@@ -66,22 +66,22 @@ const tenantSchema = new mongoose.Schema({
 
 // Index untuk performa query
 // Case-insensitive unique index for slug to prevent duplicates like "Cafe-Kopi" and "cafe-kopi"
-tenantSchema.index({ slug: 1 }, { 
-  unique: true, 
-  collation: { locale: 'en', strength: 2 } 
+tenantSchema.index({ slug: 1 }, {
+  unique: true,
+  collation: { locale: 'en', strength: 2 }
 });
 tenantSchema.index({ isActive: 1 });
 tenantSchema.index({ status: 1 });
 tenantSchema.index({ trialExpiresAt: 1 });
 
 // Virtual untuk cek apakah trial masih aktif
-tenantSchema.virtual('isTrialActive').get(function() {
+tenantSchema.virtual('isTrialActive').get(function () {
   if (this.status !== 'trial') return false;
   return new Date() < this.trialExpiresAt;
 });
 
 // Virtual untuk hitung sisa hari trial
-tenantSchema.virtual('trialDaysRemaining').get(function() {
+tenantSchema.virtual('trialDaysRemaining').get(function () {
   if (this.status !== 'trial') return 0;
   const now = new Date();
   const diff = this.trialExpiresAt - now;
@@ -90,7 +90,7 @@ tenantSchema.virtual('trialDaysRemaining').get(function() {
 });
 
 // Method untuk cek apakah tenant bisa akses fitur
-tenantSchema.methods.canAccessFeatures = function() {
+tenantSchema.methods.canAccessFeatures = function () {
   // Jika paid atau trial masih aktif, bisa akses
   if (this.status === 'paid') return true;
   if (this.status === 'trial' && new Date() < this.trialExpiresAt) return true;

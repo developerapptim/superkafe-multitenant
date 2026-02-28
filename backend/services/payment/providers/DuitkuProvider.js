@@ -13,12 +13,12 @@ class DuitkuProvider {
     this.merchantCode = config.merchantCode;
     this.apiKey = config.apiKey;
     this.mode = config.mode || 'sandbox'; // sandbox or production
-    
+
     // Set base URL berdasarkan mode
     this.baseURL = this.mode === 'production'
       ? 'https://passport.duitku.com/webapi/api/merchant/v2'
       : 'https://sandbox.duitku.com/webapi/api/merchant/v2';
-    
+
     console.log(`[DUITKU] Initialized in ${this.mode} mode`);
   }
 
@@ -40,7 +40,7 @@ class DuitkuProvider {
       .createHash('md5')
       .update(`${this.merchantCode}${amount}${merchantOrderId}${this.apiKey}`)
       .digest('hex');
-    
+
     return signature === expectedSignature;
   }
 
@@ -66,11 +66,10 @@ class DuitkuProvider {
       // Generate signature
       const signature = this.generateSignature(merchantOrderId, amount);
 
-      // Prepare request payload
+      // Prepare request payload — tanpa paymentMethod = Hosted Payment Page
       const payload = {
         merchantCode: this.merchantCode,
         paymentAmount: amount,
-        paymentMethod: 'VC', // Virtual Account (bisa diganti sesuai kebutuhan)
         merchantOrderId: merchantOrderId,
         productDetails: productDetails,
         email: email,
@@ -82,7 +81,7 @@ class DuitkuProvider {
         expiryPeriod: expiryPeriod
       };
 
-      console.log('[DUITKU] Creating invoice', {
+      console.log('[DUITKU] Creating invoice (Hosted Payment Page)', {
         merchantOrderId,
         amount,
         mode: this.mode

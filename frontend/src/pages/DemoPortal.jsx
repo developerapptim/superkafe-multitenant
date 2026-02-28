@@ -69,7 +69,7 @@ const DemoPortal = () => {
                 </Link>
 
                 {/* Admin Card */}
-                <Link to="/login" className="group">
+                <Link to="/auth/login" className="group">
                     <motion.div
                         initial={{ opacity: 0, x: 50 }}
                         animate={{ opacity: 1, x: 0 }}

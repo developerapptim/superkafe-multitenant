@@ -5,7 +5,7 @@ const bcrypt = require('bcryptjs');
 
 exports.globalLogin = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email, password, isPersonalDevice } = req.body;
     if (!email || !password) {
       return res.status(400).json({ success: false, message: 'Email dan password harus diisi' });
     }
@@ -21,25 +21,34 @@ exports.globalLogin = async (req, res) => {
     if (!tenant) {
       return res.status(404).json({ success: false, message: 'Tenant tidak ditemukan' });
     }
-    const token = jwt.sign({ userId: user._id, tenantId: user.tenantId, tenantSlug: tenant.slug, role: user.role, email: user.email }, process.env.JWT_SECRET, { expiresIn: '24h' });
-    res.json({ 
-      success: true, 
-      token, 
-      user: { 
-        id: user._id, 
-        name: user.name, 
-        email: user.email, 
-        role: user.role, 
-        tenantId: user.tenantId, 
-        tenantSlug: tenant.slug 
-      }, 
-      tenant: { 
-        id: tenant._id, 
-        slug: tenant.slug, 
+
+    // Determine token expiration based on personal device flag
+    const isAdmin = ['admin', 'owner'].includes(user.role);
+    const expiresIn = (isPersonalDevice && isAdmin) ? '30d' : '24h';
+
+    const token = jwt.sign(
+      { userId: user._id, tenantId: user.tenantId, tenantSlug: tenant.slug, role: user.role, email: user.email },
+      process.env.JWT_SECRET,
+      { expiresIn }
+    );
+    res.json({
+      success: true,
+      token,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        tenantId: user.tenantId,
+        tenantSlug: tenant.slug
+      },
+      tenant: {
+        id: tenant._id,
+        slug: tenant.slug,
         name: tenant.businessName,
         selectedTheme: tenant.selectedTheme,
         hasSeenThemePopup: tenant.hasSeenThemePopup
-      } 
+      }
     });
   } catch (error) {
     console.error('Global login error:', error);
@@ -61,7 +70,13 @@ exports.loginWithPIN = async (req, res) => {
     if (!user) {
       return res.status(401).json({ success: false, message: 'PIN salah' });
     }
-    const token = jwt.sign({ userId: user._id, tenantId: user.tenantId, tenantSlug: tenant.slug, role: user.role, email: user.email }, process.env.JWT_SECRET, { expiresIn: '24h' });
+
+    // POS Tablet login uses 12h expiration
+    const token = jwt.sign(
+      { userId: user._id, tenantId: user.tenantId, tenantSlug: tenant.slug, role: user.role, email: user.email },
+      process.env.JWT_SECRET,
+      { expiresIn: '12h' }
+    );
     res.json({ success: true, token, user: { id: user._id, name: user.name, email: user.email, role: user.role, tenantId: user.tenantId, tenantSlug: tenant.slug } });
   } catch (error) {
     console.error('PIN login error:', error);

@@ -4,11 +4,17 @@ const PaymentService = require('../services/payment/PaymentService');
  * Payment Controller
  * Handle payment-related requests
  * Mengikuti AI_RULES.md: Error handling, logging, defensive programming
+ * 
+ * Architecture: Hosted Payment Page
+ * - Tidak mengirim paymentMethod ke Duitku
+ * - User memilih metode pembayaran langsung di halaman Duitku
+ * - Backend hanya mengirim data transaksi (amount, callback, return URL)
  */
 
 /**
  * POST /api/payments/create-invoice
  * Create payment invoice untuk subscription
+ * Redirects user ke Duitku Hosted Payment Page
  */
 const createInvoice = async (req, res) => {
   const startTime = Date.now();
@@ -37,16 +43,17 @@ const createInvoice = async (req, res) => {
       });
     }
 
-    console.log('[PAYMENT] Creating invoice', {
+    console.log('[PAYMENT] Creating invoice (Hosted Payment Page)', {
       tenantSlug,
-      planType: planType || 'monthly',
+      planType: planType || 'starter',
       email
     });
 
-    // Create payment via service
+    // Create payment via service — harga SELALU dihitung di sisi server
+    // Tidak mengirim paymentMethod — user pilih di halaman Duitku
     const result = await PaymentService.createSubscriptionPayment({
       tenantSlug,
-      planType: planType || 'monthly',
+      planType: planType || 'starter',
       email,
       customerName,
       phoneNumber
@@ -178,9 +185,9 @@ const checkStatus = async (req, res) => {
 const getPricing = async (req, res) => {
   try {
     const pricing = {
-      monthly: PaymentService.getPricing('monthly'),
-      quarterly: PaymentService.getPricing('quarterly'),
-      yearly: PaymentService.getPricing('yearly')
+      starter: PaymentService.getPricing('starter'),
+      bisnis: PaymentService.getPricing('bisnis'),
+      lifetime: PaymentService.getPricing('lifetime')
     };
 
     res.json({

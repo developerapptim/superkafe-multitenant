@@ -43,7 +43,6 @@ const Shift = lazy(() => import('./pages/admin/Shift'));
 const Pelanggan = lazy(() => import('./pages/admin/Pelanggan'));
 const Pengaturan = lazy(() => import('./pages/admin/Pengaturan'));
 const SubscriptionUpgrade = lazy(() => import('./pages/admin/SubscriptionUpgrade'));
-const SubscriptionSuccess = lazy(() => import('./pages/admin/SubscriptionSuccess'));
 const DataCenter = lazy(() => import('./pages/admin/DataCenter'));
 const FeedbackList = lazy(() => import('./pages/admin/FeedbackList'));
 const Marketing = lazy(() => import('./pages/admin/Marketing'));
@@ -105,121 +104,116 @@ function App() {
           <RefreshProvider>
             <IdleProvider>
               <Routes>
-              {/* ============================================ */}
-              {/* CRITICAL: Route order matters for priority! */}
-              {/* Static routes MUST come before dynamic routes */}
-              {/* ============================================ */}
+                {/* ============================================ */}
+                {/* CRITICAL: Route order matters for priority! */}
+                {/* Static routes MUST come before dynamic routes */}
+                {/* ============================================ */}
 
-              {/* Priority 1: Landing Page */}
-              <Route path="/" element={<LandingPage />} />
+                {/* Priority 1: Landing Page */}
+                <Route path="/" element={<LandingPage />} />
 
-              {/* Priority 2: Auth Routes - Must be before dynamic routes */}
-              <Route path="/auth/login" element={<SimpleLogin />} /> {/* Unified login with Google OAuth */}
-              <Route path="/auth/register" element={<SimpleRegister />} /> {/* Unified register with Google OAuth */}
-              <Route path="/auth/verify-otp" element={<OTPVerification />} />
-              <Route path="/auth/device-login" element={<DeviceLogin />} /> {/* Shared tablet login */}
-              <Route path="/auth/global-login" element={<GlobalLogin />} /> {/* Legacy global login */}
+                {/* Priority 2: Auth Routes - Must be before dynamic routes */}
+                <Route path="/auth/login" element={<SimpleLogin />} /> {/* Unified login with Google OAuth */}
+                <Route path="/auth/register" element={<SimpleRegister />} /> {/* Unified register with Google OAuth */}
+                <Route path="/auth/verify-otp" element={<OTPVerification />} />
+                <Route path="/auth/device-login" element={<DeviceLogin />} /> {/* Shared tablet login */}
+                <Route path="/auth/global-login" element={<GlobalLogin />} /> {/* Legacy global login */}
 
-              {/* Priority 2.5: Error Pages - Must be before dynamic routes */}
-              <Route path="/errors/invalid-slug" element={<InvalidSlug />} />
-              <Route path="/errors/tenant-not-found" element={<TenantNotFound />} />
-              <Route path="/errors/unauthorized" element={<UnauthorizedAccess />} />
+                {/* Priority 2.5: Error Pages - Must be before dynamic routes */}
+                <Route path="/errors/invalid-slug" element={<InvalidSlug />} />
+                <Route path="/errors/tenant-not-found" element={<TenantNotFound />} />
+                <Route path="/errors/unauthorized" element={<UnauthorizedAccess />} />
 
-              {/* Priority 3: Setup Wizard - Must be before dynamic routes */}
-              <Route path="/setup-cafe" element={<SetupWizard />} />
+                {/* Priority 3: Setup Wizard - Must be before dynamic routes */}
+                <Route path="/setup-cafe" element={<SetupWizard />} />
 
-              {/* Priority 4: Legacy Admin Redirect - Must be before tenant-specific routes */}
-              <Route path="/admin/*" element={<LegacyAdminRedirect />} />
+                {/* Priority 4: Legacy Admin Redirect - Must be before tenant-specific routes */}
+                <Route path="/admin/*" element={<LegacyAdminRedirect />} />
 
-              {/* Priority 5: Tenant-Specific Admin Routes - Must be before dynamic storefront */}
-              <Route path="/:tenantSlug/admin" element={
-                <ProtectedRoute allowedRoles={['admin', 'kasir', 'staf']} requireTenant={true}>
-                  <TenantRouter>
-                    <AdminLayout />
-                  </TenantRouter>
-                </ProtectedRoute>
-              }>
-                <Route index element={<Navigate to="dashboard" replace />} />
+                {/* Priority 5: Tenant-Specific Admin Routes - Must be before dynamic storefront */}
+                <Route path="/:tenantSlug/admin" element={
+                  <ProtectedRoute allowedRoles={['admin', 'kasir', 'staf']} requireTenant={true}>
+                    <TenantRouter>
+                      <AdminLayout />
+                    </TenantRouter>
+                  </ProtectedRoute>
+                }>
+                  <Route index element={<Navigate to="dashboard" replace />} />
 
-                {/* Accessible by All Roles (Admin + Kasir + Staf) */}
-                <Route path="dashboard" element={<Dashboard />} />
-                <Route path="menu" element={<MenuManagement />} />
-                <Route path="kasir" element={<Kasir />} />
-                <Route path="inventaris" element={<Inventaris />} />
-                <Route path="meja" element={<Meja />} />
-                <Route path="pelanggan" element={<Pelanggan />} />
-                <Route path="feedback" element={<FeedbackList />} />
+                  {/* Accessible by All Roles (Admin + Kasir + Staf) */}
+                  <Route path="dashboard" element={<Dashboard />} />
+                  <Route path="menu" element={<MenuManagement />} />
+                  <Route path="kasir" element={<Kasir />} />
+                  <Route path="inventaris" element={<Inventaris />} />
+                  <Route path="meja" element={<Meja />} />
+                  <Route path="pelanggan" element={<Pelanggan />} />
+                  <Route path="feedback" element={<FeedbackList />} />
 
-                {/* Restricted to Admin + Staf */}
-                <Route path="gramasi" element={
-                  <ProtectedRoute allowedRoles={['admin', 'staf']} requireTenant={true}>
-                    <Gramasi />
-                  </ProtectedRoute>
-                } />
+                  {/* Restricted to Admin + Staf */}
+                  <Route path="gramasi" element={
+                    <ProtectedRoute allowedRoles={['admin', 'staf']} requireTenant={true}>
+                      <Gramasi />
+                    </ProtectedRoute>
+                  } />
 
-                {/* Restricted to Admin Only */}
-                <Route path="keuangan" element={
-                  <ProtectedRoute allowedRoles={['admin']} requireTenant={true}>
-                    <Keuangan />
-                  </ProtectedRoute>
-                } />
-                <Route path="pegawai" element={
-                  <ProtectedRoute allowedRoles={['admin']} requireTenant={true}>
-                    <Pegawai />
-                  </ProtectedRoute>
-                } />
-                <Route path="pengaturan" element={
-                  <ProtectedRoute allowedRoles={['admin']} requireTenant={true}>
-                    <Pengaturan />
-                  </ProtectedRoute>
-                } />
-                <Route path="subscription/upgrade" element={
-                  <ProtectedRoute allowedRoles={['admin']} requireTenant={true}>
-                    <SubscriptionUpgrade />
-                  </ProtectedRoute>
-                } />
-                <Route path="subscription/success" element={
-                  <ProtectedRoute allowedRoles={['admin']} requireTenant={true}>
-                    <SubscriptionSuccess />
-                  </ProtectedRoute>
-                } />
-                <Route path="data-center" element={
-                  <ProtectedRoute allowedRoles={['admin']} requireTenant={true}>
-                    <DataCenter />
-                  </ProtectedRoute>
-                } />
-                <Route path="marketing" element={
-                  <ProtectedRoute allowedRoles={['admin']} requireTenant={true}>
-                    <Marketing />
-                  </ProtectedRoute>
-                } />
-                <Route path="laporan" element={
-                  <ProtectedRoute allowedRoles={['admin']} requireTenant={true}>
-                    <Laporan />
-                  </ProtectedRoute>
-                } />
-                <Route path="shift" element={
-                  <ProtectedRoute allowedRoles={['admin']} requireTenant={true}>
-                    <Shift />
-                  </ProtectedRoute>
-                } />
-              </Route>
-
-              {/* Priority 6: Dynamic Tenant Storefront (LOWEST PRIORITY) */}
-              {/* IMPORTANT: This MUST be last among functional routes */}
-              {/* The /:slug pattern will match ANY single-segment path */}
-              <Route path="/:slug" element={<DynamicStorefront />}>
-                <Route element={<CustomerLayout />}>
-                  <Route index element={<MenuCustomer />} />
-                  <Route path="keranjang" element={<Keranjang />} />
-                  <Route path="pesanan" element={<PesananSaya />} />
-                  <Route path="bantuan" element={<Bantuan />} />
+                  {/* Restricted to Admin Only */}
+                  <Route path="keuangan" element={
+                    <ProtectedRoute allowedRoles={['admin']} requireTenant={true}>
+                      <Keuangan />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="pegawai" element={
+                    <ProtectedRoute allowedRoles={['admin']} requireTenant={true}>
+                      <Pegawai />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="pengaturan" element={
+                    <ProtectedRoute allowedRoles={['admin']} requireTenant={true}>
+                      <Pengaturan />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="subscription/upgrade" element={
+                    <ProtectedRoute allowedRoles={['admin']} requireTenant={true}>
+                      <SubscriptionUpgrade />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="data-center" element={
+                    <ProtectedRoute allowedRoles={['admin']} requireTenant={true}>
+                      <DataCenter />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="marketing" element={
+                    <ProtectedRoute allowedRoles={['admin']} requireTenant={true}>
+                      <Marketing />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="laporan" element={
+                    <ProtectedRoute allowedRoles={['admin']} requireTenant={true}>
+                      <Laporan />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="shift" element={
+                    <ProtectedRoute allowedRoles={['admin']} requireTenant={true}>
+                      <Shift />
+                    </ProtectedRoute>
+                  } />
                 </Route>
-              </Route>
 
-              {/* Priority 7: Fallback - 404 Redirect to landing page */}
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
+                {/* Priority 6: Dynamic Tenant Storefront (LOWEST PRIORITY) */}
+                {/* IMPORTANT: This MUST be last among functional routes */}
+                {/* The /:slug pattern will match ANY single-segment path */}
+                <Route path="/:slug" element={<DynamicStorefront />}>
+                  <Route element={<CustomerLayout />}>
+                    <Route index element={<MenuCustomer />} />
+                    <Route path="keranjang" element={<Keranjang />} />
+                    <Route path="pesanan" element={<PesananSaya />} />
+                    <Route path="bantuan" element={<Bantuan />} />
+                  </Route>
+                </Route>
+
+                {/* Priority 7: Fallback - 404 Redirect to landing page */}
+                <Route path="*" element={<Navigate to="/" replace />} />
+              </Routes>
             </IdleProvider>
           </RefreshProvider>
         </Suspense>
