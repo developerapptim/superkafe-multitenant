@@ -15,7 +15,7 @@ const { runWithTenantContext } = require('../utils/tenantContext');
  */
 const registerTenant = async (req, res) => {
   const startTime = Date.now();
-  
+
   try {
     const { name, slug, email, password, adminName, authProvider, googleId, googlePicture } = req.body;
 
@@ -25,7 +25,7 @@ const registerTenant = async (req, res) => {
         body: req.body,
         ip: req.ip
       });
-      
+
       return res.status(400).json({
         success: false,
         message: 'Nama dan slug wajib diisi'
@@ -51,7 +51,7 @@ const registerTenant = async (req, res) => {
 
     // Validasi password HANYA untuk registrasi manual (bukan Google)
     const isGoogleAuth = authProvider === 'google';
-    
+
     if (!isGoogleAuth) {
       // Registrasi manual: password wajib
       if (!password) {
@@ -86,7 +86,7 @@ const registerTenant = async (req, res) => {
         error: slugValidation.error,
         ip: req.ip
       });
-      
+
       return res.status(400).json({
         success: false,
         message: slugValidation.error
@@ -100,7 +100,7 @@ const registerTenant = async (req, res) => {
         slug,
         existingTenant: existingTenant._id
       });
-      
+
       return res.status(409).json({
         success: false,
         message: 'Slug sudah digunakan, silakan pilih slug lain'
@@ -142,7 +142,7 @@ const registerTenant = async (req, res) => {
         async () => {
           // Seeding data awal: Buat koleksi settings dengan data default
           const SettingModel = require('../models/Setting');
-          
+
           // Data settings awal untuk tenant baru
           const defaultSettings = [
             {
@@ -221,7 +221,7 @@ const registerTenant = async (req, res) => {
 
           // Generate OTP untuk email verification (hanya untuk registrasi manual)
           let otpCode, otpExpiry;
-          
+
           if (!isGoogleAuth) {
             const { generateOTP, sendOTPEmail } = require('../services/emailService');
             otpCode = generateOTP();
@@ -315,8 +315,8 @@ const registerTenant = async (req, res) => {
     // Response sukses
     const responseData = {
       success: true,
-      message: isGoogleAuth 
-        ? 'Tenant berhasil didaftarkan dengan Google. Selamat datang!' 
+      message: isGoogleAuth
+        ? 'Tenant berhasil didaftarkan dengan Google. Selamat datang!'
         : 'Tenant berhasil didaftarkan. Silakan cek email Anda untuk kode verifikasi.',
       data: {
         id: newTenant._id,
@@ -374,7 +374,7 @@ const registerTenant = async (req, res) => {
 
   } catch (error) {
     const duration = Date.now() - startTime;
-    
+
     // Log error dengan konteks lengkap
     console.error('[TENANT ERROR] Gagal mendaftarkan tenant', {
       error: error.message,
@@ -523,21 +523,34 @@ const getTrialStatus = async (req, res) => {
     }
 
     const now = new Date();
-    const daysRemaining = tenant.status === 'trial' 
-      ? Math.ceil((tenant.trialExpiresAt - now) / (1000 * 60 * 60 * 24))
-      : 0;
 
-    const isActive = tenant.status === 'paid' || 
-                     (tenant.status === 'trial' && now < tenant.trialExpiresAt);
+    let expiresAt = tenant.trialExpiresAt;
+    let daysRemaining = 0;
+    let isActive = false;
+
+    if (tenant.status === 'paid') {
+      expiresAt = tenant.subscriptionExpiresAt || tenant.trialExpiresAt;
+      const msDiff = expiresAt - now;
+      daysRemaining = msDiff > 0 ? Math.ceil(msDiff / (1000 * 60 * 60 * 24)) : 0;
+      isActive = msDiff > 0;
+    } else {
+      // trial or other
+      const msDiff = tenant.trialExpiresAt - now;
+      daysRemaining = msDiff > 0 ? Math.ceil(msDiff / (1000 * 60 * 60 * 24)) : 0;
+      isActive = msDiff > 0;
+    }
 
     res.json({
       success: true,
       data: {
         status: tenant.status,
+        expiresAt: expiresAt,
         trialExpiresAt: tenant.trialExpiresAt,
-        daysRemaining: daysRemaining > 0 ? daysRemaining : 0,
+        subscriptionExpiresAt: tenant.subscriptionExpiresAt,
+        daysRemaining: daysRemaining,
         isActive: isActive,
-        canAccessFeatures: isActive
+        canAccessFeatures: isActive,
+        planName: tenant.subscriptionPlan || 'Starter (Default)'
       }
     });
 

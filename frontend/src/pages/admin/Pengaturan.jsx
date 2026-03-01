@@ -459,7 +459,7 @@ function Pengaturan() {
                             <div className="bg-black/5 p-4 rounded-xl border admin-border-accent">
                                 <p className="text-sm opacity-70 admin-text-primary mb-1">Masa Berlaku Hingga</p>
                                 <p className="font-bold text-lg admin-text-primary">
-                                    {new Date(subscription.data.trialExpiresAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
+                                    {new Date(subscription.data.expiresAt || subscription.data.trialExpiresAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
                                 </p>
                             </div>
                         </div>

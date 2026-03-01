@@ -48,7 +48,7 @@ const TrialStatusBanner = () => {
   // Jangan render sama sekali jika loading atau data kosong
   if (loading || !trialInfo) return null;
 
-  const { daysRemaining, status, trialExpiresAt } = trialInfo;
+  const { daysRemaining, status, expiresAt, trialExpiresAt } = trialInfo;
 
   // LOGIKA UTAMA SMART BANNER: Hide jika sisa hari > 10
   if (daysRemaining > 10) return null;
@@ -82,7 +82,7 @@ const TrialStatusBanner = () => {
     statusText = status === 'trial' ? 'Trial Aktif' : 'Paket Aktif';
   }
 
-  const expiryDate = new Date(trialExpiresAt).toLocaleDateString('id-ID', {
+  const expiryDate = new Date(expiresAt || trialExpiresAt).toLocaleDateString('id-ID', {
     day: 'numeric',
     month: 'long',
     year: 'numeric'
