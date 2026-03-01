@@ -351,7 +351,7 @@ export const globalAuthAPI = {
 export const paymentAPI = {
     createInvoice: (data) => api.post('/payments/create-invoice', data),
     checkStatus: (merchantOrderId) => api.get(`/payments/status/${merchantOrderId}`),
-    getPricing: () => api.get('/payments/pricing'),
+    getPricing: () => api.get('/payments/pricing')
 };
 
 export default api;

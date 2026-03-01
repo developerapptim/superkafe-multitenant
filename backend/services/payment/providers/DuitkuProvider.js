@@ -15,11 +15,10 @@ class DuitkuProvider {
     this.mode = config.mode || 'sandbox'; // sandbox or production
 
     // Set base URL berdasarkan mode.
-    // Sandbox URL: https://sandbox.duitku.com/webapi/api/merchant/v2
-    // Production URL: https://passport.duitku.com/webapi/api/merchant/v2
+    // Duitku Passport API (Hosted Payment Page)
     this.baseURL = this.mode === 'production'
-      ? 'https://passport.duitku.com/webapi/api/merchant/v2'
-      : 'https://sandbox.duitku.com/webapi/api/merchant/v2';
+      ? 'https://api-prod.duitku.com/api/merchant'
+      : 'https://api-sandbox.duitku.com/api/merchant';
 
     console.log(`[DUITKU] Initialized in ${this.mode} mode. BaseURL: ${this.baseURL}`);
   }
@@ -49,7 +48,7 @@ class DuitkuProvider {
   }
 
   /**
-   * Create payment invoice
+   * Create payment invoice (Passport API / Hosted Payment Page)
    * @param {Object} params - Payment parameters
    * @returns {Promise<Object>} Payment response
    */
@@ -67,44 +66,69 @@ class DuitkuProvider {
         expiryPeriod = 60 // minutes
       } = params;
 
-      // Generate signature
-      const signature = this.generateSignature(merchantOrderId, amount);
+      // Passport API Header Signature: SHA256(merchantCode + timestamp + apiKey)
+      const timestamp = new Date().getTime();
+      const stringToHash = `${this.merchantCode}${timestamp}${this.apiKey}`;
+      const signature = crypto.createHash('sha256').update(stringToHash).digest('hex');
 
-      // Prepare request payload
+      // Nama depan dan nama belakang untuk form Duitku (dipisah secara sederhana)
+      let firstName = customerName;
+      let lastName = '';
+      if (customerName && customerName.includes(' ')) {
+        const parts = customerName.split(' ');
+        firstName = parts[0];
+        lastName = parts.slice(1).join(' ');
+      }
+
+      // Prepare request payload for Passport API
       const payload = {
-        merchantCode: this.merchantCode,
         paymentAmount: amount,
         merchantOrderId: merchantOrderId,
         productDetails: productDetails,
         email: email,
+        additionalParam: '',
+        merchantUserInfo: '',
         customerVaName: customerName,
         phoneNumber: phoneNumber,
+        itemDetails: [
+          {
+            name: productDetails,
+            price: amount,
+            quantity: 1
+          }
+        ],
+        customerDetail: {
+          firstName: firstName,
+          lastName: lastName,
+          email: email,
+          phoneNumber: phoneNumber
+        },
         callbackUrl: callbackUrl,
         returnUrl: returnUrl,
-        signature: signature,
-        expiryPeriod: expiryPeriod,
-        paymentMethod: 'VC' // Required by Duitku API v2 even for generating Hosted Payment URL
+        expiryPeriod: expiryPeriod
       };
 
-      console.log('[DUITKU DEBUG] Raw Payload sent to Axios:', JSON.stringify(payload, null, 2));
+      console.log('[DUITKU] Creating Generic Payment Link via Passport API');
 
-      // Payload URL check
-      const endpoint = `${this.baseURL}/inquiry`;
-      console.log('[DUITKU DEBUG] Hitting Endpoint:', endpoint);
+      const endpoint = `${this.baseURL}/createInvoice`;
+      console.log('[DUITKU] Endpoint:', endpoint);
 
-      // Call Duitku API
-      const response = await axios.post(
-        endpoint,
-        payload,
-        {
-          headers: {
-            'Content-Type': 'application/json'
-          }
+      // Call Duitku Passport API
+      const response = await axios({
+        method: 'POST',
+        url: endpoint,
+        data: payload,
+        headers: {
+          "Accept": "application/json",
+          "Content-type": "application/json; charset=UTF-8",
+          "x-duitku-signature": signature,
+          "x-duitku-timestamp": `${timestamp}`,
+          "x-duitku-merchantcode": `${this.merchantCode}`
         }
-      );
+      });
 
       if (response.data.statusCode === '00') {
-        console.log('[DUITKU] Invoice created successfully', {
+        console.log('[DUITKU] Payment link created successfully', {
           merchantOrderId,
           reference: response.data.reference
         });
@@ -113,8 +137,7 @@ class DuitkuProvider {
           success: true,
           paymentUrl: response.data.paymentUrl,
           reference: response.data.reference,
-          vaNumber: response.data.vaNumber,
-          amount: response.data.amount,
+          amount: amount,
           statusCode: response.data.statusCode,
           statusMessage: response.data.statusMessage
         };
@@ -126,7 +149,7 @@ class DuitkuProvider {
 
         return {
           success: false,
-          error: response.data.statusMessage || 'Failed to create invoice'
+          error: response.data.statusMessage || 'Failed to create payment link'
         };
       }
     } catch (error) {
@@ -268,6 +291,8 @@ class DuitkuProvider {
       throw new Error(`Status check error: ${error.message}`);
     }
   }
+
+
 }
 
 module.exports = DuitkuProvider;

@@ -73,7 +73,7 @@ class PaymentService {
 
       const returnUrl = `${process.env.FRONTEND_URL || 'https://superkafe.com'}/admin`;
 
-      // Prepare payment parameters (tanpa paymentMethod = Hosted Payment Page)
+      // Prepare payment parameters
       const paymentParams = {
         merchantOrderId,
         amount: pricing.amount,
@@ -84,6 +84,7 @@ class PaymentService {
         callbackUrl: callbackUrl,
         returnUrl: returnUrl,
         expiryPeriod: 60 // 60 menit
+        // paymentMethod TIDAK dikirim — user memilih di Hosted Payment Page Duitku
       };
 
       console.log('[PAYMENT SERVICE] Creating subscription payment (Hosted Payment Page)', {

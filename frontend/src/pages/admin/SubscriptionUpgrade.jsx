@@ -8,10 +8,10 @@ import { paymentAPI } from '../../services/api';
  * Subscription Upgrade Page
  * Halaman untuk upgrade dari trial ke paid subscription
  * 
- * Architecture: Hosted Payment Page
+ * Architecture: Hosted Payment Page (Seamless)
  * - User memilih paket di halaman ini
- * - Setelah klik "Lanjutkan Pembayaran", user diarahkan ke halaman Duitku
- * - User memilih metode pembayaran langsung di halaman resmi Duitku
+ * - Setelah klik "Lanjutkan Pembayaran", user langsung diarahkan ke halaman resmi Duitku
+ * - User memilih metode pembayaran langsung di halaman Duitku (VA, QRIS, E-Wallet, dll)
  * - Setelah pembayaran berhasil, callback otomatis mengupdate status tenant
  */
 const SubscriptionUpgrade = () => {
@@ -46,7 +46,7 @@ const SubscriptionUpgrade = () => {
       const user = JSON.parse(localStorage.getItem('user') || '{}');
 
       // Kirim planType saja — harga dihitung AMAN di backend
-      // Tidak kirim paymentMethod — user pilih langsung di halaman Duitku
+      // paymentMethod TIDAK dikirim — user memilih langsung di halaman Duitku
       const response = await paymentAPI.createInvoice({
         tenantSlug,
         planType: selectedPlan,
