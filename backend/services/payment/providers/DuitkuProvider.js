@@ -70,7 +70,7 @@ class DuitkuProvider {
       // Generate signature
       const signature = this.generateSignature(merchantOrderId, amount);
 
-      // Prepare request payload — tanpa paymentMethod = Hosted Payment Page
+      // Prepare request payload
       const payload = {
         merchantCode: this.merchantCode,
         paymentAmount: amount,
@@ -82,7 +82,8 @@ class DuitkuProvider {
         callbackUrl: callbackUrl,
         returnUrl: returnUrl,
         signature: signature,
-        expiryPeriod: expiryPeriod
+        expiryPeriod: expiryPeriod,
+        paymentMethod: 'VC' // Required by Duitku API v2 even for generating Hosted Payment URL
       };
 
       console.log('[DUITKU DEBUG] Raw Payload sent to Axios:', JSON.stringify(payload, null, 2));
