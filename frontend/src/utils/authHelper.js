@@ -122,6 +122,12 @@ export const getDashboardUrl = () => {
   const session = checkActiveSession();
   if (!session) return null;
 
+  // New users without a tenant setup should be redirected to the setup wizard
+  // The 'tenantSlug' might technically exist as 'undefined', so check for valid values
+  if (!session.user?.hasCompletedSetup || !session.tenantSlug || session.tenantSlug === 'undefined') {
+    return '/setup-cafe';
+  }
+
   return `/${session.tenantSlug}/admin/dashboard`;
 };
 
