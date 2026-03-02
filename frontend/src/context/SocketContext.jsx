@@ -21,7 +21,10 @@ export const SocketProvider = ({ children }) => {
         // Determine socket URL based on environment
         let socketUrl;
 
-        if (import.meta.env.PROD || window.location.protocol === 'https:') {
+        // Check if baseUrl is using an IP address or localhost
+        const isLocalOrIP = baseUrl.includes('localhost') || baseUrl.match(/\d+\.\d+\.\d+\.\d+/);
+
+        if ((import.meta.env.PROD && !isLocalOrIP) || window.location.protocol === 'https:') {
             // Production: Use HTTPS without port
             // Example: https://superkafe.com
             socketUrl = baseUrl.replace('http:', 'https:');
@@ -29,7 +32,7 @@ export const SocketProvider = ({ children }) => {
             // Remove port if present (e.g., :5001)
             socketUrl = socketUrl.replace(/:\d+/, '');
         } else {
-            // Development: Use HTTP with port
+            // Development or Direct IP: Use HTTP with port
             socketUrl = baseUrl;
         }
 
@@ -41,7 +44,7 @@ export const SocketProvider = ({ children }) => {
             reconnectionAttempts: 5,
             reconnectionDelay: 1000,
             path: '/socket.io/', // Default path
-            secure: window.location.protocol === 'https:' // Use secure connection for HTTPS
+            secure: socketUrl.startsWith('https:') // Use secure connection for HTTPS
         });
 
         newSocket.on('connect', () => {

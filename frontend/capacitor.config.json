@@ -6,7 +6,18 @@
     "androidScheme": "http",
     "cleartext": true,
     "allowNavigation": [
-      "76.13.196.116"
+      "76.13.196.116",
+      "*.googleapis.com"
     ]
+  },
+  "plugins": {
+    "GoogleAuth": {
+      "scopes": [
+        "profile",
+        "email"
+      ],
+      "serverClientId": "706624374984-qg1ueivbvougs0gff3842jkgvf9qurno.apps.googleusercontent.com",
+      "forceCodeForRefreshToken": false
+    }
   }
 }
