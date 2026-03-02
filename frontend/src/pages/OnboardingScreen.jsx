@@ -5,44 +5,59 @@ import 'swiper/css';
 import 'swiper/css/pagination';
 import { useState } from 'react';
 
+import onboarding1 from '../assets/onboarding1.webp';
+import onboarding2 from '../assets/onboarding2.webp';
+import onboarding3 from '../assets/onboarding3.webp';
+import onboarding4 from '../assets/onboarding4.webp';
+import onboarding5 from '../assets/onboarding5.webp';
+
 const ONBOARDING_KEY = 'hasSeenOnboarding';
 
 const slides = [
     {
         id: 1,
-        icon: '📱',
-        title: 'Sistem Order Digital',
-        description: 'Terima pesanan dari meja atau takeaway langsung dari layar. Tidak perlu lagi catatan manual yang berantakan.',
+        image: onboarding1,
+        title: 'Selamat Datang di Superkafe',
+        description: 'Solusi digital terpadu untuk efisiensi operasional kafe dan warkop Anda.',
         gradient: 'from-amber-500 to-orange-600',
         bgColor: 'bg-amber-50',
         accentColor: 'text-amber-700',
     },
     {
         id: 2,
-        icon: '📦',
-        title: 'Manajemen Stok',
-        description: 'Pantau persediaan bahan baku secara real-time. Dapat notifikasi otomatis sebelum stok habis.',
+        image: onboarding2,
+        title: 'Manajemen Pesanan Digital',
+        description: 'Proses pesanan pelanggan lebih cepat dan akurat langsung dari meja melalui sistem POS yang terintegrasi.',
         gradient: 'from-emerald-500 to-teal-600',
         bgColor: 'bg-emerald-50',
         accentColor: 'text-emerald-700',
     },
     {
         id: 3,
-        icon: '📊',
-        title: 'Laporan Keuangan',
-        description: 'Lihat ringkasan penjualan harian, mingguan, dan bulanan. Semua data transaksi tersimpan otomatis.',
+        image: onboarding3,
+        title: 'Kontrol Stok Real-time',
+        description: 'Pantau ketersediaan bahan baku secara otomatis dan dapatkan notifikasi saat stok menipis.',
         gradient: 'from-blue-500 to-indigo-600',
         bgColor: 'bg-blue-50',
         accentColor: 'text-blue-700',
     },
     {
         id: 4,
-        icon: '✨',
-        title: 'Banyak Fitur Kafe Lainnya',
-        description: 'Kelola pegawai, meja, diskon, struk digital, dan masih banyak lagi — semuanya dalam satu aplikasi.',
+        image: onboarding4,
+        title: 'Laporan Keuangan Akurat',
+        description: 'Analisis performa bisnis Anda kapan saja dengan laporan penjualan harian yang detail dan mudah dipahami.',
         gradient: 'from-purple-500 to-pink-600',
         bgColor: 'bg-purple-50',
         accentColor: 'text-purple-700',
+    },
+    {
+        id: 5,
+        image: onboarding5,
+        title: 'Serta Berbagai Fitur Lainnya',
+        description: 'Mendukung Kafe Anda lebih optimal dengan manajemen karyawan, reservasi meja, hingga sistem shift.',
+        gradient: 'from-rose-500 to-red-600',
+        bgColor: 'bg-rose-50',
+        accentColor: 'text-rose-700',
     },
 ];
 
@@ -65,11 +80,11 @@ const OnboardingScreen = () => {
 
     return (
         <div
-            className={`min-h-screen flex flex-col transition-colors duration-500 ${currentSlide.bgColor}`}
+            className={`min-h-screen flex flex-col transition-colors duration-500 p-safe ${currentSlide.bgColor}`}
             style={{ userSelect: 'none' }}
         >
             {/* Skip Button */}
-            <div className="flex justify-end p-5 pt-safe">
+            <div className="flex justify-end p-5">
                 {!isLastSlide && (
                     <button
                         onClick={handleSkip}
@@ -81,9 +96,9 @@ const OnboardingScreen = () => {
             </div>
 
             {/* Swiper Slides */}
-            <div className="flex-1 flex flex-col">
+            <div className="flex-1 flex flex-col pt-4">
                 <Swiper
-                    modules={[Pagination]}
+                    modules={[Pagination, Autoplay]}
                     pagination={{
                         clickable: true,
                         bulletClass: 'swiper-pagination-bullet !bg-gray-300 !opacity-100 !w-2 !h-2',
@@ -97,24 +112,24 @@ const OnboardingScreen = () => {
                 >
                     {slides.map((slide) => (
                         <SwiperSlide key={slide.id}>
-                            <div className="flex flex-col items-center justify-center px-8 pt-4 pb-16 text-center h-full min-h-[70vh]">
-                                {/* Icon / Illustration */}
-                                <div
-                                    className={`w-36 h-36 rounded-3xl bg-gradient-to-br ${slide.gradient} flex items-center justify-center text-6xl shadow-xl mb-10`}
-                                    style={{
-                                        boxShadow: `0 20px 60px rgba(0,0,0,0.15)`,
-                                    }}
-                                >
-                                    {slide.icon}
+                            <div className="flex flex-col items-center justify-center px-8 pb-16 text-center h-full min-h-[60vh]">
+                                {/* Illustration / Image */}
+                                <div className="w-full max-w-[280px] aspect-square mb-8 flex items-center justify-center">
+                                    <img
+                                        src={slide.image}
+                                        alt={slide.title}
+                                        className="w-full h-full object-contain filter drop-shadow-xl"
+                                        loading="lazy"
+                                    />
                                 </div>
 
                                 {/* Title */}
-                                <h1 className={`text-3xl font-extrabold mb-4 ${slide.accentColor} leading-tight`}>
+                                <h1 className={`text-2xl font-extrabold mb-4 ${slide.accentColor} leading-tight`}>
                                     {slide.title}
                                 </h1>
 
                                 {/* Description */}
-                                <p className="text-gray-500 text-base leading-relaxed max-w-xs">
+                                <p className="text-gray-600 text-[15px] leading-relaxed max-w-sm">
                                     {slide.description}
                                 </p>
                             </div>
@@ -124,7 +139,7 @@ const OnboardingScreen = () => {
             </div>
 
             {/* Bottom CTA */}
-            <div className="px-8 pb-safe pb-10 pt-4">
+            <div className="px-8 pb-10 pt-4">
                 {isLastSlide ? (
                     <button
                         onClick={handleFinish}
@@ -132,7 +147,7 @@ const OnboardingScreen = () => {
                        bg-gradient-to-r from-amber-600 to-orange-600 active:scale-95 transition-all"
                         style={{ boxShadow: '0 8px 30px rgba(217, 119, 6, 0.4)' }}
                     >
-                        Mulai Sekarang 🚀
+                        Mulai Sekarang
                     </button>
                 ) : (
                     <div className="h-14" /> // Spacing placeholder so layout doesn't jump
