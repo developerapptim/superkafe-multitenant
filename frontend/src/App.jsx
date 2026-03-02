@@ -12,6 +12,7 @@ import './App.css';
 // Auth & Protected Routes
 import ProtectedRoute from './components/ProtectedRoute';
 import LegacyAdminRedirect from './components/LegacyAdminRedirect';
+import MobileEntryGuard from './components/MobileEntryGuard';
 import TenantRouter from './components/TenantRouter';
 
 // Error Pages
@@ -27,6 +28,7 @@ const GlobalLogin = lazy(() => import('./pages/auth/GlobalLogin'));
 const DeviceLogin = lazy(() => import('./pages/auth/DeviceLogin'));
 const OTPVerification = lazy(() => import('./pages/auth/OTPVerification'));
 const SetupWizard = lazy(() => import('./pages/SetupWizard'));
+const OnboardingScreen = lazy(() => import('./pages/OnboardingScreen'));
 
 // Admin Layout
 const AdminLayout = lazy(() => import('./pages/admin/AdminLayout'));
@@ -109,8 +111,11 @@ function App() {
                 {/* Static routes MUST come before dynamic routes */}
                 {/* ============================================ */}
 
-                {/* Priority 1: Landing Page */}
-                <Route path="/" element={<LandingPage />} />
+                {/* Priority 1: Root Entry Guard (Landing Page for Web, Onboarding/Login for Mobile) */}
+                <Route path="/" element={<MobileEntryGuard />} />
+
+                {/* Priority 1.5: Mobile Onboarding */}
+                <Route path="/onboarding" element={<OnboardingScreen />} />
 
                 {/* Priority 2: Auth Routes - Must be before dynamic routes */}
                 <Route path="/auth/login" element={<SimpleLogin />} /> {/* Unified login with Google OAuth */}
