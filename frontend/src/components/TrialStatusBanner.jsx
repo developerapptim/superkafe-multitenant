@@ -2,22 +2,23 @@ import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FiClock, FiAlertTriangle, FiCheckCircle } from 'react-icons/fi';
 import api from '../services/api';
+import usePlatform from '../hooks/usePlatform';
 
 /**
- * Smart Trial Status Badge 
- * Hanya muncul ketika sisa masa trial/aktif <= 10 hari.
- * Bentuk badge pil kecil yang memunculkan dropdown interaktif ketika di-klik.
+ * Smart Subscription Status Badge
+ * Shows when remaining days ≤ 10, or during grace period.
+ * Pill badge with dropdown on click.
  */
-const TrialStatusBanner = () => {
-  const [trialInfo, setTrialInfo] = useState(null);
-  const [loading, setLoading] = useState(true);
+const TrialStatusBanner = ({ subscriptionData }) => {
+  const [trialInfo, setTrialInfo] = useState(subscriptionData || null);
+  const [loading, setLoading] = useState(!subscriptionData);
   const [showDropdown, setShowDropdown] = useState(false);
   const dropdownRef = useRef(null);
+  const { isNative, isWeb } = usePlatform();
 
   useEffect(() => {
-    fetchTrialStatus();
+    if (!subscriptionData) fetchTrialStatus();
 
-    // Close dropdown on outside click
     const handleClickOutside = (event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
         setShowDropdown(false);
@@ -27,17 +28,20 @@ const TrialStatusBanner = () => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  // Update when external data changes (Socket.io)
+  useEffect(() => {
+    if (subscriptionData) {
+      setTrialInfo(subscriptionData);
+      setLoading(false);
+    }
+  }, [subscriptionData]);
+
   const fetchTrialStatus = async () => {
     try {
       const tenantSlug = localStorage.getItem('tenant_slug');
-      if (!tenantSlug) {
-        setLoading(false);
-        return;
-      }
+      if (!tenantSlug) { setLoading(false); return; }
       const response = await api.get(`/tenants/${tenantSlug}/trial-status`);
-      if (response.data.success) {
-        setTrialInfo(response.data.data);
-      }
+      if (response.data.success) setTrialInfo(response.data.data);
     } catch (error) {
       console.error('Error fetching subscription status:', error);
     } finally {
@@ -45,20 +49,27 @@ const TrialStatusBanner = () => {
     }
   };
 
-  // Jangan render sama sekali jika loading atau data kosong
   if (loading || !trialInfo) return null;
 
-  const { daysRemaining, status, expiresAt, trialExpiresAt } = trialInfo;
+  const { daysRemaining, status, expiresAt, trialExpiresAt, isGracePeriod, gracePeriodEndsAt } = trialInfo;
 
-  // LOGIKA UTAMA SMART BANNER: Hide jika sisa hari > 10
-  if (daysRemaining > 10) return null;
+  // Show badge for: grace period, expired, or ≤ 10 days remaining
+  const isExpiredOrGrace = status === 'grace' || status === 'expired';
+  if (!isExpiredOrGrace && daysRemaining > 10) return null;
 
-  // Menentukan styling dan pesan urgency
+  // Determine styling
   let bgColor, borderColor, textColor, badgeBgColor, icon, statusText;
-  const isCritical = daysRemaining <= 0;
-  const isWarning = daysRemaining > 0 && daysRemaining <= 3;
+  const isCritical = daysRemaining <= 0 || status === 'expired';
+  const isWarning = isGracePeriod || (daysRemaining > 0 && daysRemaining <= 3);
 
-  if (isCritical) {
+  if (isGracePeriod) {
+    bgColor = 'bg-orange-500/10';
+    borderColor = 'border-orange-500/30';
+    textColor = 'text-orange-400';
+    badgeBgColor = 'bg-orange-500/20 text-orange-500 border-orange-500/30';
+    icon = <FiAlertTriangle className="w-4 h-4" />;
+    statusText = 'Masa Tenggang';
+  } else if (isCritical) {
     bgColor = 'bg-red-500/10';
     borderColor = 'border-red-500/30';
     textColor = 'text-red-400';
@@ -73,7 +84,6 @@ const TrialStatusBanner = () => {
     icon = <FiAlertTriangle className="w-4 h-4" />;
     statusText = 'Segera Habis';
   } else {
-    // 4-10 days
     bgColor = 'bg-green-500/10';
     borderColor = 'border-green-500/30';
     textColor = 'text-green-400';
@@ -82,15 +92,20 @@ const TrialStatusBanner = () => {
     statusText = status === 'trial' ? 'Trial Aktif' : 'Paket Aktif';
   }
 
-  const expiryDate = new Date(expiresAt || trialExpiresAt).toLocaleDateString('id-ID', {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric'
+  const displayDate = expiresAt || trialExpiresAt;
+  const expiryDate = new Date(displayDate).toLocaleDateString('id-ID', {
+    day: 'numeric', month: 'long', year: 'numeric'
   });
+
+  const badgeLabel = isGracePeriod
+    ? 'Masa Tenggang'
+    : `${statusText}: ${daysRemaining} Hari`;
+
+  const tenantSlug = localStorage.getItem('tenant_slug');
 
   return (
     <div className="relative inline-block" ref={dropdownRef}>
-      {/* CUTE SMART PILL BADGE */}
+      {/* PILL BADGE */}
       <motion.button
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
@@ -100,11 +115,11 @@ const TrialStatusBanner = () => {
         className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border backdrop-blur-sm cursor-pointer transition-colors ${badgeBgColor} ${showDropdown ? 'shadow-lg brightness-125' : ''}`}
         title="Info Langganan"
       >
-        <span className={isCritical || isWarning ? "animate-pulse" : ""}>{icon}</span>
-        <span>{statusText}: {daysRemaining} Hari</span>
+        <span className={isCritical || isWarning || isGracePeriod ? "animate-pulse" : ""}>{icon}</span>
+        <span>{badgeLabel}</span>
       </motion.button>
 
-      {/* DROPDOWN POPUP INFO */}
+      {/* DROPDOWN */}
       <AnimatePresence>
         {showDropdown && (
           <motion.div
@@ -115,30 +130,37 @@ const TrialStatusBanner = () => {
             className={`absolute z-50 left-0 mt-2 w-72 backdrop-blur-xl ${bgColor} border ${borderColor} rounded-2xl p-4 shadow-2xl origin-top-left`}
           >
             <div className="flex gap-3">
-              <div className={`mt-1 ${textColor}`}>
-                {icon}
-              </div>
+              <div className={`mt-1 ${textColor}`}>{icon}</div>
               <div>
                 <h4 className={`font-bold ${textColor} text-sm mb-1`}>
-                  {isCritical ? "Akses Terkunci. Segera Upgrade!"
-                    : isWarning ? "Peringatan Kedaluwarsa!"
-                      : "Informasi Langganan"}
+                  {isGracePeriod ? "Masa Tenggang Aktif"
+                    : isCritical ? "Akses Terkunci. Segera Upgrade!"
+                      : isWarning ? "Peringatan Kedaluwarsa!"
+                        : "Informasi Langganan"}
                 </h4>
                 <p className="text-xs text-white/70 leading-relaxed mb-3">
-                  Kelanjutan akses aplikasi Admin Panel akan terhenti pada <strong>{expiryDate}</strong> ({daysRemaining} hari lagi).
+                  {isGracePeriod
+                    ? `Langganan Anda sudah habis. Anda memiliki masa tenggang hingga ${gracePeriodEndsAt ? new Date(gracePeriodEndsAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) : '—'}. Segera perpanjang sebelum akses dibekukan.`
+                    : `Kelanjutan akses aplikasi akan terhenti pada ${expiryDate} (${daysRemaining} hari lagi).`}
                 </p>
 
-                <button
-                  onClick={() => window.location.href = `/${localStorage.getItem('tenant_slug')}/admin/pengaturan`}
-                  className="w-full py-2 bg-gradient-to-r from-purple-500 to-blue-500 rounded-lg font-semibold text-white text-xs hover:shadow-lg transition-all active:scale-95"
-                >
-                  Lihat Opsi Upgrade
-                </button>
+                {isWeb ? (
+                  <button
+                    onClick={() => window.location.href = `/${tenantSlug}/admin/subscription/upgrade`}
+                    className="w-full py-2 bg-gradient-to-r from-purple-500 to-blue-500 rounded-lg font-semibold text-white text-xs hover:shadow-lg transition-all active:scale-95"
+                  >
+                    {isGracePeriod ? 'Perpanjang Sekarang' : 'Lihat Opsi Upgrade'}
+                  </button>
+                ) : (
+                  <p className="text-[10px] text-purple-300/70 leading-relaxed">
+                    Perpanjang via browser: superkafe.com/{tenantSlug}/admin/subscription/upgrade
+                  </p>
+                )}
               </div>
             </div>
 
-            {/* Progress Bar Visual (Hardcoded to 10 max due to <= 10 condition) */}
-            {!isCritical && (
+            {/* Progress Bar */}
+            {!isCritical && !isGracePeriod && (
               <div className="mt-3 pt-3 border-t border-white/10">
                 <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
                   <motion.div

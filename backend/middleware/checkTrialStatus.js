@@ -1,13 +1,20 @@
 const Tenant = require('../models/Tenant');
 
 /**
- * Middleware untuk cek status trial tenant
- * Blokir akses ke fitur premium jika trial habis dan belum bayar
+ * Subscription Middleware
+ * Checks tenant subscription status and enforces access control.
+ * Supports: trial, active, grace (3-day window), expired, suspended
+ */
+
+const GRACE_PERIOD_DAYS = 3;
+
+/**
+ * Blocking middleware — denies access if subscription is expired/suspended.
+ * Grace period: allows access but sets warning header.
  */
 const checkTrialStatus = async (req, res, next) => {
   try {
-    // Ambil tenant slug dari header atau request
-    const tenantSlug = req.headers['x-tenant-id'] || req.tenantSlug;
+    const tenantSlug = req.headers['x-tenant-id'] || req.headers['x-tenant-slug'] || req.tenantSlug;
 
     if (!tenantSlug) {
       return res.status(400).json({
@@ -16,8 +23,7 @@ const checkTrialStatus = async (req, res, next) => {
       });
     }
 
-    // Cari tenant
-    const tenant = await Tenant.findOne({ slug: tenantSlug.toLowerCase() }).lean();
+    const tenant = await Tenant.findOne({ slug: tenantSlug.toLowerCase() });
 
     if (!tenant) {
       return res.status(404).json({
@@ -26,112 +32,160 @@ const checkTrialStatus = async (req, res, next) => {
       });
     }
 
-    // Cek status tenant
+    // Auto-transition status based on dates
+    const statusChanged = tenant.refreshSubscriptionStatus();
+    if (statusChanged) {
+      await tenant.save();
+    }
+
     const now = new Date();
 
-    // Jika status paid, langsung allow
-    if (tenant.status === 'paid') {
+    // ACTIVE or PAID (legacy compat) — full access
+    if (tenant.status === 'active' || tenant.status === 'paid') {
       req.tenant = tenant;
+      req.subscriptionInfo = buildSubscriptionInfo(tenant, now);
       return next();
     }
 
-    // Jika status trial, cek expiry
+    // TRIAL — check expiry
     if (tenant.status === 'trial') {
       if (now < tenant.trialExpiresAt) {
-        // Trial masih aktif
         req.tenant = tenant;
-        
-        // Hitung sisa hari
-        const daysRemaining = Math.ceil((tenant.trialExpiresAt - now) / (1000 * 60 * 60 * 24));
-        
-        // Attach info ke request untuk logging
-        req.trialInfo = {
-          daysRemaining,
-          expiresAt: tenant.trialExpiresAt
-        };
-        
+        req.subscriptionInfo = buildSubscriptionInfo(tenant, now);
         return next();
       } else {
-        // Trial sudah habis
-        console.warn('[TRIAL EXPIRED]', {
-          tenant: tenantSlug,
-          expiresAt: tenant.trialExpiresAt,
-          now: now
-        });
-
         return res.status(403).json({
           success: false,
           error: 'Masa trial habis. Silakan upgrade ke paket berbayar untuk melanjutkan.',
           trialExpired: true,
+          subscriptionExpired: true,
           expiresAt: tenant.trialExpiresAt
         });
       }
     }
 
-    // Jika status expired atau suspended
+    // GRACE — allow access but warn
+    if (tenant.status === 'grace') {
+      req.tenant = tenant;
+      req.subscriptionInfo = buildSubscriptionInfo(tenant, now);
+      // Set warning header for frontend to detect
+      res.set('X-Subscription-Warning', 'grace');
+      res.set('X-Grace-Ends-At', tenant.gracePeriodEndsAt?.toISOString());
+      return next();
+    }
+
+    // EXPIRED or SUSPENDED — block
     if (tenant.status === 'expired' || tenant.status === 'suspended') {
       return res.status(403).json({
         success: false,
-        error: 'Akses ditangguhkan. Silakan hubungi administrator.',
-        status: tenant.status
+        error: tenant.status === 'expired'
+          ? 'Langganan Anda telah berakhir. Silakan perpanjang untuk melanjutkan.'
+          : 'Akses ditangguhkan. Silakan hubungi administrator.',
+        subscriptionExpired: true,
+        status: tenant.status,
+        expiresAt: tenant.subscriptionExpiresAt || tenant.trialExpiresAt
       });
     }
 
-    // Default: block access
+    // Default: block
     return res.status(403).json({
       success: false,
       error: 'Akses tidak diizinkan'
     });
 
   } catch (error) {
-    console.error('[CHECK TRIAL ERROR]', {
+    console.error('[SUBSCRIPTION CHECK ERROR]', {
       error: error.message,
       stack: error.stack
     });
 
     return res.status(500).json({
       success: false,
-      error: 'Terjadi kesalahan saat memeriksa status trial'
+      error: 'Terjadi kesalahan saat memeriksa status langganan'
     });
   }
 };
 
 /**
- * Middleware ringan untuk cek trial status tanpa blokir
- * Hanya attach info trial ke request
+ * Non-blocking middleware — attaches subscription info without denying access.
+ * Used for routes that need subscription context but shouldn't be blocked.
  */
 const attachTrialInfo = async (req, res, next) => {
   try {
-    const tenantSlug = req.headers['x-tenant-id'] || req.tenantSlug;
+    const tenantSlug = req.headers['x-tenant-id'] || req.headers['x-tenant-slug'] || req.tenantSlug;
 
     if (!tenantSlug) {
       return next();
     }
 
-    const tenant = await Tenant.findOne({ slug: tenantSlug.toLowerCase() }).lean();
+    const tenant = await Tenant.findOne({ slug: tenantSlug.toLowerCase() });
 
     if (!tenant) {
       return next();
     }
 
-    const now = new Date();
-    const daysRemaining = tenant.status === 'trial' 
-      ? Math.ceil((tenant.trialExpiresAt - now) / (1000 * 60 * 60 * 24))
-      : 0;
+    // Auto-transition
+    const statusChanged = tenant.refreshSubscriptionStatus();
+    if (statusChanged) {
+      await tenant.save();
+    }
 
+    const now = new Date();
+    req.subscriptionInfo = buildSubscriptionInfo(tenant, now);
+
+    // Legacy compat
     req.trialInfo = {
       status: tenant.status,
-      daysRemaining: daysRemaining > 0 ? daysRemaining : 0,
-      expiresAt: tenant.trialExpiresAt,
-      isActive: tenant.status === 'paid' || (tenant.status === 'trial' && now < tenant.trialExpiresAt)
+      daysRemaining: req.subscriptionInfo.daysRemaining,
+      expiresAt: req.subscriptionInfo.expiresAt,
+      isActive: req.subscriptionInfo.canAccessFeatures
     };
 
     next();
   } catch (error) {
-    console.error('[ATTACH TRIAL INFO ERROR]', error.message);
-    next(); // Continue even if error
+    console.error('[ATTACH SUBSCRIPTION INFO ERROR]', error.message);
+    next();
   }
 };
+
+/**
+ * Build a standardized subscription info object
+ */
+function buildSubscriptionInfo(tenant, now) {
+  let expiresAt, daysRemaining, canAccessFeatures;
+
+  if (tenant.status === 'trial') {
+    expiresAt = tenant.trialExpiresAt;
+    const msDiff = expiresAt - now;
+    daysRemaining = msDiff > 0 ? Math.ceil(msDiff / (1000 * 60 * 60 * 24)) : 0;
+    canAccessFeatures = msDiff > 0;
+  } else if (tenant.status === 'active' || tenant.status === 'paid') {
+    expiresAt = tenant.subscriptionExpiresAt || tenant.trialExpiresAt;
+    const msDiff = expiresAt - now;
+    daysRemaining = msDiff > 0 ? Math.ceil(msDiff / (1000 * 60 * 60 * 24)) : 0;
+    canAccessFeatures = true;
+  } else if (tenant.status === 'grace') {
+    expiresAt = tenant.subscriptionExpiresAt;
+    daysRemaining = 0; // Subscription already expired
+    canAccessFeatures = true; // But still have grace access
+  } else {
+    expiresAt = tenant.subscriptionExpiresAt || tenant.trialExpiresAt;
+    daysRemaining = 0;
+    canAccessFeatures = false;
+  }
+
+  return {
+    status: tenant.status,
+    plan: tenant.subscriptionPlan || null,
+    expiresAt,
+    daysRemaining,
+    canAccessFeatures,
+    isGracePeriod: tenant.status === 'grace',
+    gracePeriodEndsAt: tenant.gracePeriodEndsAt || null,
+    trialExpiresAt: tenant.trialExpiresAt,
+    subscriptionExpiresAt: tenant.subscriptionExpiresAt
+  };
+}
 
 module.exports = {
   checkTrialStatus,

@@ -23,26 +23,44 @@ const tenantSchema = new mongoose.Schema({
     type: Boolean,
     default: true
   },
-  // Trial & Subscription Fields
+
+  // ===== Trial & Subscription Fields =====
   status: {
     type: String,
-    enum: ['trial', 'paid', 'expired', 'suspended'],
+    enum: ['trial', 'active', 'grace', 'expired', 'suspended'],
     default: 'trial'
   },
   trialExpiresAt: {
     type: Date,
     required: true,
     default: function () {
-      // Set trial 10 hari dari sekarang
       const now = new Date();
-      return new Date(now.getTime() + (10 * 24 * 60 * 60 * 1000));
+      return new Date(now.getTime() + (10 * 24 * 60 * 60 * 1000)); // 10 hari
     }
+  },
+  subscriptionPlan: {
+    type: String,
+    enum: ['starter', 'bisnis', 'lifetime', null],
+    default: null
   },
   subscriptionExpiresAt: {
     type: Date,
     default: null
   },
-  // Theme Customization Fields
+  gracePeriodEndsAt: {
+    type: Date,
+    default: null
+  },
+  subscriptionHistory: [{
+    plan: { type: String, required: true },
+    amount: { type: Number, required: true },
+    startDate: { type: Date, required: true },
+    endDate: { type: Date },
+    merchantOrderId: { type: String },
+    paidAt: { type: Date, default: Date.now }
+  }],
+
+  // ===== Theme Customization Fields =====
   selectedTheme: {
     type: String,
     enum: ['default', 'light-coffee', 'merah-kuning-putih'],
@@ -64,8 +82,7 @@ const tenantSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Index untuk performa query
-// Case-insensitive unique index for slug to prevent duplicates like "Cafe-Kopi" and "cafe-kopi"
+// ===== Indexes =====
 tenantSchema.index({ slug: 1 }, {
   unique: true,
   collation: { locale: 'en', strength: 2 }
@@ -73,14 +90,14 @@ tenantSchema.index({ slug: 1 }, {
 tenantSchema.index({ isActive: 1 });
 tenantSchema.index({ status: 1 });
 tenantSchema.index({ trialExpiresAt: 1 });
+tenantSchema.index({ subscriptionExpiresAt: 1 });
 
-// Virtual untuk cek apakah trial masih aktif
+// ===== Virtuals =====
 tenantSchema.virtual('isTrialActive').get(function () {
   if (this.status !== 'trial') return false;
   return new Date() < this.trialExpiresAt;
 });
 
-// Virtual untuk hitung sisa hari trial
 tenantSchema.virtual('trialDaysRemaining').get(function () {
   if (this.status !== 'trial') return 0;
   const now = new Date();
@@ -89,15 +106,56 @@ tenantSchema.virtual('trialDaysRemaining').get(function () {
   return days > 0 ? days : 0;
 });
 
-// Method untuk cek apakah tenant bisa akses fitur
+// ===== Methods =====
 tenantSchema.methods.canAccessFeatures = function () {
-  // Jika paid atau trial masih aktif, bisa akses
-  if (this.status === 'paid') return true;
+  if (this.status === 'active') return true;
+  if (this.status === 'grace') return true; // Grace period — still accessible
   if (this.status === 'trial' && new Date() < this.trialExpiresAt) return true;
+  // Legacy backward compat: 'paid' treated as 'active'
+  if (this.status === 'paid') return true;
   return false;
 };
 
-// Ensure virtuals are included in JSON
+/**
+ * Auto-transition status based on current dates.
+ * Call this before reading status to ensure accuracy.
+ * Returns true if status was changed (needs save).
+ */
+tenantSchema.methods.refreshSubscriptionStatus = function () {
+  const now = new Date();
+  let changed = false;
+
+  // Legacy: auto-migrate 'paid' → 'active'
+  if (this.status === 'paid') {
+    this.status = 'active';
+    changed = true;
+  }
+
+  // Trial expired → check if has subscription, else mark expired
+  if (this.status === 'trial' && now >= this.trialExpiresAt) {
+    this.status = 'expired';
+    changed = true;
+  }
+
+  // Active → check if subscription expired → transition to grace
+  if (this.status === 'active' && this.subscriptionExpiresAt && now >= this.subscriptionExpiresAt) {
+    // Set grace period (3 days) if not already set
+    if (!this.gracePeriodEndsAt) {
+      this.gracePeriodEndsAt = new Date(this.subscriptionExpiresAt.getTime() + (3 * 24 * 60 * 60 * 1000));
+    }
+    this.status = 'grace';
+    changed = true;
+  }
+
+  // Grace → check if grace period ended → transition to expired
+  if (this.status === 'grace' && this.gracePeriodEndsAt && now >= this.gracePeriodEndsAt) {
+    this.status = 'expired';
+    changed = true;
+  }
+
+  return changed;
+};
+
 tenantSchema.set('toJSON', { virtuals: true });
 tenantSchema.set('toObject', { virtuals: true });
 

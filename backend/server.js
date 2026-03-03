@@ -53,6 +53,14 @@ app.set('io', io);
 io.on('connection', (socket) => {
   console.log('⚡ Client connected:', socket.id);
 
+  // Join tenant room for targeted subscription events
+  socket.on('join:tenant', (tenantSlug) => {
+    if (tenantSlug && typeof tenantSlug === 'string') {
+      socket.join(tenantSlug.toLowerCase());
+      console.log(`📎 ${socket.id} joined tenant room: ${tenantSlug}`);
+    }
+  });
+
   socket.on('disconnect', () => {
     console.log('🔌 Client disconnected:', socket.id);
   });

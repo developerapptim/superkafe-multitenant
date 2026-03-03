@@ -49,6 +49,13 @@ export const SocketProvider = ({ children }) => {
 
         newSocket.on('connect', () => {
             console.log('⚡ Socket connected:', newSocket.id);
+
+            // Auto-join tenant room for subscription events
+            const tenantSlug = localStorage.getItem('tenant_slug');
+            if (tenantSlug) {
+                newSocket.emit('join:tenant', tenantSlug);
+                console.log(`📎 Joining tenant room: ${tenantSlug}`);
+            }
         });
 
         newSocket.on('connect_error', (err) => {

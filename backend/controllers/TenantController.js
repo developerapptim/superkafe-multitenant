@@ -507,13 +507,14 @@ const toggleTenantStatus = async (req, res) => {
 
 /**
  * GET /api/tenants/:slug/trial-status
- * Mendapatkan status trial tenant
+ * Mendapatkan status langganan tenant (trial, active, grace, expired)
+ * Auto-transitions status berdasarkan tanggal saat ini
  */
 const getTrialStatus = async (req, res) => {
   try {
     const { slug } = req.params;
 
-    const tenant = await Tenant.findOne({ slug: slug.toLowerCase() }).lean();
+    const tenant = await Tenant.findOne({ slug: slug.toLowerCase() });
 
     if (!tenant) {
       return res.status(404).json({
@@ -522,40 +523,74 @@ const getTrialStatus = async (req, res) => {
       });
     }
 
+    // Auto-transition status based on dates
+    const statusChanged = tenant.refreshSubscriptionStatus();
+    if (statusChanged) {
+      await tenant.save();
+    }
+
     const now = new Date();
+    let expiresAt, daysRemaining, isActive, canAccessFeatures;
 
-    let expiresAt = tenant.trialExpiresAt;
-    let daysRemaining = 0;
-    let isActive = false;
-
-    if (tenant.status === 'paid') {
+    if (tenant.status === 'active' || tenant.status === 'paid') {
       expiresAt = tenant.subscriptionExpiresAt || tenant.trialExpiresAt;
       const msDiff = expiresAt - now;
       daysRemaining = msDiff > 0 ? Math.ceil(msDiff / (1000 * 60 * 60 * 24)) : 0;
-      isActive = msDiff > 0;
-    } else {
-      // trial or other
-      const msDiff = tenant.trialExpiresAt - now;
+      isActive = true;
+      canAccessFeatures = true;
+    } else if (tenant.status === 'trial') {
+      expiresAt = tenant.trialExpiresAt;
+      const msDiff = expiresAt - now;
       daysRemaining = msDiff > 0 ? Math.ceil(msDiff / (1000 * 60 * 60 * 24)) : 0;
       isActive = msDiff > 0;
+      canAccessFeatures = isActive;
+    } else if (tenant.status === 'grace') {
+      expiresAt = tenant.subscriptionExpiresAt;
+      daysRemaining = 0;
+      isActive = false;
+      canAccessFeatures = true; // Grace period — still accessible
+    } else {
+      // expired, suspended
+      expiresAt = tenant.subscriptionExpiresAt || tenant.trialExpiresAt;
+      daysRemaining = 0;
+      isActive = false;
+      canAccessFeatures = false;
     }
+
+    // Get last 5 subscription history entries
+    const recentHistory = (tenant.subscriptionHistory || [])
+      .slice(-5)
+      .reverse()
+      .map(h => ({
+        plan: h.plan,
+        amount: h.amount,
+        startDate: h.startDate,
+        endDate: h.endDate,
+        paidAt: h.paidAt
+      }));
 
     res.json({
       success: true,
       data: {
         status: tenant.status,
-        expiresAt: expiresAt,
+        subscriptionPlan: tenant.subscriptionPlan || null,
+        planName: tenant.subscriptionPlan
+          ? tenant.subscriptionPlan.charAt(0).toUpperCase() + tenant.subscriptionPlan.slice(1)
+          : (tenant.status === 'trial' ? 'Trial' : 'Tidak Aktif'),
+        expiresAt,
         trialExpiresAt: tenant.trialExpiresAt,
         subscriptionExpiresAt: tenant.subscriptionExpiresAt,
-        daysRemaining: daysRemaining,
-        isActive: isActive,
-        canAccessFeatures: isActive,
-        planName: tenant.subscriptionPlan || 'Starter (Default)'
+        gracePeriodEndsAt: tenant.gracePeriodEndsAt || null,
+        daysRemaining,
+        isActive,
+        canAccessFeatures,
+        isGracePeriod: tenant.status === 'grace',
+        subscriptionHistory: recentHistory
       }
     });
 
   } catch (error) {
-    console.error('[TENANT ERROR] Gagal mengambil status trial', {
+    console.error('[TENANT ERROR] Gagal mengambil status langganan', {
       error: error.message,
       stack: error.stack,
       slug: req.params.slug
@@ -563,7 +598,7 @@ const getTrialStatus = async (req, res) => {
 
     res.status(500).json({
       success: false,
-      message: 'Gagal mengambil status trial'
+      message: 'Gagal mengambil status langganan'
     });
   }
 };

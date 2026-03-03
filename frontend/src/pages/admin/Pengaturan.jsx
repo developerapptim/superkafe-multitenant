@@ -8,6 +8,7 @@ import api, { settingsAPI, userAPI, API_BASE_URL } from '../../services/api';
 import { useRefresh } from '../../context/RefreshContext';
 import { useTheme } from '../../context/ThemeContext';
 import ThemeSelector from '../../components/admin/ThemeSelector';
+import usePlatform from '../../hooks/usePlatform';
 
 // Import admin theme generated CSS classes
 import '../../styles/admin-theme.css';
@@ -437,55 +438,7 @@ function Pengaturan() {
                 onToggle={() => toggleSection('subscription')}
                 isDirty={false}
             >
-                {subscription.loading ? (
-                    <div className="flex justify-center p-4">
-                        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-purple-500"></div>
-                    </div>
-                ) : subscription.data ? (
-                    <div className="space-y-4">
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <div className="bg-black/5 p-4 rounded-xl border admin-border-accent">
-                                <p className="text-sm opacity-70 admin-text-primary mb-1">Status Saat Ini</p>
-                                <p className={`font-bold text-lg ${subscription.data.status === 'trial' ? 'text-yellow-400' : 'text-green-400'}`}>
-                                    {subscription.data.status === 'trial' ? 'Masa Trial' : 'Berbayar (Aktif)'}
-                                </p>
-                            </div>
-                            <div className="bg-black/5 p-4 rounded-xl border admin-border-accent">
-                                <p className="text-sm opacity-70 admin-text-primary mb-1">Paket Aktif</p>
-                                <p className="font-bold text-lg text-purple-400">
-                                    {subscription.data.planName || 'Starter (Default)'}
-                                </p>
-                            </div>
-                            <div className="bg-black/5 p-4 rounded-xl border admin-border-accent">
-                                <p className="text-sm opacity-70 admin-text-primary mb-1">Masa Berlaku Hingga</p>
-                                <p className="font-bold text-lg admin-text-primary">
-                                    {new Date(subscription.data.expiresAt || subscription.data.trialExpiresAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
-                                </p>
-                            </div>
-                        </div>
-
-                        <div className="bg-purple-500/10 p-4 rounded-xl border border-purple-500/30 mt-4 flex flex-col md:flex-row items-center justify-between gap-4">
-                            <div>
-                                <h4 className="font-bold text-purple-400 mb-1">Kelola Paket Layanan Anda</h4>
-                                <p className="text-sm opacity-80 admin-text-primary whitespace-pre-wrap">
-                                    {subscription.data.daysRemaining > 0
-                                        ? `Akses aplikasi akan berakhir dalam ${subscription.data.daysRemaining} hari.\nUpgrade atau perpanjang sekarang untuk menghindari gangguan operasional.`
-                                        : 'Akses administrasi kedaluwarsa. Operasi sistem kasir telah dibekukan. Segera upgrade untuk memulihkan layanan.'}
-                                </p>
-                            </div>
-                            <button
-                                onClick={() => window.location.href = `/${localStorage.getItem('tenant_slug')}/admin/subscription/upgrade`}
-                                className="px-6 py-3 bg-gradient-to-r from-purple-500 to-blue-500 text-white rounded-lg font-bold shadow-lg shadow-purple-500/30 hover:shadow-purple-500/50 hover:scale-105 transition-all w-full md:w-auto text-center border-none"
-                            >
-                                Upgrade / Perpanjang Paket
-                            </button>
-                        </div>
-                    </div>
-                ) : (
-                    <div className="p-4 text-center rounded-xl border admin-border-accent bg-red-500/10 text-red-400">
-                        <p>Gagal memuat status langganan. Membutuhkan koneksi API yang stabil.</p>
-                    </div>
-                )}
+                <SubscriptionSection subscription={subscription} />
             </AccordionSection>
 
             {/* Theme Settings */}
@@ -962,5 +915,123 @@ function Pengaturan() {
         </section>
     );
 }
+
+// ===== Extracted Subscription Section (platform-aware) =====
+const SubscriptionSection = ({ subscription }) => {
+    const { isNative, isWeb } = usePlatform();
+    const tenantSlug = localStorage.getItem('tenant_slug');
+
+    const statusLabels = {
+        trial: { label: 'Masa Trial', color: 'text-yellow-400' },
+        active: { label: 'Aktif (Berbayar)', color: 'text-green-400' },
+        paid: { label: 'Aktif (Berbayar)', color: 'text-green-400' },
+        grace: { label: 'Masa Tenggang', color: 'text-orange-400' },
+        expired: { label: 'Kedaluwarsa', color: 'text-red-400' },
+        suspended: { label: 'Ditangguhkan', color: 'text-red-400' },
+    };
+
+    if (subscription.loading) {
+        return (
+            <div className="flex justify-center p-4">
+                <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-purple-500"></div>
+            </div>
+        );
+    }
+
+    if (!subscription.data) {
+        return (
+            <div className="p-4 text-center rounded-xl border admin-border-accent bg-red-500/10 text-red-400">
+                <p>Gagal memuat status langganan. Membutuhkan koneksi API yang stabil.</p>
+            </div>
+        );
+    }
+
+    const d = subscription.data;
+    const info = statusLabels[d.status] || statusLabels.expired;
+
+    return (
+        <div className="space-y-4">
+            {/* Status Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="bg-black/5 p-4 rounded-xl border admin-border-accent">
+                    <p className="text-sm opacity-70 admin-text-primary mb-1">Status Saat Ini</p>
+                    <p className={`font-bold text-lg ${info.color}`}>{info.label}</p>
+                </div>
+                <div className="bg-black/5 p-4 rounded-xl border admin-border-accent">
+                    <p className="text-sm opacity-70 admin-text-primary mb-1">Paket Aktif</p>
+                    <p className="font-bold text-lg text-purple-400">
+                        {d.planName || 'Trial'}
+                    </p>
+                </div>
+                <div className="bg-black/5 p-4 rounded-xl border admin-border-accent">
+                    <p className="text-sm opacity-70 admin-text-primary mb-1">Masa Berlaku Hingga</p>
+                    <p className="font-bold text-lg admin-text-primary">
+                        {new Date(d.expiresAt || d.trialExpiresAt).toLocaleDateString('id-ID', {
+                            day: 'numeric', month: 'long', year: 'numeric'
+                        })}
+                    </p>
+                </div>
+            </div>
+
+            {/* Grace Period Warning */}
+            {d.isGracePeriod && (
+                <div className="bg-orange-500/10 p-4 rounded-xl border border-orange-500/30 text-orange-400">
+                    <h4 className="font-bold mb-1">⚠️ Masa Tenggang Aktif</h4>
+                    <p className="text-sm opacity-80 admin-text-primary">
+                        Langganan sudah habis. Akses akan dibekukan pada{' '}
+                        <strong>{new Date(d.gracePeriodEndsAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</strong>.
+                    </p>
+                </div>
+            )}
+
+            {/* CTA — platform-aware */}
+            <div className="bg-purple-500/10 p-4 rounded-xl border border-purple-500/30 mt-4 flex flex-col md:flex-row items-center justify-between gap-4">
+                <div>
+                    <h4 className="font-bold text-purple-400 mb-1">Kelola Paket Layanan Anda</h4>
+                    <p className="text-sm opacity-80 admin-text-primary whitespace-pre-wrap">
+                        {d.daysRemaining > 0
+                            ? `Akses aplikasi akan berakhir dalam ${d.daysRemaining} hari.\nUpgrade atau perpanjang sekarang untuk menghindari gangguan operasional.`
+                            : 'Akses administrasi kedaluwarsa. Segera upgrade untuk memulihkan layanan.'}
+                    </p>
+                </div>
+                {isWeb ? (
+                    <button
+                        onClick={() => window.location.href = `/${tenantSlug}/admin/subscription/upgrade`}
+                        className="px-6 py-3 bg-gradient-to-r from-purple-500 to-blue-500 text-white rounded-lg font-bold shadow-lg shadow-purple-500/30 hover:shadow-purple-500/50 hover:scale-105 transition-all w-full md:w-auto text-center border-none"
+                    >
+                        Upgrade / Perpanjang Paket
+                    </button>
+                ) : (
+                    <p className="text-xs text-purple-300/80 text-center md:text-right">
+                        Perpanjang via browser:<br />
+                        <span className="font-mono text-purple-400">superkafe.com/{tenantSlug}/admin/subscription/upgrade</span>
+                    </p>
+                )}
+            </div>
+
+            {/* Subscription History */}
+            {d.subscriptionHistory && d.subscriptionHistory.length > 0 && (
+                <div className="bg-black/5 p-4 rounded-xl border admin-border-accent mt-4">
+                    <h4 className="font-bold admin-text-primary text-sm mb-3 opacity-80">Riwayat Pembayaran</h4>
+                    <div className="space-y-2">
+                        {d.subscriptionHistory.map((h, i) => (
+                            <div key={i} className="flex justify-between items-center text-xs p-3 rounded-lg bg-black/10">
+                                <div>
+                                    <p className="font-semibold admin-text-primary capitalize">{h.plan}</p>
+                                    <p className="opacity-50 admin-text-primary mt-0.5">
+                                        {new Date(h.paidAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                    </p>
+                                </div>
+                                <span className="font-bold text-green-400">
+                                    Rp {h.amount?.toLocaleString('id-ID')}
+                                </span>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
 
 export default Pengaturan;

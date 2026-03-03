@@ -8,12 +8,14 @@ import api from '../../services/api';
 import Sidebar from '../../components/Sidebar';
 import CommandPalette from '../../components/CommandPalette';
 import NotificationBell from '../../components/admin/NotificationBell';
-import OrderNotification from '../../components/OrderNotification'; // Global Order Notification
+import OrderNotification from '../../components/OrderNotification';
 import PullToRefresh from 'react-simple-pull-to-refresh';
 import { useRefresh } from '../../context/RefreshContext';
 import { ThemeProvider, useTheme } from '../../context/ThemeContext';
 import FirstTimeThemePopup from '../../components/admin/FirstTimeThemePopup';
 import TrialStatusBanner from '../../components/TrialStatusBanner';
+import SubscriptionLockScreen from '../../components/SubscriptionLockScreen';
+import { useSocket } from '../../context/SocketContext';
 
 // Import admin theme generated CSS classes
 import '../../styles/admin-theme.css';
@@ -28,10 +30,46 @@ function AdminLayout() {
     const { triggerRefresh } = useRefresh();
 
     const [showCmd, setShowCmd] = useState(false);
+    const socket = useSocket();
 
     // Get User Role and Tenant Info
     const user = JSON.parse(localStorage.getItem('user') || '{}');
     const isStaff = user.role === 'staf';
+    const tenantSlug = localStorage.getItem('tenant_slug');
+
+    // Subscription state for lock screen & banner
+    const [subscriptionData, setSubscriptionData] = useState(null);
+    const showLockScreen = subscriptionData && !subscriptionData.canAccessFeatures;
+
+    // Fetch subscription status on mount
+    useEffect(() => {
+        const fetchSubscription = async () => {
+            if (!tenantSlug) return;
+            try {
+                const res = await api.get(`/tenants/${tenantSlug}/trial-status`);
+                if (res.data.success) setSubscriptionData(res.data.data);
+            } catch (err) {
+                console.error('[AdminLayout] Failed to fetch subscription:', err.message);
+            }
+        };
+        fetchSubscription();
+    }, [tenantSlug]);
+
+    // Listen for real-time subscription updates via Socket.io
+    useEffect(() => {
+        if (!socket) return;
+
+        const handleSubscriptionUpdate = (data) => {
+            console.log('[AdminLayout] ⚡ subscription:updated received', data);
+            setSubscriptionData(data);
+            if (data.canAccessFeatures) {
+                toast.success('🎉 Langganan diperpanjang! Akses dipulihkan.');
+            }
+        };
+
+        socket.on('subscription:updated', handleSubscriptionUpdate);
+        return () => socket.off('subscription:updated', handleSubscriptionUpdate);
+    }, [socket]);
 
     // Extract tenant information from JWT token for ThemeProvider
     const [tenantInfo, setTenantInfo] = useState({ tenantId: null, initialTheme: 'default' });
@@ -288,7 +326,7 @@ function AdminLayout() {
                                         return titles[path] || 'Admin Panel';
                                     })()}
                                 </h1>
-                                <TrialStatusBanner />
+                                <TrialStatusBanner subscriptionData={subscriptionData} />
                             </div>
                             <div className="mr-2">
                                 <NotificationBell />
@@ -328,7 +366,7 @@ function AdminLayout() {
                                         return titles[path] || 'Admin Panel';
                                     })()}
                                 </h2>
-                                <TrialStatusBanner />
+                                <TrialStatusBanner subscriptionData={subscriptionData} />
                             </div>
                             <div className="flex items-center gap-4">
                                 <NotificationBell />
@@ -427,6 +465,11 @@ function AdminLayout() {
                         onThemeSelect={handleThemeSelect}
                         onSkip={handleSkipThemeSelection}
                     />
+
+                    {/* Subscription Lock Screen — blocks all access when expired */}
+                    {showLockScreen && (
+                        <SubscriptionLockScreen tenantSlug={tenantSlug} />
+                    )}
                 </div>
             </div>
         </ThemeProvider>

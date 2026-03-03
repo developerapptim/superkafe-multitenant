@@ -1,52 +1,55 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { FiCheck, FiClock, FiShield, FiExternalLink } from 'react-icons/fi';
+import { FiCheck, FiClock, FiShield, FiExternalLink, FiSmartphone, FiCopy } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import { paymentAPI } from '../../services/api';
+import usePlatform from '../../hooks/usePlatform';
+import api from '../../services/api';
 
 /**
- * Subscription Upgrade Page
- * Halaman untuk upgrade dari trial ke paid subscription
- * 
- * Architecture: Hosted Payment Page (Seamless)
- * - User memilih paket di halaman ini
- * - Setelah klik "Lanjutkan Pembayaran", user langsung diarahkan ke halaman resmi Duitku
- * - User memilih metode pembayaran langsung di halaman Duitku (VA, QRIS, E-Wallet, dll)
- * - Setelah pembayaran berhasil, callback otomatis mengupdate status tenant
+ * Subscription Upgrade Page — Web-Only Checkout Strategy
+ *
+ * WEB BROWSER: Full billing page with pricing cards + payment button (Duitku)
+ * MOBILE APP:  Status-only view with instruction to pay via browser
  */
 const SubscriptionUpgrade = () => {
+  const { isNative, isWeb } = usePlatform();
   const [pricing, setPricing] = useState(null);
   const [loading, setLoading] = useState(true);
   const [selectedPlan, setSelectedPlan] = useState('bisnis');
   const [processing, setProcessing] = useState(false);
+  const [subscriptionInfo, setSubscriptionInfo] = useState(null);
+
+  const tenantSlug = localStorage.getItem('tenant_slug');
+  const billingUrl = `https://superkafe.com/${tenantSlug}/admin/subscription/upgrade`;
 
   useEffect(() => {
-    fetchPricing();
+    fetchData();
   }, []);
 
-  const fetchPricing = async () => {
+  const fetchData = async () => {
     try {
-      const response = await paymentAPI.getPricing();
-      if (response.data.success) {
-        setPricing(response.data.data);
-      }
+      const [pricingRes, statusRes] = await Promise.all([
+        paymentAPI.getPricing().catch(() => null),
+        api.get(`/tenants/${tenantSlug}/trial-status`).catch(() => null)
+      ]);
+
+      if (pricingRes?.data?.success) setPricing(pricingRes.data.data);
+      if (statusRes?.data?.success) setSubscriptionInfo(statusRes.data.data);
     } catch (error) {
-      console.error('Error fetching pricing:', error);
-      toast.error('Gagal memuat informasi harga');
+      console.error('Error fetching billing data:', error);
     } finally {
       setLoading(false);
     }
   };
 
   const handleUpgrade = async () => {
+    if (isNative) return; // Safety: no payment on mobile
     setProcessing(true);
 
     try {
-      const tenantSlug = localStorage.getItem('tenant_slug');
       const user = JSON.parse(localStorage.getItem('user') || '{}');
 
-      // Kirim planType saja — harga dihitung AMAN di backend
-      // paymentMethod TIDAK dikirim — user memilih langsung di halaman Duitku
       const response = await paymentAPI.createInvoice({
         tenantSlug,
         planType: selectedPlan,
@@ -65,6 +68,14 @@ const SubscriptionUpgrade = () => {
     } finally {
       setProcessing(false);
     }
+  };
+
+  const handleCopyLink = () => {
+    navigator.clipboard.writeText(billingUrl).then(() => {
+      toast.success('Link berhasil disalin!');
+    }).catch(() => {
+      toast.error('Gagal menyalin link');
+    });
   };
 
   if (loading) {
@@ -122,6 +133,138 @@ const SubscriptionUpgrade = () => {
     }
   ];
 
+  // ===== MOBILE APP VIEW: Status only, no payment =====
+  if (isNative) {
+    return (
+      <div className="h-full admin-bg-main p-6 admin-text-primary">
+        <div className="max-w-lg mx-auto pb-10">
+          {/* Header */}
+          <div className="text-center mb-8">
+            <h1 className="text-2xl font-bold mb-2">Status Langganan</h1>
+            <p className="text-sm opacity-70">Kelola langganan Anda melalui browser web</p>
+          </div>
+
+          {/* Current Status Card */}
+          {subscriptionInfo && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="backdrop-blur-xl admin-bg-sidebar border admin-border-accent rounded-2xl p-6 mb-6"
+            >
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm opacity-70">Status</span>
+                  <span className={`px-3 py-1 rounded-full text-xs font-bold ${subscriptionInfo.canAccessFeatures
+                      ? 'bg-green-500/20 text-green-400'
+                      : 'bg-red-500/20 text-red-400'
+                    }`}>
+                    {subscriptionInfo.status === 'trial' ? 'Trial' :
+                      subscriptionInfo.status === 'active' ? 'Aktif' :
+                        subscriptionInfo.status === 'grace' ? 'Masa Tenggang' :
+                          subscriptionInfo.status === 'expired' ? 'Kedaluwarsa' : subscriptionInfo.status}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm opacity-70">Paket</span>
+                  <span className="font-bold text-purple-400">
+                    {subscriptionInfo.planName || 'Trial'}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm opacity-70">Berlaku Hingga</span>
+                  <span className="font-medium">
+                    {new Date(subscriptionInfo.expiresAt).toLocaleDateString('id-ID', {
+                      day: 'numeric', month: 'long', year: 'numeric'
+                    })}
+                  </span>
+                </div>
+                {subscriptionInfo.daysRemaining > 0 && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm opacity-70">Sisa Waktu</span>
+                    <span className={`font-bold ${subscriptionInfo.daysRemaining <= 3 ? 'text-red-400' :
+                        subscriptionInfo.daysRemaining <= 10 ? 'text-yellow-400' : 'text-green-400'
+                      }`}>
+                      {subscriptionInfo.daysRemaining} Hari
+                    </span>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          )}
+
+          {/* Instruction Card (Mobile) */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="backdrop-blur-xl rounded-2xl p-6 mb-4"
+            style={{
+              background: 'rgba(139,92,246,0.08)',
+              border: '1px solid rgba(139,92,246,0.2)',
+            }}
+          >
+            <div className="flex items-start gap-3 mb-4">
+              <FiSmartphone className="text-purple-400 mt-0.5 flex-shrink-0" size={22} />
+              <div>
+                <h3 className="font-bold text-sm mb-1">Perpanjang via Browser</h3>
+                <p className="text-xs opacity-60 leading-relaxed">
+                  Untuk menghindari biaya tambahan dari app store, pembayaran hanya tersedia melalui browser web. Buka link berikut:
+                </p>
+              </div>
+            </div>
+            <div
+              className="flex items-center gap-2 p-3 rounded-xl mb-4"
+              style={{ background: 'rgba(139,92,246,0.1)', border: '1px solid rgba(139,92,246,0.2)' }}
+            >
+              <code className="text-purple-300 text-xs flex-1 break-all font-mono">
+                superkafe.com/{tenantSlug}/admin/subscription/upgrade
+              </code>
+            </div>
+            <button
+              onClick={handleCopyLink}
+              className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold text-white transition-all active:scale-95"
+              style={{
+                background: 'linear-gradient(135deg, #8B5CF6, #6366F1)',
+                boxShadow: '0 4px 20px rgba(139,92,246,0.3)',
+              }}
+            >
+              <FiCopy size={16} />
+              Salin Link Pembayaran
+            </button>
+          </motion.div>
+
+          {/* Subscription History */}
+          {subscriptionInfo?.subscriptionHistory?.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+              className="backdrop-blur-xl admin-bg-sidebar border admin-border-accent rounded-2xl p-6"
+            >
+              <h3 className="font-bold text-sm mb-3 opacity-80">Riwayat Pembayaran</h3>
+              <div className="space-y-3">
+                {subscriptionInfo.subscriptionHistory.map((h, i) => (
+                  <div key={i} className="flex justify-between items-center text-xs p-3 rounded-lg bg-black/10">
+                    <div>
+                      <p className="font-semibold capitalize">{h.plan}</p>
+                      <p className="opacity-50 mt-0.5">
+                        {new Date(h.paidAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
+                      </p>
+                    </div>
+                    <span className="font-bold text-green-400">
+                      Rp {h.amount.toLocaleString('id-ID')}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // ===== WEB BROWSER VIEW: Full billing with payment =====
   return (
     <div className="h-full admin-bg-main p-6 admin-text-primary">
       <div className="max-w-6xl mx-auto pb-10">

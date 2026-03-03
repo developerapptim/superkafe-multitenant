@@ -1,0 +1,289 @@
+# SaaS Billing System — Web-Only Checkout
+
+Implementasi sistem langganan (subscription) yang aman dari penolakan Play Store/App Store dengan strategi **Web-Only Checkout**: semua pembayaran terjadi di browser web, dan mobile app hanya menampilkan status langganan + instruksi perpanjangan.
+
+## User Review Required
+
+> [!IMPORTANT]
+> **Strategi Web-Only Checkout**: Seluruh tombol pembayaran hanya muncul di Web Browser. Di Mobile App (Capacitor), user hanya melihat status langganan dan instruksi `"Perpanjang via superkafe.com"`. Ini menghindari potongan 15-30% dari Google Play/App Store.
+
+> [!WARNING]
+> **Grace Period**: Plan ini mengimplementasikan 3 hari grace period setelah expired. Selama grace period, app masih bisa diakses tapi dengan banner peringatan. Setelah 3 hari, Lock Screen fullscreen muncul dan memblokir akses kasir. **Apakah 3 hari cukup?**
+
+> [!IMPORTANT]
+> **Cleanup Legacy Code**: Beberapa file test Duitku lama (`test-duitku-*.js`, [PAYMENT_TESTING_GUIDE.md](file:///d:/DevAppTim/Warkop%20React%20-%20%20SuperKafe%20Multitenant/PAYMENT_TESTING_GUIDE.md), [TESTING_CHECKLIST.md](file:///d:/DevAppTim/Warkop%20React%20-%20%20SuperKafe%20Multitenant/TESTING_CHECKLIST.md)) dan legacy pricing (`monthly`/`quarterly`/`yearly`) akan dibersihkan dari [PaymentService.js](file:///d:/DevAppTim/Warkop%20React%20-%20%20SuperKafe%20Multitenant/backend/services/payment/PaymentService.js) untuk mengurangi clutter. OK?
+
+---
+
+## Proposed Changes
+
+### 1. Backend — Subscription Model & Schema Enhancement
+
+Memperkuat [Tenant.js](file:///d:/DevAppTim/Warkop%20React%20-%20%20SuperKafe%20Multitenant/backend/models/Tenant.js) dengan field subscription yang lebih lengkap, dan membersihkan legacy fields.
+
+#### [MODIFY] [Tenant.js](file:///d:/DevAppTim/Warkop%20React%20-%20%20SuperKafe%20Multitenant/backend/models/Tenant.js)
+
+Tambahkan field baru ke Tenant schema:
+
+```diff
+ // Trial & Subscription Fields
+ status: {
+   type: String,
+-  enum: ['trial', 'paid', 'expired', 'suspended'],
++  enum: ['trial', 'active', 'grace', 'expired', 'suspended'],
+   default: 'trial'
+ },
++subscriptionPlan: {
++  type: String,
++  enum: ['starter', 'bisnis', 'lifetime', null],
++  default: null
++},
++subscriptionHistory: [{
++  plan: String,
++  amount: Number,
++  startDate: Date,
++  endDate: Date,
++  merchantOrderId: String,
++  paidAt: Date
++}],
++gracePeriodEndsAt: {
++  type: Date,
++  default: null
++},
+```
+
+- Status `'paid'` → direname `'active'` (lebih jelas semantik)
+- Status `'grace'` = masa tenggang 3 hari setelah `subscriptionExpiresAt`
+- `subscriptionHistory` = log riwayat pembayaran (audit trail)
+
+---
+
+### 2. Backend — Subscription Middleware (Grace Period & App Locking)
+
+Refactor [checkTrialStatus.js](file:///d:/DevAppTim/Warkop%20React%20-%20%20SuperKafe%20Multitenant/backend/middleware/checkTrialStatus.js) menjadi middleware yang lebih comprehensive.
+
+#### [MODIFY] [checkTrialStatus.js](file:///d:/DevAppTim/Warkop%20React%20-%20%20SuperKafe%20Multitenant/backend/middleware/checkTrialStatus.js)
+
+Perubahan utama:
+- Support status baru `'active'` dan `'grace'`
+- Grace period logic: jika `subscriptionExpiresAt` sudah lewat tapi `gracePeriodEndsAt` belum → status `'grace'`, akses diberikan tapi dengan warning header `X-Subscription-Warning: grace`
+- Setelah `gracePeriodEndsAt` lewat → blokir akses kasir (return 403 dengan `expired: true`)
+- Attach subscription info ke `req.subscriptionInfo` untuk dipakai frontend
+
+---
+
+### 3. Backend — PaymentService Enhancement
+
+Refactor [PaymentService.js](file:///d:/DevAppTim/Warkop%20React%20-%20%20SuperKafe%20Multitenant/backend/services/payment/PaymentService.js) untuk mendukung renewal, grace period update, dan Socket.io event.
+
+#### [MODIFY] [PaymentService.js](file:///d:/DevAppTim/Warkop%20React%20-%20%20SuperKafe%20Multitenant/backend/services/payment/PaymentService.js)
+
+Perubahan:
+- **[upgradeTenant()](file:///d:/DevAppTim/Warkop%20React%20-%20%20SuperKafe%20Multitenant/backend/services/payment/PaymentService.js#191-233)**: Refactor untuk handle renewal (stacking duration), set `gracePeriodEndsAt`, push ke `subscriptionHistory`, dan emit Socket.io event `subscription:updated`
+- **[getPricing()](file:///d:/DevAppTim/Warkop%20React%20-%20%20SuperKafe%20Multitenant/frontend/src/services/api.js#354-355)**: Hapus legacy plan names (`monthly`, `quarterly`, `yearly`)
+- **Lifetime plan**: Set `subscriptionExpiresAt` 100 tahun, `gracePeriodEndsAt` = null (never expire)
+
+#### [MODIFY] [PaymentController.js](file:///d:/DevAppTim/Warkop%20React%20-%20%20SuperKafe%20Multitenant/backend/controllers/PaymentController.js)
+
+- Tambah `io.to(tenantSlug).emit('subscription:updated', data)` setelah callback payment berhasil
+- Extract [io](file:///d:/DevAppTim/Warkop%20React%20-%20%20SuperKafe%20Multitenant/frontend/src/pages/admin/Pengaturan.jsx#307-310) dari `req.app.get('io')`
+
+---
+
+### 4. Backend — Socket.io Tenant Rooms
+
+Ubah Socket.io connection handler agar client join ke room berdasarkan tenant slug.
+
+#### [MODIFY] [server.js](file:///d:/DevAppTim/Warkop%20React%20-%20%20SuperKafe%20Multitenant/backend/server.js)
+
+```diff
+ io.on('connection', (socket) => {
+   console.log('⚡ Client connected:', socket.id);
++
++  // Join tenant room for targeted events
++  socket.on('join:tenant', (tenantSlug) => {
++    if (tenantSlug) {
++      socket.join(tenantSlug);
++      console.log(`📎 ${socket.id} joined room: ${tenantSlug}`);
++    }
++  });
+ 
+   socket.on('disconnect', () => {
+     console.log('🔌 Client disconnected:', socket.id);
+   });
+ });
+```
+
+---
+
+### 5. Backend — Trial Status API Enhancement
+
+#### [MODIFY] [TenantController.js](file:///d:/DevAppTim/Warkop%20React%20-%20%20SuperKafe%20Multitenant/backend/controllers/TenantController.js)
+
+Update [getTrialStatus()](file:///d:/DevAppTim/Warkop%20React%20-%20%20SuperKafe%20Multitenant/backend/controllers/TenantController.js#508-570) untuk:
+- Return field baru: `subscriptionPlan`, `gracePeriodEndsAt`, `isGracePeriod`
+- Return `subscriptionHistory` (last 5 entries)
+- Otomatis transition status `active` → `grace` → `expired` saat di-query
+
+---
+
+### 6. Frontend — Platform-Aware Billing Page
+
+Refactor [SubscriptionUpgrade.jsx](file:///d:/DevAppTim/Warkop%20React%20-%20%20SuperKafe%20Multitenant/frontend/src/pages/admin/SubscriptionUpgrade.jsx) agar **conditional** berdasarkan [usePlatform()](file:///d:/DevAppTim/Warkop%20React%20-%20%20SuperKafe%20Multitenant/frontend/src/hooks/usePlatform.js#3-18).
+
+#### [MODIFY] [SubscriptionUpgrade.jsx](file:///d:/DevAppTim/Warkop%20React%20-%20%20SuperKafe%20Multitenant/frontend/src/pages/admin/SubscriptionUpgrade.jsx)
+
+**Di Web Browser** (isWeb = true):
+- Tampilkan pricing cards + tombol "Lanjutkan Pembayaran" (behavior yang sama seperti sekarang)
+
+**Di Mobile App** (isNative = true):
+- Tampilkan status langganan saat ini (paket, masa aktif, sisa hari)
+- Sembunyikan seluruh pricing cards dan tombol bayar
+- Tampilkan instruksi: *"Untuk memperpanjang langganan, buka **superkafe.com** melalui browser di perangkat Anda."*
+- Tombol "Copy Link" yang menyalin URL billing ke clipboard
+
+---
+
+### 7. Frontend — Lock Screen Component
+
+#### [NEW] [SubscriptionLockScreen.jsx](file:///d:/DevAppTim/Warkop%20React%20-%20%20SuperKafe%20Multitenant/frontend/src/components/SubscriptionLockScreen.jsx)
+
+Fullscreen overlay yang muncul ketika subscription expired (setelah grace period habis):
+- Icon gembok besar dengan animasi
+- Pesan *"Langganan Anda Telah Berakhir"*
+- **Di Web**: Tombol "Perpanjang Sekarang" → redirect ke halaman billing
+- **Di Mobile**: Instruksi *"Buka superkafe.com melalui browser"*
+- Memblokir akses ke fitur kasir sepenuhnya (z-index tinggi di atas semua konten)
+
+---
+
+### 8. Frontend — AdminLayout Integration
+
+#### [MODIFY] [AdminLayout.jsx](file:///d:/DevAppTim/Warkop%20React%20-%20%20SuperKafe%20Multitenant/frontend/src/pages/admin/AdminLayout.jsx)
+
+- Import dan render `SubscriptionLockScreen` sebagai overlay pada level layout
+- Subscribe ke Socket.io event `subscription:updated` untuk real-time update
+- Fetch subscription status saat mount, dan re-fetch saat event Socket.io masuk
+- Pass subscription state ke [TrialStatusBanner](file:///d:/DevAppTim/Warkop%20React%20-%20%20SuperKafe%20Multitenant/frontend/src/components/TrialStatusBanner.jsx#6-164) dan `SubscriptionLockScreen`
+
+---
+
+### 9. Frontend — TrialStatusBanner Enhancement
+
+#### [MODIFY] [TrialStatusBanner.jsx](file:///d:/DevAppTim/Warkop%20React%20-%20%20SuperKafe%20Multitenant/frontend/src/components/TrialStatusBanner.jsx)
+
+- Tambah UI untuk status `'grace'` (banner kuning/oranye: *"Masa tenggang 3 hari — segera perpanjang"*)
+- Platform-aware: Link "Upgrade" berisi instruksi sesuai platform (Web vs Mobile)
+
+---
+
+### 10. Frontend — SocketContext Enhancement
+
+#### [MODIFY] [SocketContext.jsx](file:///d:/DevAppTim/Warkop%20React%20-%20%20SuperKafe%20Multitenant/frontend/src/context/SocketContext.jsx)
+
+- Setelah `socket.on('connect')`, otomatis emit `join:tenant` dengan `tenantSlug` dari localStorage
+- Ini memastikan socket join ke room tenant untuk menerima event `subscription:updated`
+
+---
+
+### 11. Frontend — Pengaturan Section Update
+
+#### [MODIFY] [Pengaturan.jsx](file:///d:/DevAppTim/Warkop%20React%20-%20%20SuperKafe%20Multitenant/frontend/src/pages/admin/Pengaturan.jsx)
+
+- Tampilkan `subscriptionPlan` dan `subscriptionHistory` di section "Langganan & Tagihan"
+- Platform-aware: Tombol "Upgrade/Perpanjang" → di Mobile, ganti dengan instruksi teks
+- Tampilkan riwayat pembayaran (tanggal, plan, amount) dari `subscriptionHistory`
+
+---
+
+### 12. Backend — Cleanup Legacy Files
+
+#### [DELETE] Test files lama yang tidak terpakai:
+- [backend/test-duitku-api.js](file:///d:/DevAppTim/Warkop%20React%20-%20%20SuperKafe%20Multitenant/backend/test-duitku-api.js)
+- [backend/test-duitku-inquiry.js](file:///d:/DevAppTim/Warkop%20React%20-%20%20SuperKafe%20Multitenant/backend/test-duitku-inquiry.js)
+- [backend/test-duitku-inquiry-all.js](file:///d:/DevAppTim/Warkop%20React%20-%20%20SuperKafe%20Multitenant/backend/test-duitku-inquiry-all.js)
+- [backend/test-duitku-passport.js](file:///d:/DevAppTim/Warkop%20React%20-%20%20SuperKafe%20Multitenant/backend/test-duitku-passport.js)
+- [backend/test-duitku-passport-correct.js](file:///d:/DevAppTim/Warkop%20React%20-%20%20SuperKafe%20Multitenant/backend/test-duitku-passport-correct.js)
+- [backend/test-duitku-ui.js](file:///d:/DevAppTim/Warkop%20React%20-%20%20SuperKafe%20Multitenant/backend/test-duitku-ui.js)
+- [backend/test-duitku-ui-2.js](file:///d:/DevAppTim/Warkop%20React%20-%20%20SuperKafe%20Multitenant/backend/test-duitku-ui-2.js)
+- [backend/test-local-payment.js](file:///d:/DevAppTim/Warkop%20React%20-%20%20SuperKafe%20Multitenant/backend/test-local-payment.js)
+- [backend/test-output.log](file:///d:/DevAppTim/Warkop%20React%20-%20%20SuperKafe%20Multitenant/backend/test-output.log)
+- [backend/test-output.txt](file:///d:/DevAppTim/Warkop%20React%20-%20%20SuperKafe%20Multitenant/backend/test-output.txt)
+- [PAYMENT_TESTING_GUIDE.md](file:///d:/DevAppTim/Warkop%20React%20-%20%20SuperKafe%20Multitenant/PAYMENT_TESTING_GUIDE.md)
+- [TESTING_CHECKLIST.md](file:///d:/DevAppTim/Warkop%20React%20-%20%20SuperKafe%20Multitenant/TESTING_CHECKLIST.md)
+
+---
+
+## Architecture Flow
+
+```mermaid
+sequenceDiagram
+    participant WebBrowser as 🌐 Web Browser
+    participant MobileApp as 📱 Mobile App
+    participant Backend as ⚙️ Backend API
+    participant Duitku as 💰 Duitku Gateway
+    participant SocketIO as 🔌 Socket.io
+
+    Note over WebBrowser: User buka halaman Billing
+    WebBrowser->>Backend: POST /payments/create-invoice
+    Backend->>Duitku: Create Payment
+    Duitku-->>Backend: paymentUrl
+    Backend-->>WebBrowser: Redirect ke Duitku
+    WebBrowser->>Duitku: User bayar
+    Duitku->>Backend: POST /payments/callback
+    Backend->>Backend: Update Tenant status → active
+    Backend->>SocketIO: emit subscription:updated
+    SocketIO->>MobileApp: subscription:updated event
+    MobileApp->>MobileApp: Update UI real-time (Lock Screen hilang)
+
+    Note over MobileApp: User buka app
+    MobileApp->>Backend: GET /tenants/:slug/trial-status
+    Backend-->>MobileApp: {status, plan, expiresAt}
+    alt Expired (after grace)
+        MobileApp->>MobileApp: Show Lock Screen
+    else Grace Period
+        MobileApp->>MobileApp: Show Grace Banner
+    else Active
+        MobileApp->>MobileApp: Show Normal UI
+    end
+```
+
+---
+
+## Verification Plan
+
+### Manual Verification (User-Assisted)
+Tidak ada automated test framework yang ter-setup di proyek ini (semua test file yang ada adalah skrip manual/one-off). Berikut langkah verifikasi manual:
+
+1. **Backend: Start dev server** → `cd backend && npm start`  
+   - Pastikan server start tanpa error
+
+2. **Frontend: Start dev server** → `cd frontend && npm run dev`  
+   - Pastikan build berhasil tanpa error
+
+3. **Test di Web Browser (Desktop)**:
+   - Buka halaman Billing (`/:tenantSlug/admin/subscription/upgrade`)
+   - Pastikan pricing cards dan tombol bayar **muncul**
+   - Klik "Lanjutkan Pembayaran" → pastikan redirect ke Duitku (sandbox)
+
+4. **Test di Mobile App / Capacitor preview**:
+   - Buka halaman yang sama via Capacitor
+   - Pastikan pricing cards dan tombol bayar **tersembunyi**
+   - Pastikan instruksi "Perpanjang via superkafe.com" muncul
+
+5. **Test Lock Screen**:
+   - Set `subscriptionExpiresAt` dan `gracePeriodEndsAt` ke masa lalu di MongoDB
+   - Refresh app → pastikan Lock Screen fullscreen muncul
+   - Verifikasi bahwa fitur kasir tidak bisa diakses
+
+6. **Test Real-time Update (Socket.io)**:
+   - Buka mobile app yang di-lock (expired)
+   - Dari tab browser lain, simulasikan callback payment sukses (atau set status tenant manual di MongoDB)
+   - Pastikan Lock Screen **hilang otomatis** tanpa refresh halaman
+
+7. **Test Grace Period**:
+   - Set `subscriptionExpiresAt` ke kemarin, `gracePeriodEndsAt` ke 2 hari dari sekarang
+   - Pastikan app masih bisa diakses tapi grace banner muncul
+
+> [!TIP]
+> Untuk testing payment callback tanpa Duitku sandbox, kita bisa buat endpoint sementara `POST /api/payments/simulate-callback` yang mensimulasikan callback sukses (hanya aktif di development mode).
