@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const TenantController = require('../controllers/TenantController');
+const { checkJwt } = require('../middleware/auth');
 
 /**
  * Routes untuk manajemen tenant
@@ -21,5 +22,8 @@ router.get('/:slug/trial-status', TenantController.getTrialStatus);
 
 // PATCH /api/tenants/:id/toggle - Toggle status aktif/nonaktif tenant
 router.patch('/:id/toggle', TenantController.toggleTenantStatus);
+
+// PUT /api/tenants/:id/faqs - Update FAQs (Protected)
+router.put('/:id/faqs', checkJwt, TenantController.updateFaqs);
 
 module.exports = router;

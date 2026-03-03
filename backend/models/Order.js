@@ -43,6 +43,8 @@ OrderSchema.index({ customerPhone: 1 }); // For retention analysis
 // Tenant-scoped compound indexes for optimal query performance
 OrderSchema.index({ tenantId: 1, timestamp: -1 }); // Time-based queries per tenant
 OrderSchema.index({ tenantId: 1, status: 1 }); // Status-based queries per tenant
+OrderSchema.index({ tenantId: 1, status: 1, timestamp: -1 }); // Optimized for dashboard dashboard & pending counts
+OrderSchema.index({ tenantId: 1, is_archived_from_pos: 1, status: 1 }); // Optimized for pending count checks
 
 // Apply tenant scoping plugin for automatic tenant isolation
 OrderSchema.plugin(tenantScopingPlugin);

@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useOutletContext, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { serviceAPI, feedbackAPI } from '../../services/api';
+import { serviceAPI, feedbackAPI, tenantAPI } from '../../services/api';
 
 function Bantuan() {
     const { tableId, settings } = useOutletContext();
@@ -21,29 +21,31 @@ function Bantuan() {
     const [feedbackRating, setFeedbackRating] = useState(5);
     const [feedbackLoading, setFeedbackLoading] = useState(false);
 
-    // Initial FAQs
-    const faqs = [
-        {
-            q: "Bagaimana cara memesan?",
-            a: "Pilih menu yang diinginkan, atur jumlah, lalu klik 'Pesan Sekarang' di halaman keranjang."
-        },
-        {
-            q: "Berapa lama pesanan saya diproses?",
-            a: "Rata-rata pesanan diproses dalam 5-15 menit tergantung antrian."
-        },
-        {
-            q: "Bagaimana cara membayar?",
-            a: "Pembayaran dapat dilakukan secara tunai atau QRIS di kasir setelah pesanan siap."
-        },
-        {
-            q: "Apakah bisa request khusus?",
-            a: "Bisa! Tuliskan permintaan khusus di kolom 'Catatan' saat checkout."
-        },
-        {
-            q: "Apa password Wifi di sini?",
-            a: "Password Wifi tercetak otomatis di bagian bawah struk pembayaran Anda."
-        }
-    ];
+    // State for Dynamic FAQs
+    const [faqs, setFaqs] = useState([]);
+    const [loadingFaqs, setLoadingFaqs] = useState(true);
+    const [openFaqIndex, setOpenFaqIndex] = useState(null);
+
+    // Fetch Dynamic FAQs
+    useEffect(() => {
+        const fetchFaqs = async () => {
+            try {
+                const pathParts = window.location.pathname.split('/');
+                const slug = pathParts[1];
+                if (slug) {
+                    const res = await tenantAPI.getBySlug(slug);
+                    if (res.data.success && res.data.data.faqs) {
+                        setFaqs(res.data.data.faqs.filter(f => f.isActive));
+                    }
+                }
+            } catch (error) {
+                console.error('Error fetching FAQs:', error);
+            } finally {
+                setLoadingFaqs(false);
+            }
+        };
+        fetchFaqs();
+    }, []);
 
     // Handle Open Call Modal
     const openCallModal = () => {
@@ -147,12 +149,52 @@ function Bantuan() {
                     <span className="text-xl">📚</span> FAQ (Tanya Jawab)
                 </h3>
                 <div className="space-y-3">
-                    {faqs.map((faq, idx) => (
-                        <div key={idx} className="bg-white/5 border border-white/10 rounded-xl p-4">
-                            <h4 className="font-bold text-sm text-purple-300 mb-1">{faq.q}</h4>
-                            <p className="text-sm text-gray-400">{faq.a}</p>
+                    {loadingFaqs ? (
+                        <div className="flex justify-center p-4">
+                            <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-purple-500"></div>
                         </div>
-                    ))}
+                    ) : faqs.length > 0 ? (
+                        faqs.map((faq, idx) => (
+                            <div key={idx} className="bg-white/5 border border-white/10 rounded-xl overflow-hidden shadow-sm hover:shadow-purple-500/10 transition-shadow">
+                                <button
+                                    onClick={() => setOpenFaqIndex(openFaqIndex === idx ? null : idx)}
+                                    className="w-full text-left p-4 flex justify-between items-center outline-none focus:ring-2 focus:ring-purple-500/50"
+                                >
+                                    <h4 className="font-bold text-sm text-purple-300 pr-4">{faq.question}</h4>
+                                    <motion.div
+                                        animate={{ rotate: openFaqIndex === idx ? 180 : 0 }}
+                                        transition={{ duration: 0.3 }}
+                                        className="flex-shrink-0"
+                                    >
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
+                                            <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+                                        </svg>
+                                    </motion.div>
+                                </button>
+                                <AnimatePresence>
+                                    {openFaqIndex === idx && (
+                                        <motion.div
+                                            initial={{ height: 0, opacity: 0 }}
+                                            animate={{ height: "auto", opacity: 1 }}
+                                            exit={{ height: 0, opacity: 0 }}
+                                            transition={{ duration: 0.3, ease: 'easeInOut' }}
+                                            className="overflow-hidden bg-black/20"
+                                        >
+                                            <div className="p-4 pt-0 text-sm text-gray-300 mt-2">
+                                                {faq.answer.split('\n').map((line, i) => (
+                                                    <p key={i} className={i > 0 ? "mt-1" : ""}>{line}</p>
+                                                ))}
+                                            </div>
+                                        </motion.div>
+                                    )}
+                                </AnimatePresence>
+                            </div>
+                        ))
+                    ) : (
+                        <div className="text-center p-4 bg-white/5 border border-white/10 rounded-xl">
+                            <p className="text-sm text-gray-400">Belum ada FAQ tersedia saat ini.</p>
+                        </div>
+                    )}
                 </div>
             </div>
 

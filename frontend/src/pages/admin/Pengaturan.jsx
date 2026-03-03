@@ -83,6 +83,28 @@ function Pengaturan() {
         }
     }, []);
 
+    // FAQ Management State
+    const [faqs, setFaqs] = useState([]);
+    const [initialFaqs, setInitialFaqs] = useState([]);
+
+    // Fetch FAQs independently
+    useEffect(() => {
+        const fetchTenantData = async () => {
+            const slug = localStorage.getItem('tenant_slug');
+            if (!slug) return;
+            try {
+                const res = await api.get(`/tenants/${slug}`);
+                if (res.data.success && res.data.data.faqs) {
+                    setFaqs(res.data.data.faqs);
+                    setInitialFaqs(res.data.data.faqs);
+                }
+            } catch (error) {
+                console.error('Error fetching tenant data for faqs:', error);
+            }
+        };
+        fetchTenantData();
+    }, []);
+
     // Fetch Subscription Detail on Mount
     useEffect(() => {
         const fetchSubStatus = async () => {
@@ -188,6 +210,24 @@ function Pengaturan() {
             toast.error('Gagal menyimpan pengaturan', { id: toastId });
         } finally {
             setSaving(false);
+        }
+    };
+
+    const handleSaveFaqs = async () => {
+        if (!tenantId) {
+            toast.error('Tenant ID tidak ditemukan');
+            return;
+        }
+        const toastId = toast.loading('Menyimpan FAQ...');
+        try {
+            const res = await api.put(`/tenants/${tenantId}/faqs`, { faqs });
+            if (res.data.success) {
+                toast.success('FAQ berhasil disimpan!', { id: toastId });
+                setInitialFaqs(faqs);
+            }
+        } catch (error) {
+            console.error('Error saving FAQs:', error);
+            toast.error('Gagal menyimpan FAQ', { id: toastId });
         }
     };
 
@@ -837,6 +877,106 @@ function Pengaturan() {
                 </div>
             </AccordionSection>
 
+            {/* Manage FAQ */}
+            <AccordionSection
+                id="faq"
+                title="Kelola FAQ (Tanya Jawab)"
+                icon="❓"
+                isOpen={openSection === 'faq'}
+                onToggle={() => toggleSection('faq')}
+                isDirty={JSON.stringify(faqs) !== JSON.stringify(initialFaqs)}
+            >
+                <div className="space-y-4">
+                    <div className="flex justify-between items-center mb-4">
+                        <p className="text-sm opacity-80 admin-text-primary">
+                            Pertanyaan & jawaban ini akan ditampilkan di halaman Bantuan pelanggan Anda.
+                        </p>
+                        <button
+                            onClick={() => setFaqs([...faqs, { question: '', answer: '', isActive: true }])}
+                            className="px-3 py-1.5 rounded-lg bg-green-500/20 text-green-600 hover:bg-green-500/30 transition-colors flex items-center gap-2 text-sm font-bold"
+                        >
+                            <span>➕</span> Tambah FAQ
+                        </button>
+                    </div>
+
+                    <div className="space-y-3">
+                        {faqs.map((faq, index) => (
+                            <div key={index} className="p-4 bg-black/5 rounded-xl border admin-border-accent relative group">
+                                <div className="absolute top-2 right-2 flex gap-2">
+                                    <button
+                                        onClick={() => {
+                                            const newFaqs = [...faqs];
+                                            newFaqs[index].isActive = !newFaqs[index].isActive;
+                                            setFaqs(newFaqs);
+                                        }}
+                                        className={`p-1.5 rounded-lg text-xs ${faq.isActive ? 'bg-blue-500/20 text-blue-500 hover:bg-blue-500/30' : 'bg-gray-500/20 text-gray-500 hover:bg-gray-500/30'} transition-colors`}
+                                        title={faq.isActive ? "Sembunyikan" : "Tampilkan"}
+                                    >
+                                        {faq.isActive ? '👁️' : '🙈'}
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            const newFaqs = faqs.filter((_, i) => i !== index);
+                                            setFaqs(newFaqs);
+                                        }}
+                                        className="p-1.5 rounded-lg bg-red-500/20 text-red-500 hover:bg-red-500/30 transition-colors text-xs"
+                                        title="Hapus"
+                                    >
+                                        🗑️
+                                    </button>
+                                </div>
+                                <div className="space-y-3 pr-16">
+                                    <div>
+                                        <label className="block text-xs opacity-80 admin-text-primary font-medium mb-1">Pertanyaan</label>
+                                        <input
+                                            type="text"
+                                            value={faq.question}
+                                            onChange={(e) => {
+                                                const newFaqs = [...faqs];
+                                                newFaqs[index].question = e.target.value;
+                                                setFaqs(newFaqs);
+                                            }}
+                                            className="w-full px-3 py-1.5 rounded-lg admin-input text-sm"
+                                            placeholder="Contoh: Apakah bisa bayar pakai QRIS?"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs opacity-80 admin-text-primary font-medium mb-1">Jawaban</label>
+                                        <textarea
+                                            value={faq.answer}
+                                            onChange={(e) => {
+                                                const newFaqs = [...faqs];
+                                                newFaqs[index].answer = e.target.value;
+                                                setFaqs(newFaqs);
+                                            }}
+                                            className="w-full px-3 py-1.5 rounded-lg admin-input text-sm resize-none"
+                                            rows="2"
+                                            placeholder="Tuliskan jawaban dari pertanyaan di atas..."
+                                        ></textarea>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                        {faqs.length === 0 && (
+                            <div className="text-center p-6 bg-black/5 rounded-xl border admin-border-accent border-dashed">
+                                <p className="opacity-60 admin-text-primary">Belum ada FAQ. Klik "Tambah FAQ" untuk membuat pertanyaan baru.</p>
+                            </div>
+                        )}
+                    </div>
+
+                    {JSON.stringify(faqs) !== JSON.stringify(initialFaqs) && (
+                        <div className="flex justify-end mt-4 pt-4 border-t admin-border-accent">
+                            <button
+                                onClick={handleSaveFaqs}
+                                className="px-6 py-2 rounded-lg bg-purple-500 text-white font-bold hover:bg-purple-600 transition-colors shadow-lg shadow-purple-500/20"
+                            >
+                                Simpan Perubahan FAQ
+                            </button>
+                        </div>
+                    )}
+                </div>
+            </AccordionSection>
+
             {/* Account Security (Change Password) */}
             <AccordionSection
                 id="security"
@@ -912,7 +1052,7 @@ function Pengaturan() {
                 </button>
             </div>
 
-        </section>
+        </section >
     );
 }
 

@@ -98,7 +98,29 @@ const setupTenant = async (req, res) => {
       dbName,
       isActive: true,
       status: 'trial',
-      trialExpiresAt: trialExpiresAt
+      trialExpiresAt: trialExpiresAt,
+      faqs: [
+        {
+          question: "Bagaimana cara memesan?",
+          answer: "Pilih menu yang diinginkan, atur jumlah, metode pembayaran lalu klik 'Pesan Sekarang' di halaman keranjang."
+        },
+        {
+          question: "Berapa lama pesanan saya diproses?",
+          answer: "Rata-rata pesanan diproses dalam 5-15 menit tergantung antrian."
+        },
+        {
+          question: "Bagaimana cara membayar?",
+          answer: "Pembayaran dapat dilakukan secara tunai atau QRIS di kasir setelah pesanan siap."
+        },
+        {
+          question: "Apakah bisa request khusus?",
+          answer: "Bisa! Tuliskan permintaan khusus di kolom 'Catatan' saat checkout."
+        },
+        {
+          question: "Apa password Wifi di sini?",
+          answer: "Password Wifi tercetak otomatis di bagian bawah struk pembayaran Anda."
+        }
+      ]
     });
 
     console.log('[SETUP] Tenant baru berhasil dibuat', {

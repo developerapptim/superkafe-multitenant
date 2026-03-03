@@ -16,9 +16,37 @@ async function deductStockForOrder(order) {
     console.log(`📉 [DEDUCT] Starting stock deduction for Order: ${order.id}`);
 
     // Tenant scoping is automatic via plugin - all queries automatically filter by tenantId
-    const recipes = await Recipe.find();
-    const ingredients = await Ingredient.find();
-    const allMenuItems = await MenuItem.find();
+    const itemIds = order.items ? order.items.map(item => String(item.id)) : [];
+    if (itemIds.length === 0) return;
+
+    let allMenuItems = await MenuItem.find({ id: { $in: itemIds } });
+
+    // Collect all menu IDs that need recipe checks (direct items + bundle components)
+    const menuIdsToCheck = [...itemIds];
+    const additionalMenuIdsToFetch = [];
+
+    allMenuItems.forEach(mi => {
+        if (mi.is_bundle && mi.bundle_items) {
+            mi.bundle_items.forEach(bi => {
+                if (bi.product_id) {
+                    menuIdsToCheck.push(String(bi.product_id));
+                    additionalMenuIdsToFetch.push(String(bi.product_id));
+                }
+            });
+        }
+    });
+
+    if (additionalMenuIdsToFetch.length > 0) {
+        const componentMenus = await MenuItem.find({ id: { $in: additionalMenuIdsToFetch } });
+        // Mongoose records aren't standard arrays, but concat usually works, better spread
+        allMenuItems = [...allMenuItems, ...componentMenus];
+    }
+
+    const recipes = await Recipe.find({ menuId: { $in: menuIdsToCheck } });
+
+    // Extract unique ingredient IDs from recipes
+    const ingredientIds = [...new Set(recipes.flatMap(r => r.ingredients.map(i => String(i.ing_id))))];
+    const ingredients = await Ingredient.find({ id: { $in: ingredientIds } });
 
     const ingredientMap = new Map();
     ingredients.forEach(i => ingredientMap.set(String(i.id), i));
@@ -107,8 +135,13 @@ async function revertStockForOrder(order) {
     console.log(`📈 [REVERT] Starting stock reversion for Order: ${order.id}`);
 
     // Tenant scoping is automatic via plugin
-    const recipes = await Recipe.find();
-    const ingredients = await Ingredient.find();
+    const itemIds = order.items ? order.items.map(item => String(item.id)) : [];
+    if (itemIds.length === 0) return;
+
+    const recipes = await Recipe.find({ menuId: { $in: itemIds } });
+
+    const ingredientIds = [...new Set(recipes.flatMap(r => r.ingredients.map(i => String(i.ing_id))))];
+    const ingredients = await Ingredient.find({ id: { $in: ingredientIds } });
 
     const ingredientMap = new Map();
     ingredients.forEach(i => ingredientMap.set(String(i.id), i));
@@ -212,7 +245,7 @@ const createOrder = async (req, res) => {
                 // File sudah disimpan oleh multer ke disk
                 // Buat URL path untuk akses public
                 const imageUrl = `/uploads/payments/${req.file.filename}`;
-                
+
                 console.log("💾 Payment proof saved locally:", imageUrl);
                 orderData.paymentProofImage = imageUrl;
             } catch (uploadErr) {
@@ -230,8 +263,11 @@ const createOrder = async (req, res) => {
         // 1. Calculate HPP ONLY (Stock deduction moved to 'process' status)
         console.log("1️⃣ Starting HPP Calculation (No Stock Deduction at Creation)");
         // Tenant scoping is automatic via plugin
-        const recipes = await Recipe.find();
-        const ingredients = await Ingredient.find();
+        const itemIds = orderData.items ? orderData.items.map(item => String(item.id)) : [];
+        const recipes = await Recipe.find({ menuId: { $in: itemIds } });
+
+        const ingredientIds = [...new Set(recipes.flatMap(r => r.ingredients.map(i => String(i.ing_id))))];
+        const ingredients = await Ingredient.find({ id: { $in: ingredientIds } });
 
         const ingredientMap = new Map();
         ingredients.forEach(i => ingredientMap.set(String(i.id), i));
@@ -785,28 +821,27 @@ const getPendingCount = async (req, res) => {
     try {
         // Tenant scoping is automatic via plugin
         // Exact same logic as Frontend Kasir.jsx
-        const today = new Date().toISOString().split('T')[0];
+        const todayStr = new Date().toISOString().split('T')[0];
 
-        // Get ALL orders and filter manually to match EXACTLY what Frontend does
-        const allOrders = await Order.find({}).lean();
+        const startOfDay = new Date();
+        startOfDay.setHours(0, 0, 0, 0);
 
-        const filteredOrders = allOrders.filter(o => {
-            // Not archived
-            if (o.is_archived_from_pos) return false;
+        const endOfDay = new Date();
+        endOfDay.setHours(23, 59, 59, 999);
 
-            // Status must be 'new' (for Baru tab)
-            if (o.status !== 'new') return false;
-
-            // Date check - Sync with POS strict filter
-            const orderDate = o.date || (o.timestamp && new Date(o.timestamp).toISOString().split('T')[0]);
-            if (orderDate !== today) return false;
-
-            return true;
+        // Use MongoDB countDocuments instead of loading all orders into memory
+        const count = await Order.countDocuments({
+            status: 'new',
+            is_archived_from_pos: { $ne: true },
+            $or: [
+                { date: todayStr },
+                { timestamp: { $gte: startOfDay.getTime(), $lte: endOfDay.getTime() } }
+            ]
         });
 
-        console.log(`[getPendingCount] Today: ${today}, Count: ${filteredOrders.length}`);
+        console.log(`[getPendingCount] Today: ${todayStr}, Count: ${count}`);
 
-        res.json({ count: filteredOrders.length });
+        res.json({ count });
     } catch (error) {
         console.error('Get Pending Count Error:', error);
         res.status(500).json({ message: error.message });
@@ -909,14 +944,14 @@ const mergeOrders = async (req, res) => {
 };
 
 module.exports = {
-  checkPhone,
-  createOrder,
-  getOrders,
-  deleteOrder,
-  getOrderById,
-  updateOrderStatus,
-  payOrder,
-  getTodayOrders,
-  getPendingCount,
-  mergeOrders
+    checkPhone,
+    createOrder,
+    getOrders,
+    deleteOrder,
+    getOrderById,
+    updateOrderStatus,
+    payOrder,
+    getTodayOrders,
+    getPendingCount,
+    mergeOrders
 };

@@ -121,7 +121,29 @@ const registerTenant = async (req, res) => {
       dbName,
       isActive: true,
       status: 'trial',
-      trialExpiresAt: trialExpiresAt
+      trialExpiresAt: trialExpiresAt,
+      faqs: [
+        {
+          question: "Bagaimana cara memesan?",
+          answer: "Pilih menu yang diinginkan, atur jumlah, metode pembayaran lalu klik 'Pesan Sekarang' di halaman keranjang."
+        },
+        {
+          question: "Berapa lama pesanan saya diproses?",
+          answer: "Rata-rata pesanan diproses dalam 5-15 menit tergantung antrian."
+        },
+        {
+          question: "Bagaimana cara membayar?",
+          answer: "Pembayaran dapat dilakukan secara tunai atau QRIS di kasir setelah pesanan siap."
+        },
+        {
+          question: "Apakah bisa request khusus?",
+          answer: "Bisa! Tuliskan permintaan khusus di kolom 'Catatan' saat checkout."
+        },
+        {
+          question: "Apa password Wifi di sini?",
+          answer: "Password Wifi tercetak otomatis di bagian bawah struk pembayaran Anda."
+        }
+      ]
     });
 
     console.log('[TENANT] Tenant baru berhasil dibuat dengan trial 10 hari', {
@@ -603,10 +625,66 @@ const getTrialStatus = async (req, res) => {
   }
 };
 
+/**
+ * PUT /api/tenants/:id/faqs
+ * Memperbarui daftar FAQ untuk tenant. Data FAQ akan di-replace sepenuhnya.
+ */
+const updateFaqs = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { faqs } = req.body;
+
+    if (!Array.isArray(faqs)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Format data FAQ tidak valid'
+      });
+    }
+
+    const tenant = await Tenant.findById(id);
+
+    if (!tenant) {
+      return res.status(404).json({
+        success: false,
+        message: 'Tenant tidak ditemukan'
+      });
+    }
+
+    // Replace faqs array
+    tenant.faqs = faqs;
+    await tenant.save();
+
+    console.log('[TENANT] FAQ berhasil diperbarui', {
+      id: tenant._id,
+      slug: tenant.slug,
+      faqCount: faqs.length
+    });
+
+    res.json({
+      success: true,
+      message: 'FAQ berhasil diperbarui',
+      data: tenant.faqs
+    });
+
+  } catch (error) {
+    console.error('[TENANT ERROR] Gagal memperbarui FAQ', {
+      error: error.message,
+      stack: error.stack,
+      id: req.params.id
+    });
+
+    res.status(500).json({
+      success: false,
+      message: 'Gagal memperbarui FAQ'
+    });
+  }
+};
+
 module.exports = {
   registerTenant,
   getAllTenants,
   getTenantBySlug,
   toggleTenantStatus,
-  getTrialStatus
+  getTrialStatus,
+  updateFaqs
 };

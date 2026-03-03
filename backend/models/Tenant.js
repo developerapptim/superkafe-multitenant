@@ -24,6 +24,13 @@ const tenantSchema = new mongoose.Schema({
     default: true
   },
 
+  // ===== FAQ Settings =====
+  faqs: [{
+    question: { type: String, required: true },
+    answer: { type: String, required: true },
+    isActive: { type: Boolean, default: true }
+  }],
+
   // ===== Trial & Subscription Fields =====
   status: {
     type: String,
@@ -89,6 +96,7 @@ tenantSchema.index({ slug: 1 }, {
 });
 tenantSchema.index({ isActive: 1 });
 tenantSchema.index({ status: 1 });
+tenantSchema.index({ status: 1, isActive: 1 }); // Compound index for filtering active/trial tenants efficiently
 tenantSchema.index({ trialExpiresAt: 1 });
 tenantSchema.index({ subscriptionExpiresAt: 1 });
 
