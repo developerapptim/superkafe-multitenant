@@ -19,7 +19,21 @@ function decodeJWT(token) {
     }
 }
 
-export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001/api';
+// Dynamically determine the best API URL to avoid Mixed Content error
+const getBaseUrl = () => {
+    const isHttps = typeof window !== 'undefined' && window.location.protocol === 'https:';
+    let envUrl = import.meta.env.VITE_API_URL || 'http://localhost:5001/api';
+
+    // If we are on HTTPS but the env string uses HTTP (often a raw IP),
+    // we route to the same origin's /api endpoint (which is proxied by Nginx).
+    if (isHttps && envUrl.startsWith('http://')) {
+        return `${window.location.origin}/api`;
+    }
+
+    return envUrl;
+};
+
+export const API_BASE_URL = getBaseUrl();
 
 // Create axios instance with dynamic baseURL
 const api = axios.create({

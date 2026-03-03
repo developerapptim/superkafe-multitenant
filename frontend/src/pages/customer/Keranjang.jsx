@@ -143,8 +143,8 @@ function Keranjang() {
         }
 
         // Validate Identity
-        if (!customerName.trim() || !phone.trim()) {
-            toast.error('Mohon lengkapi Nama dan Nomor WhatsApp!');
+        if (!customerName.trim()) {
+            toast.error('Mohon lengkapi Nama Pemesan!');
             return;
         }
 
@@ -570,7 +570,7 @@ function Keranjang() {
                     </datalist>
                 </div>
                 <div>
-                    <label className="block text-sm text-gray-400 mb-1">Nomor WhatsApp/HP <span className="text-red-400">*</span></label>
+                    <label className="block text-sm text-gray-400 mb-1">Nomor WhatsApp/HP</label>
                     <input
                         type="tel"
                         list="phone-options"
@@ -585,7 +585,7 @@ function Keranjang() {
                             <option key={idx} value={opt.phone}>{opt.name}</option>
                         ))}
                     </datalist>
-                    <p className="text-xs text-gray-500 mt-1">Nomor ini digunakan untuk konfirmasi pesanan & poin loyalty.</p>
+                    <p className="text-xs text-gray-500 mt-1">opsional, namun diperlukan untuk menyimpan <b>poin loyalty kamu</b>.</p>
                 </div>
             </div>
 

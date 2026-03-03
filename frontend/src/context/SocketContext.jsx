@@ -20,19 +20,17 @@ export const SocketProvider = ({ children }) => {
 
         // Determine socket URL based on environment
         let socketUrl;
+        const isHttps = typeof window !== 'undefined' && window.location.protocol === 'https:';
 
         // Check if baseUrl is using an IP address or localhost
         const isLocalOrIP = baseUrl.includes('localhost') || baseUrl.match(/\d+\.\d+\.\d+\.\d+/);
 
-        if ((import.meta.env.PROD && !isLocalOrIP) || window.location.protocol === 'https:') {
-            // Production: Use HTTPS without port
-            // Example: https://superkafe.com
-            socketUrl = baseUrl.replace('http:', 'https:');
-
-            // Remove port if present (e.g., :5001)
-            socketUrl = socketUrl.replace(/:\d+/, '');
+        if (isHttps) {
+            // Production: Use HTTPS origin for secure WSS connection
+            // Relies on Nginx to proxy /socket.io properly
+            socketUrl = window.location.origin;
         } else {
-            // Development or Direct IP: Use HTTP with port
+            // Development or Direct IP: Use HTTP with port as defined.
             socketUrl = baseUrl;
         }
 
