@@ -241,23 +241,23 @@ class PaymentService {
     const pricing = {
       // === Paket Baru (Starter / Bisnis / Lifetime) ===
       starter: {
-        amount: 225000,
+        amount: 200000,
         description: 'Paket Starter SuperKafe - 30 Hari',
         duration: 30
       },
       bisnis: {
-        amount: 2000000,
-        description: 'Paket Bisnis SuperKafe - 365 Hari (Hemat Rp 500.000)',
+        amount: 1700000,
+        description: 'Paket Bisnis SuperKafe - 365 Hari (Hemat Rp 700.000)',
         duration: 365
       },
       lifetime: {
-        amount: 7500000,
+        amount: 5500000,
         description: 'Paket Lifetime SuperKafe - Tanpa Batas Waktu',
         duration: 36500 // ~100 tahun
       },
       // === Legacy plan names (backward compatibility) ===
       monthly: {
-        amount: 225000,
+        amount: 200000,
         description: 'Paket Starter SuperKafe - 30 Hari',
         duration: 30
       },
@@ -267,7 +267,7 @@ class PaymentService {
         duration: 90
       },
       yearly: {
-        amount: 2000000,
+        amount: 1700000,
         description: 'Paket Bisnis SuperKafe - 365 Hari',
         duration: 365
       }

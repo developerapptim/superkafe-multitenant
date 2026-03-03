@@ -108,6 +108,16 @@ function AdminLayout() {
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, []);
 
+    // Reset scroll and fix focus on route change
+    useEffect(() => {
+        const mainScrollContainer = document.getElementById('main-scroll-container');
+        if (mainScrollContainer) {
+            mainScrollContainer.scrollTop = 0;
+            // Focus the main container so arrow keys/page down work immediately without clicking
+            mainScrollContainer.focus({ preventScroll: true });
+        }
+    }, [location.pathname]);
+
     const [showShiftModal, setShowShiftModal] = useState(false);
     const [shiftData, setShiftData] = useState({ startCash: '' });
     const { data: currentShift, mutate: mutateShift } = useSWR('/shifts/current', fetcher);
@@ -330,10 +340,14 @@ function AdminLayout() {
                         </header>
 
                         {/* Main Content */}
-                        <main className="flex-1 overflow-hidden relative admin-bg-main" id="main-scroll-container">
+                        <main
+                            className="flex-1 overflow-y-auto overflow-x-hidden relative admin-bg-main outline-none custom-scrollbar"
+                            id="main-scroll-container"
+                            tabIndex="-1"
+                        >
                             <PullToRefresh
                                 onRefresh={triggerRefresh}
-                                className="h-full w-full overflow-y-auto"
+                                className="min-h-full w-full"
                                 pullingContent={
                                     <div className="w-full flex justify-center items-center py-4 bg-transparent text-purple-400">
                                         <span className="animate-bounce">⬇️ Tarik untuk menyegarkan</span>

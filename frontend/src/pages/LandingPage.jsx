@@ -12,7 +12,7 @@ const LandingPage = () => {
   // Handle login button click with session check
   const handleLoginClick = () => {
     const session = checkActiveSession();
-    
+
     if (session) {
       const dashboardUrl = getDashboardUrl();
       if (dashboardUrl) {
@@ -21,7 +21,7 @@ const LandingPage = () => {
         return;
       }
     }
-    
+
     // No active session, go to login page
     navigate('/auth/login');
   };
@@ -73,7 +73,7 @@ const LandingPage = () => {
   const pricingPlans = [
     {
       name: 'Starter',
-      price: 'Rp 225.000',
+      price: 'Rp 200.000',
       period: 'bulan',
       description: 'Solusi fleksibel untuk operasional harian kafe Anda.',
       features: [
@@ -87,10 +87,10 @@ const LandingPage = () => {
     },
     {
       name: 'Bisnis',
-      price: 'Rp 2.000.000',
-      originalPrice: 'Rp 2.500.000',
+      price: 'Rp 1.700.000',
+      originalPrice: 'Rp 2.400.000',
       period: 'tahun',
-      badge: 'DISKON 20%',
+      badge: 'DISKON 29%',
       description: 'Pilihan favorit! Investasi cerdas untuk efisiensi maksimal bisnis Anda.',
       features: [
         'Akses Lengkap Sistem POS & Kasir',
@@ -104,7 +104,7 @@ const LandingPage = () => {
     },
     {
       name: 'Lifetime',
-      price: 'Rp 7.500.000',
+      price: 'Rp 5.500.000',
       period: 'Sekali Bayar',
       description: 'Satu kali bayar, kendali kafe di tangan Anda selamanya tanpa biaya langganan.',
       features: [

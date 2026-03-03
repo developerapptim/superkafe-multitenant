@@ -19,7 +19,7 @@ const { runWithTenantContext } = require('../utils/tenantContext');
  */
 const setupTenant = async (req, res) => {
   const startTime = Date.now();
-  
+
   try {
     const { cafeName, slug, adminName } = req.body;
     const userId = req.user.id || req.user.userId; // Support both formats for compatibility
@@ -117,7 +117,7 @@ const setupTenant = async (req, res) => {
         async () => {
           // Seeding settings
           const SettingModel = require('../models/Setting');
-          
+
           const defaultSettings = [
             { key: 'store_name', value: cafeName, description: 'Nama toko/warkop' },
             { key: 'store_address', value: '', description: 'Alamat toko' },
@@ -163,7 +163,9 @@ const setupTenant = async (req, res) => {
             existed: adminSeedResult.existed
           });
 
-          // Seed kategori dan menu default
+          // Seed kategori dan menu default - DISABLED PER USER REQUEST
+          // User will now see an empty state to add their own menu
+          /*
           const { seedDefaultMenu } = require('../utils/seedDefaultMenu');
           const menuSeedResult = await seedDefaultMenu(null, newTenant._id);
           
@@ -173,6 +175,7 @@ const setupTenant = async (req, res) => {
               menuItems: menuSeedResult.menuItemsCount
             });
           }
+          */
 
           // Return admin user as plain object
           return createdAdmin.toObject ? createdAdmin.toObject() : createdAdmin;
@@ -256,7 +259,7 @@ const setupTenant = async (req, res) => {
 
   } catch (error) {
     const duration = Date.now() - startTime;
-    
+
     console.error('[SETUP ERROR] Gagal setup tenant', {
       error: error.message,
       stack: error.stack,
@@ -264,7 +267,7 @@ const setupTenant = async (req, res) => {
       body: req.body,
       duration: `${duration}ms`
     });
-    
+
     res.status(500).json({
       success: false,
       message: 'Terjadi kesalahan saat setup tenant',

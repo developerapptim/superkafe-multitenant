@@ -82,7 +82,7 @@ const SubscriptionUpgrade = () => {
     {
       id: 'starter',
       name: 'Starter',
-      price: pricing?.starter?.amount || 225000,
+      price: pricing?.starter?.amount || 200000,
       duration: '/ Bulan',
       description: 'Solusi awal yang tepat untuk memulai digitalisasi kafe Anda.',
       features: [
@@ -95,11 +95,11 @@ const SubscriptionUpgrade = () => {
     {
       id: 'bisnis',
       name: 'Bisnis',
-      originalPrice: 2500000,
-      price: pricing?.bisnis?.amount || 2000000,
+      originalPrice: 2400000,
+      price: pricing?.bisnis?.amount || 1700000,
       duration: '/ Tahun',
       description: 'Pilihan favorit. Solusi komprehensif untuk operasional maksimal.',
-      badge: 'Best Value',
+      badge: 'DISKON 29%',
       features: [
         'Semua fitur Starter',
         'Laporan finansial komplit',
@@ -110,7 +110,7 @@ const SubscriptionUpgrade = () => {
     {
       id: 'lifetime',
       name: 'Lifetime',
-      price: pricing?.lifetime?.amount || 7500000,
+      price: pricing?.lifetime?.amount || 5500000,
       duration: 'Sekali Bayar',
       description: 'Bayar sekali, pakai selamanya. Pilihan investasi terbaik.',
       features: [
@@ -123,8 +123,8 @@ const SubscriptionUpgrade = () => {
   ];
 
   return (
-    <div className="min-h-screen admin-bg-main p-6 admin-text-primary">
-      <div className="max-w-6xl mx-auto">
+    <div className="h-full admin-bg-main p-6 admin-text-primary">
+      <div className="max-w-6xl mx-auto pb-10">
         {/* Header */}
         <div className="text-center mb-12">
           <h1 className="text-4xl font-bold mb-4">

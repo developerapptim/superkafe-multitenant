@@ -59,7 +59,7 @@ export const ThemeProvider = ({ children, initialTheme = 'default', tenantId = n
             root.style.setProperty('--bg-sidebar', config.bgSidebar);
             root.style.setProperty('--accent-color', config.accentColor);
             root.style.setProperty('--text-primary', config.textPrimary);
-            
+
             console.log('[Theme] CSS variables applied:', config);
         } catch (error) {
             console.error('[Theme] Failed to apply CSS variables:', error);
@@ -94,7 +94,7 @@ export const ThemeProvider = ({ children, initialTheme = 'default', tenantId = n
             setIsLoading(true);
             const response = await api.get(`/tenants/${tenantId}/theme`);
             const themeName = response.data.theme || 'default';
-            
+
             // Validate theme name against preset keys
             // Requirements: 3.5 - Validate theme and fallback if invalid
             if (!themePresets[themeName]) {
@@ -118,14 +118,14 @@ export const ThemeProvider = ({ children, initialTheme = 'default', tenantId = n
         } catch (error) {
             console.error('[Theme] Failed to load theme from API:', error);
             console.log('[Theme] Falling back to default theme');
-            
+
             // Display user-friendly error message in Indonesian
             // Requirements: 9.4 - Display error and use default theme as fallback
             toast.error('Gagal memuat tema. Menggunakan tema default.', {
                 duration: 3000,
                 position: 'top-center'
             });
-            
+
             // Fallback to default theme on error
             setCurrentTheme('default');
             setThemeConfig(getThemeConfig('default'));
@@ -159,7 +159,7 @@ export const ThemeProvider = ({ children, initialTheme = 'default', tenantId = n
 
         try {
             setIsLoading(true);
-            
+
             // Optimistically update UI
             setCurrentTheme(themeName);
             setThemeConfig(newConfig);
@@ -170,7 +170,7 @@ export const ThemeProvider = ({ children, initialTheme = 'default', tenantId = n
             if (tenantId) {
                 await api.put(`/tenants/${tenantId}/theme`, { theme: themeName });
                 console.log('[Theme] Theme updated successfully:', themeName);
-                
+
                 // Update localStorage tenant data
                 const tenantData = localStorage.getItem('tenant');
                 if (tenantData) {
@@ -190,7 +190,7 @@ export const ThemeProvider = ({ children, initialTheme = 'default', tenantId = n
             return true;
         } catch (error) {
             console.error('[Theme] Failed to update theme:', error);
-            
+
             // Display user-friendly error message in Indonesian
             // Requirements: 2.5 - Display error message on save failure
             const errorMessage = error.response?.data?.message || 'Gagal menyimpan tema. Silakan coba lagi.';
@@ -198,7 +198,7 @@ export const ThemeProvider = ({ children, initialTheme = 'default', tenantId = n
                 duration: 4000,
                 position: 'top-center'
             });
-            
+
             // Revert to previous theme on error
             // Requirements: 2.5 - Maintain previous theme if update fails
             console.log('[Theme] Reverting to previous theme:', previousTheme);
@@ -207,7 +207,7 @@ export const ThemeProvider = ({ children, initialTheme = 'default', tenantId = n
             setThemeConfig(previousConfig);
             applyCSSVariables(previousConfig);
             setThemeAttribute(previousTheme);
-            
+
             return false;
         } finally {
             setIsLoading(false);
@@ -216,6 +216,7 @@ export const ThemeProvider = ({ children, initialTheme = 'default', tenantId = n
 
     // Apply initial theme on mount
     useEffect(() => {
+        setCurrentTheme(initialTheme);
         const config = getThemeConfig(initialTheme);
         setThemeConfig(config);
         applyCSSVariables(config);

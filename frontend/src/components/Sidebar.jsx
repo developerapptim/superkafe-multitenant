@@ -275,15 +275,27 @@ function Sidebar({ onLogout, isCollapsed, toggleSidebar }) {
   const { data: pendingReservations } = useSWR('/reservations?status=pending', fetcher, { refreshInterval: 15000 });
   const pendingReservationsCount = Array.isArray(pendingReservations) ? pendingReservations.length : 0;
 
+  const [isLight] = useState(() => {
+    try {
+      const tenantData = typeof window !== 'undefined' ? localStorage.getItem('tenant') : null;
+      if (tenantData) {
+        const tenant = JSON.parse(tenantData);
+        return tenant.selectedTheme === 'light-coffee';
+      }
+    } catch (error) {
+    }
+    return false;
+  });
+
   return (
     <aside
       id="sidebar"
-      className="h-full w-full admin-bg-sidebar/95 backdrop-blur-xl border-r admin-border-accent flex flex-col transition-all duration-300 shadow-2xl relative"
+      className={`h-full w-full backdrop-blur-xl border-r admin-border-accent flex flex-col transition-all duration-300 shadow-2xl relative ${isLight ? 'bg-[#FDF8F5]' : 'admin-bg-sidebar/95'}`}
     >
       {/* Header */}
       <div
         onClick={toggleSidebar}
-        className="hidden lg:flex h-16 items-center justify-center lg:justify-start px-2 lg:px-4 border-b admin-border-accent admin-bg-sidebar cursor-pointer hover:brightness-110 transition-colors group relative overflow-hidden"
+        className={`hidden lg:flex h-16 items-center justify-center lg:justify-start px-2 lg:px-4 border-b admin-border-accent cursor-pointer hover:brightness-110 transition-colors group relative overflow-hidden ${isLight ? 'bg-[#FDF8F5]' : 'admin-bg-sidebar'}`}
         title={isCollapsed ? "Klik untuk expand" : "Klik untuk collapse"}
       >
         <div className={`flex items-center gap-3 transition-all duration-300 ${isCollapsed ? 'justify-center w-full' : ''}`}>
@@ -405,7 +417,7 @@ function Sidebar({ onLogout, isCollapsed, toggleSidebar }) {
       </nav>
 
       {/* Footer / Logout */}
-      <div className={`p-4 border-t admin-border-accent admin-bg-main transition-all duration-300 ${isCollapsed ? 'hidden lg:flex justify-center' : 'block'}`}>
+      <div className={`p-4 border-t admin-border-accent transition-all duration-300 ${isCollapsed ? 'hidden lg:flex justify-center' : 'block'} ${isLight ? 'bg-[#FDF8F5]' : 'admin-bg-main'}`}>
         <button
           onClick={handleLogoutClick}
           className={`w-full flex items-center gap-3 px-2 lg:px-3 py-2 rounded-lg text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-colors justify-center lg:justify-start`}

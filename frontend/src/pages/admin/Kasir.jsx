@@ -694,46 +694,10 @@ function Kasir() {
         }
     };
 
-    // 1. If Staff AND Shift Closed -> BLOCK ACCESS (Show Open Shift UI)
-    if (!isAdmin && !isShiftOpen) {
-        return (
-            <section className="flex flex-col h-[calc(100vh-80px)] items-center justify-center p-4">
-                <div className="glass max-w-md w-full p-8 rounded-2xl border border-purple-500/30 text-center shadow-2xl animate-scale-up">
-                    <div className="w-20 h-20 bg-purple-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
-                        <span className="text-4xl">🔐</span>
-                    </div>
-                    <h2 className="text-2xl font-bold mb-2">Kasir Belum Dibuka</h2>
-                    <p className="text-gray-400 mb-8">Silakan masukkan modal awal (petty cash) untuk memulai shift hari ini.</p>
+    // SHIFT BLOCKING REMOVED: 
+    // Admin/owner can always access POS directly.
+    // Staff shift opening is handled by AdminLayout's blocking modal.
 
-                    <form onSubmit={handleStartShift} className="space-y-4 text-left">
-                        <div>
-                            <label className="block text-sm font-medium text-gray-400 mb-1">Modal Awal (Rp)</label>
-                            <div className="relative">
-                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-bold">Rp</span>
-                                <input
-                                    type="number"
-                                    value={startCash}
-                                    onChange={(e) => setStartCash(e.target.value)}
-                                    className="w-full pl-10 pr-4 py-3 rounded-xl bg-white/5 border border-purple-500/30 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 outline-none text-white text-lg font-bold placeholder-gray-600 transition-all"
-                                    placeholder="0"
-                                    autoFocus
-                                    min="0"
-                                    required
-                                />
-                            </div>
-                        </div>
-                        <button
-                            type="submit"
-                            disabled={isStartingShift}
-                            className="w-full py-4 rounded-xl bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white font-bold text-lg shadow-lg shadow-purple-500/25 transition-all transform hover:scale-[1.02] active:scale-95 disabled:opacity-50 disabled:grayscale"
-                        >
-                            {isStartingShift ? '⏳ Membuka Shift...' : '🚀 Buka Kasir'}
-                        </button>
-                    </form>
-                </div>
-            </section>
-        );
-    }
 
     return (
         <section className="flex flex-col h-[calc(100vh-80px)]">

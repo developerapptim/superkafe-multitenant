@@ -457,7 +457,7 @@ function Laporan() {
             )}
 
             {/* --- TRANSACTION HISTORY TABLE --- */}
-            <div className="glass rounded-xl p-6 border border-purple-500/20">
+            <div className="admin-bg-sidebar rounded-xl p-6 border admin-border-accent">
                 <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
                     <h3 className="text-xl font-bold flex items-center gap-2">
                         📜 Rincian Riwayat Transaksi
@@ -470,19 +470,19 @@ function Laporan() {
                             type="date"
                             value={startDate}
                             onChange={e => setStartDate(e.target.value)}
-                            className="bg-[#0F0A2A] border border-purple-500/30 rounded px-3 py-1.5 text-sm text-gray-300 focus:outline-none focus:border-purple-500"
+                            className="admin-bg-main admin-border-accent rounded px-3 py-1.5 text-sm admin-text-primary focus:outline-none focus:border-purple-500"
                         />
                         <span className="text-gray-500">-</span>
                         <input
                             type="date"
                             value={endDate}
                             onChange={e => setEndDate(e.target.value)}
-                            className="bg-[#0F0A2A] border border-purple-500/30 rounded px-3 py-1.5 text-sm text-gray-300 focus:outline-none focus:border-purple-500"
+                            className="admin-bg-main admin-border-accent rounded px-3 py-1.5 text-sm admin-text-primary focus:outline-none focus:border-purple-500"
                         />
                         <select
                             value={statusFilter}
                             onChange={e => setStatusFilter(e.target.value)}
-                            className="bg-[#0F0A2A] border border-purple-500/30 rounded px-3 py-1.5 text-sm text-gray-300 focus:outline-none focus:border-purple-500"
+                            className="admin-bg-main admin-border-accent rounded px-3 py-1.5 text-sm admin-text-primary focus:outline-none focus:border-purple-500"
                         >
                             <option value="all">Semua Status</option>
                             <option value="new">Baru/Pending</option>
@@ -496,12 +496,12 @@ function Laporan() {
                     </div>
                 </div>
 
-                <div className="overflow-hidden rounded-lg border border-purple-500/30">
+                <div className="overflow-hidden rounded-lg border admin-border-accent">
                     {/* Scrollable Container */}
                     <div className="max-h-[500px] overflow-y-auto custom-scrollbar">
                         <table className="w-full text-left border-collapse relative">
-                            <thead className="sticky top-0 z-10 bg-[#1A1642] shadow-md">
-                                <tr className="border-b border-purple-500/30 text-gray-400 text-sm">
+                            <thead className="sticky top-0 z-10 admin-bg-sidebar shadow-md">
+                                <tr className="border-b admin-border-accent opacity-80 text-sm">
                                     <th className="p-3">ID Order</th>
                                     <th className="p-3">Waktu</th>
                                     <th className="p-3">Pelanggan</th>
@@ -511,7 +511,7 @@ function Laporan() {
                                     <th className="p-3 text-center">Aksi</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-purple-500/10 text-sm bg-[#151235]">
+                            <tbody className="divide-y admin-border-accent text-sm admin-bg-main">
                                 {isLoadingTransactions ? (
                                     <tr><td colSpan="7" className="p-8 text-center text-gray-400">Loading data...</td></tr>
                                 ) : transactions.length === 0 ? (
@@ -522,19 +522,19 @@ function Laporan() {
                                             <td className="p-3 font-mono text-xs opacity-70">
                                                 {order.id.substring(order.id.length - 6).toUpperCase()}
                                             </td>
-                                            <td className="p-3 text-gray-300">
+                                            <td className="p-3 opacity-90">
                                                 {new Date(order.timestamp).toLocaleString('id-ID', {
                                                     day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'
                                                 })}
                                             </td>
                                             <td className="p-3 font-medium">
                                                 {order.customerName || 'Guest'}
-                                                <div className="text-xs text-gray-500">{order.tableNumber ? `Meja ${order.tableNumber}` : order.orderType}</div>
+                                                <div className="text-xs opacity-60">{order.tableNumber ? `Meja ${order.tableNumber}` : order.orderType}</div>
                                             </td>
-                                            <td className="p-3 font-bold text-gray-200">
+                                            <td className="p-3 font-bold opacity-100">
                                                 {formatCurrency(order.total)}
                                             </td>
-                                            <td className="p-3 text-xs capitalize text-gray-400">
+                                            <td className="p-3 text-xs capitalize opacity-70">
                                                 {order.paymentMethod === 'qris' ? 'QRIS' : 'Tunai'}
                                             </td>
                                             <td className="p-3">

@@ -181,7 +181,7 @@ export default function DataCenter() {
     };
 
     return (
-        <div className="p-6 min-h-screen bg-[#0F0A2A] text-white">
+        <div className="p-6 h-full admin-bg-main admin-text-primary">
 
 
             {/* Tabs */}
@@ -196,10 +196,10 @@ export default function DataCenter() {
                     <button
                         key={tab.id}
                         onClick={() => setActiveTab(tab.id)}
-                        className={`px - 4 py - 2 rounded - t - lg transition - colors font - medium ${activeTab === tab.id
+                        className={`px-4 py-2 rounded-t-lg transition-colors font-medium ${activeTab === tab.id
                             ? 'bg-purple-600 text-white'
-                            : 'bg-transparent text-gray-400 hover:text-white hover:bg-white/5'
-                            } `}
+                            : 'bg-transparent admin-text-secondary hover:admin-text-primary hover:bg-white/5'
+                            }`}
                     >
                         {tab.label}
                     </button>
@@ -207,13 +207,13 @@ export default function DataCenter() {
             </div>
 
             {/* Content Area */}
-            <div className="bg-[#151235] rounded-xl p-6 border border-purple-500/20 shadow-xl min-h-[400px]">
+            <div className="admin-bg-sidebar rounded-xl p-6 border admin-border-accent shadow-xl min-h-[400px]">
 
                 {/* EXPORT TAB */}
                 {activeTab === 'export' && (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         {/* Sales Card */}
-                        <div className="bg-[#1E1B4B] p-5 rounded-lg border border-purple-500/30 hover:border-purple-400 transition-colors">
+                        <div className="admin-bg-main p-5 rounded-lg border admin-border-accent hover:border-purple-400 transition-colors">
                             <div className="text-4xl mb-3">💰</div>
                             <h3 className="text-xl font-bold mb-2">Laporan Penjualan</h3>
                             <p className="text-sm text-gray-400 mb-4">Export data transaksi penjualan dengan filter tanggal.</p>
@@ -221,13 +221,13 @@ export default function DataCenter() {
                             <div className="flex flex-col gap-2 mb-4">
                                 <input
                                     type="date"
-                                    className="bg-[#0F0A2A] border border-purple-500/30 rounded px-2 py-1 text-sm text-white"
+                                    className="admin-bg-sidebar admin-border-accent rounded px-2 py-1 text-sm admin-text-primary focus:outline-none focus:border-purple-500"
                                     value={startDate}
                                     onChange={e => setStartDate(e.target.value)}
                                 />
                                 <input
                                     type="date"
-                                    className="bg-[#0F0A2A] border border-purple-500/30 rounded px-2 py-1 text-sm text-white"
+                                    className="admin-bg-sidebar admin-border-accent rounded px-2 py-1 text-sm admin-text-primary focus:outline-none focus:border-purple-500"
                                     value={endDate}
                                     onChange={e => setEndDate(e.target.value)}
                                 />
@@ -243,7 +243,7 @@ export default function DataCenter() {
                         </div>
 
                         {/* Menu Card */}
-                        <div className="bg-[#1E1B4B] p-5 rounded-lg border border-purple-500/30 hover:border-purple-400 transition-colors">
+                        <div className="admin-bg-main p-5 rounded-lg border admin-border-accent hover:border-purple-400 transition-colors">
                             <div className="text-4xl mb-3">🍽️</div>
                             <h3 className="text-xl font-bold mb-2">Data Menu</h3>
                             <p className="text-sm text-gray-400 mb-4">Daftar lengkap menu, harga, kategori, dan status ketersediaan.</p>
@@ -259,7 +259,7 @@ export default function DataCenter() {
                         </div>
 
                         {/* Stock Card */}
-                        <div className="bg-[#1E1B4B] p-5 rounded-lg border border-purple-500/30 hover:border-purple-400 transition-colors">
+                        <div className="admin-bg-main p-5 rounded-lg border admin-border-accent hover:border-purple-400 transition-colors">
                             <div className="text-4xl mb-3">📦</div>
                             <h3 className="text-xl font-bold mb-2">Laporan Stok</h3>
                             <p className="text-sm text-gray-400 mb-4">Posisi stok terakhir bahan baku dan nilai aset inventaris.</p>
@@ -285,7 +285,7 @@ export default function DataCenter() {
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
-                            <div className="bg-[#1E1B4B] p-6 rounded-xl border border-dashed border-purple-500/50 flex flex-col items-center justify-center text-center">
+                            <div className="admin-bg-main p-6 rounded-xl border border-dashed admin-border-accent flex flex-col items-center justify-center text-center">
                                 <div className="text-5xl mb-4">🍽️</div>
                                 <h3 className="font-bold mb-2">Import Menu</h3>
                                 <p className="text-xs text-gray-400 mb-4">Upgrade daftar menu secara massal.</p>
@@ -314,7 +314,7 @@ export default function DataCenter() {
                                 </button>
                             </div>
 
-                            <div className="bg-[#1E1B4B] p-6 rounded-xl border border-dashed border-green-500/50 flex flex-col items-center justify-center text-center">
+                            <div className="admin-bg-main p-6 rounded-xl border border-dashed admin-border-accent flex flex-col items-center justify-center text-center">
                                 <div className="text-5xl mb-4">🥬</div>
                                 <h3 className="font-bold mb-2">Import Bahan Baku</h3>
                                 <p className="text-xs text-gray-400 mb-4">Update inventaris & stok awal.</p>
@@ -352,9 +352,9 @@ export default function DataCenter() {
                             <button onClick={() => mutateAuditLogs()} className="bg-white/10 hover:bg-white/20 px-3 py-1 rounded text-sm">Refresh</button>
                         </div>
 
-                        <div className="overflow-x-auto rounded-lg border border-purple-500/30">
+                        <div className="overflow-x-auto rounded-lg border admin-border-accent">
                             <table className="w-full text-left font-sm">
-                                <thead className="bg-[#1E1B4B] text-gray-300">
+                                <thead className="admin-bg-main opacity-80">
                                     <tr>
                                         <th className="p-3">Waktu</th>
                                         <th className="p-3">User</th>
@@ -364,9 +364,9 @@ export default function DataCenter() {
                                         <th className="p-3">Details</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-purple-500/10">
+                                <tbody className="divide-y admin-border-accent">
                                     {auditLogs.length > 0 ? auditLogs.map(log => (
-                                        <tr key={log._id} className="hover:bg-white/5">
+                                        <tr key={log._id} className="hover:bg-black/5">
                                             <td className="p-3 text-gray-400 text-xs">
                                                 {new Date(log.timestamp).toLocaleString()}
                                             </td>

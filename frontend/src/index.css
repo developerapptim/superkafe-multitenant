@@ -9,10 +9,10 @@ body {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
-  /* Use CSS variables for theme support, with fallback to original dark purple */
-  background: var(--bg-body-gradient, linear-gradient(135deg, #1E1B4B 0%, #0F0A1F 50%, #1E1B4B 100%));
+  /* Use CSS variables for theme support, with fallback to light coffee */
+  background: var(--bg-body-gradient, #FDF8F5);
   min-height: 100vh;
-  color: var(--text-primary, white);
+  color: var(--text-primary, #3E2723);
 }
 
 #root {
@@ -26,11 +26,11 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--bg-scrollbar-track, #1E1B4B);
+  background: var(--bg-scrollbar-track, #1A1642);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--bg-scrollbar-thumb, #6B21A8);
+  background: var(--bg-scrollbar-thumb, rgba(139, 92, 246, 0.5));
   border-radius: 3px;
 }
 

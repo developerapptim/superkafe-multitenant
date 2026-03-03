@@ -657,7 +657,7 @@ function MenuManagement() {
                                 className="p-8 text-center text-gray-400 bg-white/5 rounded-xl border border-dashed border-white/10"
                             >
                                 <div className="text-4xl mb-2">📋</div>
-                                <p>Tidak ada menu ditemukan</p>
+                                <p>Belum ada Menu, Silakan Tambahkan</p>
                             </motion.div>
                         ) : (
                             localItems.map(item => (
