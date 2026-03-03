@@ -15,10 +15,13 @@ services:
     ports:
       - "5001:5001"
     restart: always
+    command: npx pm2-runtime start ecosystem.config.js
     environment:
       - MONGODB_URI=mongodb://mongodb-v2:27017/superkafe_main
+      - REDIS_URL=redis://redis:6379
     depends_on:
       - mongodb-v2
+      - redis
     env_file:
       - ./backend/.env
     volumes:
