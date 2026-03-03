@@ -49,7 +49,7 @@ const io = new Server(server, {
 // ====== CLUSTER MODE PREPARATION ======
 // To use PM2 Cluster Mode, you MUST uncomment this block so Socket.io works across workers.
 // Prerequisites: Install Redis on VPS and run: npm install redis @socket.io/redis-adapter
-/*
+
 const { createAdapter } = require("@socket.io/redis-adapter");
 const { createClient } = require("redis");
 const pubClient = createClient({ url: "redis://localhost:6379" });
@@ -58,7 +58,7 @@ Promise.all([pubClient.connect(), subClient.connect()]).then(() => {
   io.adapter(createAdapter(pubClient, subClient));
   console.log("✅ Redis Adapter for Socket.io enabled (Cluster Mode Ready)");
 });
-*/
+
 // ======================================
 
 // Attach io to app for use in controllers
