@@ -16,23 +16,7 @@ export const SocketProvider = ({ children }) => {
         const apiUrl = API_BASE_URL || 'http://localhost:5001/api';
 
         // Remove /api suffix to get base URL for socket connection
-        const baseUrl = apiUrl.replace('/api', '');
-
-        // Determine socket URL based on environment
-        let socketUrl;
-        const isHttps = typeof window !== 'undefined' && window.location.protocol === 'https:';
-
-        // Check if baseUrl is using an IP address or localhost
-        const isLocalOrIP = baseUrl.includes('localhost') || baseUrl.match(/\d+\.\d+\.\d+\.\d+/);
-
-        if (isHttps) {
-            // Production: Use HTTPS origin for secure WSS connection
-            // Relies on Nginx to proxy /socket.io properly
-            socketUrl = window.location.origin;
-        } else {
-            // Development or Direct IP: Use HTTP with port as defined.
-            socketUrl = baseUrl;
-        }
+        const socketUrl = apiUrl.replace('/api', '');
 
         console.log('🔌 Connecting to Socket.io at:', socketUrl);
 
