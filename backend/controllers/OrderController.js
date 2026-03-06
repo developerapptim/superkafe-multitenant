@@ -8,6 +8,7 @@ const Customer = require('../models/Customer');
 const Settings = require('../models/Settings');
 const Voucher = require('../models/Voucher');
 const Table = require('../models/Table');
+const axios = require('axios');
 
 // =========================================================
 // HELPER: Deduct Stock when order status changes to 'process'
@@ -507,6 +508,29 @@ const createOrder = async (req, res) => {
 
         console.log("🎉 Order Creation Complete");
 
+        // SEND WA NOTIFICATION VIA N8N WEBHOOK
+        try {
+            const webhookUrl = 'http://76.13.196.116:5677/webhook/76a56ec0-0deb-4ebe-9c03-3a1981506916';
+
+            // Format string dari item pesanan
+            const itemsString = newOrder.items.map(item => `${item.qty || item.count}x ${item.name}`).join(', ');
+
+            const payload = {
+                name: newOrder.customerName || 'Pelanggan',
+                item: itemsString,
+                link_nota: `https://superkafe.com/nota/${newOrder.id}`
+            };
+
+            // Eksekusi POST tanpa await (non-blocking) agar performa kasir tetap cepat
+            axios.post(webhookUrl, payload).catch(err => {
+                console.error('⚠️ n8n Webhook Error (Non-blocking):', err.message);
+            });
+            console.log("📡 Triggered WA notification via n8n webhook");
+
+        } catch (webhookErr) {
+            console.error('⚠️ Failed to trigger WA notification:', webhookErr);
+        }
+
         // Emit Socket Event
         const io = req.app.get('io');
         if (io) {
@@ -681,6 +705,43 @@ const updateOrderStatus = async (req, res) => {
 
         await order.save();
         console.log(`✅ Order ${order.id} status updated: ${previousStatus} → ${status || previousStatus}`);
+
+        // TRIGGER WA NOTIFICATION: PESANAN SELESAI
+        if (status === 'done' && previousStatus !== 'done') {
+            try {
+                const webhookUrl = 'http://76.13.196.116:5677/webhook/ce3ade2e-9516-43ed-9ca8-2913407877d1';
+
+                let phoneFormatted = '';
+                if (order.phone) {
+                    phoneFormatted = order.phone.replace(/\D/g, ''); // hapus non-digit
+                    if (phoneFormatted.startsWith('0')) {
+                        phoneFormatted = '62' + phoneFormatted.substring(1);
+                    }
+                }
+
+                // Webhook hanya dikirim jika ada nomor HP
+                if (phoneFormatted) {
+                    const payload = {
+                        phone: phoneFormatted,
+                        name: order.customerName || 'Pelanggan',
+                        link_nota: `https://superkafe.com/nota/${order.id}`
+                    };
+
+                    axios.post(webhookUrl, payload, {
+                        headers: {
+                            'Content-Type': 'application/json'
+                        }
+                    }).catch(err => {
+                        console.error('⚠️ n8n Webhook (Order Done) Error:', err.message);
+                    });
+                    console.log("📡 Triggered WA Order Done notification via n8n webhook");
+                } else {
+                    console.log("ℹ️ No phone number available to send WA Order Done notification.");
+                }
+            } catch (webhookErr) {
+                console.error('⚠️ Failed to trigger WA Order Done notification:', webhookErr);
+            }
+        }
 
         // Emit Socket Event
         const io = req.app.get('io');

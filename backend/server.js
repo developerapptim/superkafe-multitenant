@@ -54,11 +54,19 @@ const io = new Server(server, {
 
 const { createAdapter } = require("@socket.io/redis-adapter");
 const { createClient } = require("redis");
-const pubClient = createClient({ url: "redis://localhost:6379" });
+
+// Gunakan REDIS_URL dari environment (Docker), atau fallback ke localhost (Docker Lokal)
+const redisUrl = process.env.REDIS_URL || "redis://127.0.0.1:6379";
+
+const pubClient = createClient({ url: redisUrl });
 const subClient = pubClient.duplicate();
+
 Promise.all([pubClient.connect(), subClient.connect()]).then(() => {
   io.adapter(createAdapter(pubClient, subClient));
-  console.log("✅ Redis Adapter for Socket.io enabled (Cluster Mode Ready)");
+  console.log(`✅ Redis Adapter for Socket.io enabled (Connected to ${redisUrl})`);
+}).catch((err) => {
+  console.error(`⚠️ Redis Connection Failed (URL: ${redisUrl}):`, err.message);
+  console.warn("⚠️ Socket.io will fallback to in-memory adapter.");
 });
 
 // ======================================
