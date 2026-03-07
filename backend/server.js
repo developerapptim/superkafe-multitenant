@@ -96,7 +96,10 @@ io.on('connection', (socket) => {
   });
 });
 
-app.use(compression());
+app.use(compression({
+  level: 4, // Moderate compression, saves CPU vs max level
+  threshold: 10 * 1024, // Only compress responses larger than 10KB
+}));
 
 // Security: Helmet for Header vulnerabilities.
 // Adjust contentSecurityPolicy and crossOriginResourcePolicy so we don't break frontend assets (upload images)
@@ -112,7 +115,7 @@ app.use(mongoSanitize());
 app.use(statusMonitor({
   title: 'Superkafe API Status',
   path: '/status',
-  spans: [{ interval: 1, retention: 60 }, { interval: 5, retention: 60 }, { interval: 15, retention: 60 }]
+  spans: [{ interval: 15, retention: 60 }, { interval: 60, retention: 60 }, { interval: 300, retention: 60 }] // Relaxed interval (15s, 1m, 5m) to save CPU
 }));
 
 // Documentation: Swagger UI at /api-docs
