@@ -85,7 +85,11 @@ const createOrder = async (req, res) => {
 
         // Handle voucher (via OrderService — atomic with quota guard)
         if (orderData.voucherCode) {
-            await OrderService.applyVoucher(orderData.voucherCode);
+            const voucherResult = await OrderService.applyVoucher(orderData.voucherCode);
+            if (!voucherResult) {
+                console.log(`❌ Rejecting Order ${orderData.id}: Voucher invalid or quota exceeded`);
+                return res.status(400).json({ error: 'Kode voucher tidak valid, sudah kedaluwarsa, atau kuota habis.' });
+            }
         }
 
         const newOrder = new Order({
@@ -94,7 +98,7 @@ const createOrder = async (req, res) => {
             items: enrichedItems,
             timestamp: Date.now(),
             stockDeducted: false, // Stock will be deducted when status changes to 'process'
-            // TenantId will be automatically set by the plugin
+            tenantId: req.tenant?.id || orderData.tenantId, // Explicitly set tenantId because plugin context might drop
             voucherCode: orderData.voucherCode || null,
             voucherDiscount: Number(orderData.voucherDiscount) || 0,
             subtotal: Number(orderData.subtotal) || orderData.total,
@@ -261,6 +265,7 @@ const getOrders = async (req, res) => {
 
         // Fetch Paginated Data
         const orders = await Order.find(query)
+            .select('-paymentProofImage -__v -updatedAt') // Exclude heavy image data from list view
             .sort({ timestamp: -1 })
             .skip(skip)
             .limit(limitNum)
@@ -480,6 +485,78 @@ const payOrder = async (req, res) => {
     }
 };
 
+const voidOrder = async (req, res) => {
+    try {
+        const { pin, reason, employeeName, employeeRole } = req.body;
+        const Employee = require('../models/Employee');
+
+        // 1. PIN Check for non-managers
+        if (employeeRole !== 'admin' && employeeRole !== 'owner' && employeeRole !== 'manager') {
+            if (!pin) {
+                return res.status(401).json({ error: 'PIN Supervisor dibutuhkan untuk membatalkan pesanan.' });
+            }
+
+            // Look for any active manager/admin with this PIN
+            const supervisor = await Employee.findOne({
+                pin_code: pin,
+                role: { $in: ['admin', 'owner', 'manager'] },
+                status: 'active'
+            });
+
+            if (!supervisor) {
+                return res.status(401).json({ error: 'PIN Supervisor tidak valid atau tidak memiliki akses.' });
+            }
+        }
+
+        // 2. Fetch Order
+        const order = await Order.findOne({ id: req.params.id });
+        if (!order) return res.status(404).json({ error: 'Order not found' });
+
+        if (order.status === 'done' || order.status === 'cancel') {
+            return res.status(400).json({ error: 'Pesanan tidak bisa di-void pada status saat ini.' });
+        }
+
+        const previousStatus = order.status;
+
+        // 3. Revert stock if previously deducted
+        if (order.stockDeducted) {
+            console.log(`🔄 VOID: Triggering stock reversion for Order ${order.id}`);
+            await OrderService.revertStock(order);
+            order.stockDeducted = false;
+        }
+
+        // 4. Update status and audit trail
+        order.status = 'cancel';
+        order.cancellationReason = reason || 'Dibatalkan Kasir';
+        order.cancelledBy = employeeName || 'Sistem';
+
+        // Explicit Void fields
+        order.isVoided = true;
+        order.voidReason = reason;
+        order.voidedBy = employeeName || 'Sistem';
+        order.voidedAt = new Date();
+
+        if (order.paymentStatus === 'paid') {
+            order.paymentStatus = 'refunded';
+            console.log(`💸 Order ${order.id} was PAID. Marking as REFUNDED.`);
+        }
+
+        await order.save();
+        console.log(`❌ Order ${order.id} VOIDED by ${employeeName}`);
+
+        // 5. Emit Socket Event
+        const io = req.app.get('io');
+        if (io) {
+            io.emit('orders:update', { action: 'update', orderId: order.id, status: 'cancel' });
+        }
+
+        res.json({ success: true, order });
+    } catch (err) {
+        console.error('Void Order Error:', err);
+        res.status(500).json({ error: 'Server error' });
+    }
+};
+
 // Get orders for today (public/customer usage to sync status)
 const getTodayOrders = async (req, res) => {
     try {
@@ -637,6 +714,7 @@ module.exports = {
     getOrderById,
     updateOrderStatus,
     payOrder,
+    voidOrder,
     getTodayOrders,
     getPendingCount,
     mergeOrders

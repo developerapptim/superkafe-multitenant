@@ -175,6 +175,22 @@ async function deductStock(order) {
 
     // Execute all stock deductions atomically via bulkWrite with $inc
     if (deductionMap.size > 0) {
+
+        // --- PRE-FLIGHT STRICT STOCK VALIDATION ---
+        const insufficientIngredients = [];
+        for (const [ingKey, entry] of deductionMap) {
+            const oldStock = Number(entry.ingData.stok) || 0;
+            if (oldStock < entry.totalDeduct) {
+                insufficientIngredients.push(`${entry.ingData.nama} (Kurang ${entry.totalDeduct - oldStock})`);
+            }
+        }
+
+        if (insufficientIngredients.length > 0) {
+            console.error(`❌ [DEDUCT] Failed due to insufficient stock: ${insufficientIngredients.join(', ')}`);
+            throw new Error(`Gagal Sinkronisasi: Stok Habis untuk ${insufficientIngredients.join(', ')}`);
+        }
+        // -------------------------------------------
+
         const bulkOps = [];
         const historyDocs = [];
         const now = new Date();

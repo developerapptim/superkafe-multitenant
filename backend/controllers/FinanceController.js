@@ -531,7 +531,12 @@ const getProfitLoss = async (req, res) => {
             opexBreakdown[op._id] = op.total;
         });
 
-        // 3. Final Calculations
+        // 3. Final Calculations (with Math.round to prevent floating point issues)
+        totalHPP = Math.round(totalHPP);
+        totalSales = Math.round(totalSales);
+        totalOpEx = Math.round(totalOpEx);
+        totalDiscounts = Math.round(totalDiscounts);
+
         const grossProfit = totalSales - totalHPP;
         const netProfit = grossProfit - totalOpEx;
 

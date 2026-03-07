@@ -22,6 +22,12 @@ const OrderSchema = new mongoose.Schema({
     cancellationReason: String, // Reason for cancellation (POS only)
     cancelledBy: String, // Staff who cancelled the order
 
+    // Void Audit Trail
+    isVoided: { type: Boolean, default: false },
+    voidReason: String,
+    voidedBy: String,
+    voidedAt: Date,
+
     // Voucher / Marketing Fields
     voucherCode: String,
     voucherDiscount: { type: Number, default: 0 },

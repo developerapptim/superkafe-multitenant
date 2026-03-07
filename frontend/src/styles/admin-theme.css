@@ -38,12 +38,14 @@
 /* Admin gradient backgrounds using theme colors */
 .admin-gradient-bg {
   background: linear-gradient(135deg, var(--bg-sidebar, #1E1B4B) 0%, var(--bg-main, #0F0A1F) 50%, var(--bg-sidebar, #1E1B4B) 100%);
+  transition: background 0.3s ease-in-out, color 0.3s ease-in-out;
 }
 
 /* Admin card with theme-aware background */
 .admin-card {
   background-color: var(--bg-sidebar, #1E1B4B);
   border: 1px solid rgba(139, 92, 246, 0.2);
+  transition: background-color 0.3s ease-in-out, border-color 0.3s ease-in-out;
 }
 
 /* Admin button with theme-aware accent color */
@@ -173,9 +175,20 @@
 [data-theme="light-coffee"] .bg-white\/5,
 [data-theme="light-coffee"] .bg-white\/10,
 [data-theme="light-coffee"] .bg-black\/20,
-[data-theme="light-coffee"] .bg-\[\#1a1625\] {
-  background-color: rgba(253, 248, 245, 0.6) !important;
+[data-theme="light-coffee"] .bg-\[\#1a1625\],
+[data-theme="light-coffee"] .bg-gray-800,
+[data-theme="light-coffee"] .bg-gray-900 {
+  background-color: rgba(253, 248, 245, 0.9) !important;
   /* Soft cream */
+  border: 1px solid rgba(140, 98, 68, 0.1) !important;
+}
+
+[data-theme="light-coffee"] .bg-gray-900\/80,
+[data-theme="light-coffee"] .bg-gray-900\/50,
+[data-theme="light-coffee"] .bg-gray-900\/95,
+[data-theme="light-coffee"] .bg-gray-800\/50,
+[data-theme="light-coffee"] .bg-black\/80 {
+  background-color: rgba(253, 248, 245, 0.8) !important;
   border: 1px solid rgba(140, 98, 68, 0.1) !important;
 }
 
@@ -248,7 +261,7 @@
 [data-theme="light-coffee"] [class*="to-blue-"][class*="\/"] {
   background-image: none !important;
   background-color: rgba(109, 76, 65, 0.08) !important;
-  color: var(--accent-color) !important;
+  color: var(--text-primary) !important;
 }
 
 /* Borders and Rings */

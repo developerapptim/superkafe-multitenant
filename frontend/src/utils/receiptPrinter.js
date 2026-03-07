@@ -58,8 +58,10 @@ export const generateReceiptHTML = (order, settings = {}) => {
         body {
             font-family: 'Courier New', 'Lucida Console', monospace;
             font-size: 12px;
-            width: 80mm;
-            padding: 5mm;
+            width: 100%;
+            max-width: 80mm;
+            margin: 0 auto;
+            padding: 2mm;
             background: white;
             color: black;
             line-height: 1.4;
@@ -158,12 +160,13 @@ export const generateReceiptHTML = (order, settings = {}) => {
         
         @media print {
             body {
-                width: 80mm !important;
+                width: 100% !important;
+                max-width: 100% !important; /* Allow the print driver to dictate max width (58mm or 80mm) */
                 margin: 0 !important;
-                padding: 3mm !important;
+                padding: 0 1mm !important;
+                font-size: 11px !important; /* Slightly smaller to fit 58mm nicely */
             }
             @page {
-                size: 80mm auto;
                 margin: 0;
             }
         }

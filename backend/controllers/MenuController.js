@@ -21,9 +21,9 @@ const getMenus = async (req, res) => {
     try {
         // Tenant scoping is automatic via plugin - no manual filtering needed
         // All queries below will automatically filter by tenantId from tenant context
-        const items = await MenuItem.find().sort({ order: 1, category: 1, name: 1 });
-        const recipes = await Recipe.find();
-        const ingredients = await Ingredient.find();
+        const items = await MenuItem.find().select('-createdAt -updatedAt -__v').sort({ order: 1, category: 1, name: 1 });
+        const recipes = await Recipe.find().select('menuId ingredients.ing_id ingredients.jumlah');
+        const ingredients = await Ingredient.find().select('id stok type isi_prod harga_beli');
 
         // 1. Map Ingredients: ID -> { stok, costPerUnit }
         const ingredientMap = new Map();
@@ -132,7 +132,7 @@ const getMenusCustomer = async (req, res) => {
     try {
         // Get tenantId from request context for cache key
         const tenantId = req.tenant?.id?.toString();
-        
+
         if (!tenantId) {
             return res.status(400).json({ error: 'Tenant context not available' });
         }
@@ -269,7 +269,7 @@ const createMenu = async (req, res) => {
 
         const item = new MenuItem(menuItemData);
         await item.save();
-        
+
         // Invalidate cache for this tenant
         const tenantId = req.tenant?.id?.toString();
         invalidateCustomerMenuCache(tenantId);
@@ -303,7 +303,7 @@ const updateMenu = async (req, res) => {
 
         // Tenant scoping is automatic via plugin - only updates items in current tenant
         const item = await MenuItem.findOneAndUpdate({ id: req.params.id }, updateData, { new: true });
-        
+
         if (!item) return res.status(404).json({ error: 'Not found' });
 
         // Invalidate cache for this tenant
@@ -325,7 +325,7 @@ const deleteMenu = async (req, res) => {
         // Tenant scoping is automatic via plugin - only deletes items in current tenant
         await MenuItem.deleteOne({ id: req.params.id });
         await Recipe.deleteOne({ menuId: req.params.id }); // Logic for cascading delete
-        
+
         // Invalidate cache for this tenant
         const tenantId = req.tenant?.id?.toString();
         invalidateCustomerMenuCache(tenantId);
@@ -392,7 +392,7 @@ const reorderMenus = async (req, res) => {
         }));
 
         await MenuItem.bulkWrite(bulkOps);
-        
+
         // Invalidate cache for this tenant
         const tenantId = req.tenant?.id?.toString();
         invalidateCustomerMenuCache(tenantId);
@@ -407,13 +407,13 @@ const reorderMenus = async (req, res) => {
 };
 
 module.exports = {
-  getMenus,
-  getMenusCustomer,
-  getMenuById,
-  createMenu,
-  updateMenu,
-  deleteMenu,
-  getRecipes,
-  updateRecipe,
-  reorderMenus
+    getMenus,
+    getMenusCustomer,
+    getMenuById,
+    createMenu,
+    updateMenu,
+    deleteMenu,
+    getRecipes,
+    updateRecipe,
+    reorderMenus
 };

@@ -2,8 +2,6 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const sharp = require('sharp');
-const path = require('path');
-const fs = require('fs');
 
 // Ensure directories exist
 const publicDir = path.join(__dirname, '../public');

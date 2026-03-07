@@ -38,6 +38,7 @@ const orderSchema = Joi.object({
             id: Joi.string().required(),
             price: Joi.number().min(0).required(),
             qty: Joi.number().min(1).integer().required(),
+            notes: Joi.string().allow('', null).max(255).optional(), // Max 255 chars to prevent bloat
             // Other fields can be optional/unknown
         }).unknown(true)
     ).min(1).required(),

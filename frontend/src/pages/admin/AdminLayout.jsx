@@ -4,6 +4,7 @@ import toast from 'react-hot-toast';
 import useSWR from 'swr';
 import { motion } from 'framer-motion';
 import { jwtDecode } from 'jwt-decode';
+import { get, set } from 'idb-keyval';
 import api from '../../services/api';
 import Sidebar from '../../components/Sidebar';
 import CommandPalette from '../../components/CommandPalette';
@@ -47,9 +48,23 @@ function AdminLayout() {
             if (!tenantSlug) return;
             try {
                 const res = await api.get(`/tenants/${tenantSlug}/trial-status`);
-                if (res.data.success) setSubscriptionData(res.data.data);
+                if (res.data.success) {
+                    setSubscriptionData(res.data.data);
+                    await set(`sub_${tenantSlug}`, res.data.data);
+                    if (!res.data.data.canAccessFeatures) {
+                        localStorage.setItem('subscription_expired', 'true');
+                    } else {
+                        localStorage.removeItem('subscription_expired');
+                    }
+                }
             } catch (err) {
                 console.error('[AdminLayout] Failed to fetch subscription:', err.message);
+                // Fallback to offline cached data
+                const cached = await get(`sub_${tenantSlug}`);
+                if (cached) {
+                    console.log('[AdminLayout] Loaded subscription from offline cache');
+                    setSubscriptionData(cached);
+                }
             }
         };
         fetchSubscription();
@@ -70,6 +85,34 @@ function AdminLayout() {
         socket.on('subscription:updated', handleSubscriptionUpdate);
         return () => socket.off('subscription:updated', handleSubscriptionUpdate);
     }, [socket]);
+
+    // Global listener for expiration (from api.js interceptor or indexedDB offline guard)
+    useEffect(() => {
+        const handleForceExpired = () => {
+            console.warn('[AdminLayout] Forced expiration event received!');
+            setSubscriptionData(prev => ({
+                ...prev,
+                canAccessFeatures: false,
+                status: 'expired'
+            }));
+        };
+
+        window.addEventListener('subscription-expired', handleForceExpired);
+
+        // Also check if flagged in local storage from offline guard or other tabs
+        const checkStorage = () => {
+            if (localStorage.getItem('subscription_expired') === 'true') {
+                handleForceExpired();
+            }
+        };
+        window.addEventListener('storage', checkStorage);
+        checkStorage(); // check on mount
+
+        return () => {
+            window.removeEventListener('subscription-expired', handleForceExpired);
+            window.removeEventListener('storage', checkStorage);
+        };
+    }, []);
 
     // Extract tenant information from JWT token for ThemeProvider
     const [tenantInfo, setTenantInfo] = useState({ tenantId: null, initialTheme: 'default' });

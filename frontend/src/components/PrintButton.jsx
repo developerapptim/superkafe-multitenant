@@ -21,7 +21,10 @@ export default function PrintButton({ order, settings, variant = 'primary', clas
         try {
             await printReceipt(order, settings);
         } finally {
-            setIsPrinting(false);
+            // Wait 2.5 seconds before allowing another print to prevent double printing
+            setTimeout(() => {
+                if (window && window.isMounted !== false) setIsPrinting(false);
+            }, 2500);
         }
     };
 
@@ -32,7 +35,9 @@ export default function PrintButton({ order, settings, variant = 'primary', clas
         try {
             await downloadReceiptPDF(order, settings);
         } finally {
-            setIsPrinting(false);
+            setTimeout(() => {
+                if (window && window.isMounted !== false) setIsPrinting(false);
+            }, 2500);
         }
     };
 

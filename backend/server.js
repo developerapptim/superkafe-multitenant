@@ -9,6 +9,11 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const path = require('path');
 const compression = require('compression');
+const helmet = require('helmet');
+const mongoSanitize = require('express-mongo-sanitize');
+const statusMonitor = require('express-status-monitor');
+const swaggerJSDoc = require('swagger-jsdoc');
+const swaggerUi = require('swagger-ui-express');
 
 // Initialize App
 const app = express();
@@ -92,6 +97,71 @@ io.on('connection', (socket) => {
 });
 
 app.use(compression());
+
+// Security: Helmet for Header vulnerabilities.
+// Adjust contentSecurityPolicy and crossOriginResourcePolicy so we don't break frontend assets (upload images)
+app.use(helmet({
+  crossOriginResourcePolicy: false,
+  contentSecurityPolicy: false,
+}));
+
+// Security: Data Sanitize to prevent NoSQL Injection attacks
+app.use(mongoSanitize());
+
+// Performance/Monitoring: Real-time dashboard at /status
+app.use(statusMonitor({
+  title: 'Superkafe API Status',
+  path: '/status',
+  spans: [{ interval: 1, retention: 60 }, { interval: 5, retention: 60 }, { interval: 15, retention: 60 }]
+}));
+
+// Documentation: Swagger UI at /api-docs
+const swaggerOptions = {
+  definition: {
+    openapi: '3.0.0',
+    info: {
+      title: 'Superkafe Core API',
+      version: '1.0.0',
+      description: 'API Documentation for Superkafe SaaS',
+    },
+    servers: [
+      {
+        url: 'http://localhost:5001',
+        description: 'Development server',
+      },
+      {
+        url: 'https://api.superkafe.com',
+        description: 'Production server',
+      }
+    ],
+    components: {
+      securitySchemes: {
+        bearerAuth: {
+          type: 'http',
+          scheme: 'bearer',
+          bearerFormat: 'JWT',
+        },
+      },
+      parameters: {
+        tenantIdParam: {
+          name: 'x-tenant-id',
+          in: 'header',
+          description: 'Tenant ID required for scoped resources',
+          required: false, // Make it optional since not all routes need it
+          schema: {
+            type: 'string',
+          },
+        },
+      },
+    },
+    security: [{ bearerAuth: [] }],
+  },
+  apis: ['./routes/*.js'],
+};
+
+const swaggerSpec = swaggerJSDoc(swaggerOptions);
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, { customSiteTitle: "Superkafe API" }));
+
 app.use(cors(corsOptions));
 app.use(express.json({ limit: '200mb' }));
 app.use(express.urlencoded({ limit: '200mb', extended: true }));
@@ -99,7 +169,7 @@ app.use(express.urlencoded({ limit: '200mb', extended: true }));
 // NEW: Request Logging (Slow Queries)
 const slowQueryLogger = require('./middleware/slowQueryLogger');
 const logger = require('./utils/logger');
-app.use(slowQueryLogger);
+const { initSubscriptionCron } = require('./cron/subscriptionNotifier');
 
 // ===== STATIC FILES =====
 // Serve uploads folder (images, audio, payments, etc.)
@@ -139,6 +209,9 @@ mongoose.connect(MONGODB_URI, { useNewUrlParser: true, useUnifiedTopology: true 
     } catch (err) {
       console.error('⚠️ Could not check/drop global indexes:', err.message);
     }
+
+    // Start Cron Jobs
+    initSubscriptionCron();
   })
   .catch(err => {
     console.error('❌ MongoDB connection error:', err);

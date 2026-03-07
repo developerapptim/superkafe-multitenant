@@ -1,4 +1,6 @@
 import axios from 'axios';
+import { get, set } from 'idb-keyval';
+import { saveOrderOffline } from './offlineSync';
 
 /**
  * Decode JWT token payload without external dependencies
@@ -105,14 +107,50 @@ api.interceptors.response.use(
     (response) => response,
     (error) => {
         console.error('API Error:', error.response?.data || error.message);
+
+        // Handle Subscription Expired globally
+        if (error.response?.status === 403 && error.response?.data?.error === 'Langganan Berakhir') {
+            window.dispatchEvent(new CustomEvent('subscription-expired', {
+                detail: error.response.data.message
+            }));
+
+            // Also save to localStorage as fallback
+            localStorage.setItem('subscription_expired', 'true');
+        }
+
         return Promise.reject(error);
     }
 );
 
+// Helper for offline-first caching
+const fetchWithCache = async (url, cacheKey) => {
+    try {
+        if (!navigator.onLine) {
+            console.log(`[Offline Mode] Loading ${cacheKey} from IndexedDB...`);
+            const cachedData = await get(cacheKey);
+            return { data: cachedData };
+        }
+
+        const response = await api.get(url);
+        // Persist to IDB
+        await set(cacheKey, response.data);
+        return response;
+    } catch (error) {
+        if (!error.response && error.message === 'Network Error') {
+            const cachedData = await get(cacheKey);
+            if (cachedData) {
+                console.log(`[Fallback] Loading ${cacheKey} from IndexedDB due to Network Error.`);
+                return { data: cachedData };
+            }
+        }
+        throw error;
+    }
+};
+
 // ========== MENU API ==========
 export const menuAPI = {
     getAll: () => api.get('/menu'),
-    getCustomer: () => api.get('/menu/customer'),
+    getCustomer: () => fetchWithCache('/menu/customer', 'superkafe_customer_menu'),
     getById: (id) => api.get(`/menu/${id}`),
     create: (data) => api.post('/menu', data),
     reorder: (items) => api.put('/menu/reorder', { items }),
@@ -125,7 +163,25 @@ export const ordersAPI = {
     getAll: () => api.get('/orders'),
     getToday: () => api.get('/orders/today'),
     getById: (id) => api.get(`/orders/${id}`),
-    create: (data) => api.post('/orders', data),
+    create: async (data) => {
+        if (!navigator.onLine) {
+            if (localStorage.getItem('subscription_expired') === 'true') {
+                console.warn('[Offline Mode] Blocked order creation due to expired subscription.');
+                throw new Error('Langganan telah berakhir. Tidak dapat membuat pesanan walau sedang offline.');
+            }
+            console.warn('[Offline Mode] Internet is down. Saving order to local queue.');
+            return saveOrderOffline(data);
+        }
+        try {
+            return await api.post('/orders', data);
+        } catch (error) {
+            if (!error.response && error.message === 'Network Error') {
+                console.warn('[Offline Mode] Network Error during checkout. Saving order locally.');
+                return saveOrderOffline(data);
+            }
+            throw error;
+        }
+    },
     updateStatus: (id, status) => api.patch(`/orders/${id}/status`, { status }),
     pay: (id, paymentData) => api.patch(`/orders/${id}/pay`, paymentData),
     payOrder: (id, paymentMethod) => api.patch(`/orders/${id}/pay`, { paymentMethod }), // Keep for compatibility if used
@@ -135,12 +191,13 @@ export const ordersAPI = {
     merge: (data) => api.post('/orders/merge', data), // New Merge API
     appendItems: (id, items) => api.patch(`/orders/${id}/append`, { items }),
     cancel: (id) => api.patch(`/orders/${id}/status`, { status: 'cancelled' }),
+    void: (id, payload) => api.post(`/orders/${id}/void`, payload), // New Void Security API
 };
 
 
 // ========== CATEGORIES API ==========
 export const categoriesAPI = {
-    getAll: () => api.get('/categories'),
+    getAll: () => fetchWithCache('/categories', 'superkafe_categories'),
     create: (data) => api.post('/categories', data),
     update: (id, data) => api.put(`/categories/${id}`, data),
     delete: (id) => api.delete(`/categories/${id}`),

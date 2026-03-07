@@ -39,4 +39,19 @@ logger.add(new winston.transports.Console({
   )
 }));
 
+// Add missing custom functions
+logger.generateCorrelationId = () => require('crypto').randomBytes(8).toString('hex');
+
+logger.logTenantValidationFailure = (type, context, correlationId) => {
+  logger.error('TENANT_VALIDATION_FAILURE', { type, ...context, correlationId });
+};
+
+logger.logCrossTenantAccess = (context, correlationId) => {
+  logger.error('CROSS_TENANT_ACCESS_ATTEMPT', { ...context, correlationId });
+};
+
+logger.logTenantContextInit = (tenant, correlationId) => {
+  logger.info('TENANT_CONTEXT_INIT', { tenantId: tenant.id, slug: tenant.slug, correlationId });
+};
+
 module.exports = logger;

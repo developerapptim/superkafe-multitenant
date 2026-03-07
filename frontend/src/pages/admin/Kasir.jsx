@@ -135,8 +135,14 @@ function Kasir() {
 
     // Search and Merge Bill states
     const [searchQuery, setSearchQuery] = useState('');
+    const [debouncedSearch, setDebouncedSearch] = useState('');
     const [selectedForMerge, setSelectedForMerge] = useState([]);
     const [showMergeModal, setShowMergeModal] = useState(false);
+
+    useEffect(() => {
+        const timer = setTimeout(() => setDebouncedSearch(searchQuery), 300);
+        return () => clearTimeout(timer);
+    }, [searchQuery]);
 
     // Payment Modal State
     const [selectedOrderForPayment, setSelectedOrderForPayment] = useState(null);
@@ -156,6 +162,7 @@ function Kasir() {
     const [showCancelModal, setShowCancelModal] = useState(false);
     const [cancellationReason, setCancellationReason] = useState('');
     const [customReason, setCustomReason] = useState('');
+    const [cancelPin, setCancelPin] = useState('');
 
     // Cancel Logic
     const handleCancelOrder = async () => {
@@ -167,9 +174,19 @@ function Kasir() {
             return;
         }
 
+        if (!isAdmin && !cancelPin) {
+            toast.error('PIN Supervisor dibutuhkan untuk membatalkan pesanan');
+            return;
+        }
+
         const toastId = toast.loading('Membatalkan pesanan...');
         try {
-            await ordersAPI.updateStatus(selectedOrderForDetail.id, 'cancel', { cancellationReason: reason });
+            await ordersAPI.void(selectedOrderForDetail.id, {
+                reason: reason,
+                employeeName: user?.name,
+                employeeRole: user?.role,
+                pin: cancelPin
+            });
 
             // Refresh data
             mutate('/orders?limit=200');
@@ -182,6 +199,7 @@ function Kasir() {
             setSelectedOrderForDetail(null);
             setCancellationReason('');
             setCustomReason('');
+            setCancelPin('');
         } catch (err) {
             console.error('Cancel error:', err);
             toast.error('Gagal membatalkan: ' + (err.response?.data?.error || err.message), { id: toastId });
@@ -200,6 +218,12 @@ function Kasir() {
     // Initial loading state (only when no data is in cache)
     const [menuCategory, setMenuCategory] = useState('all');
     const [menuSearchQuery, setMenuSearchQuery] = useState('');
+    const [debouncedMenuSearch, setDebouncedMenuSearch] = useState('');
+
+    useEffect(() => {
+        const timer = setTimeout(() => setDebouncedMenuSearch(menuSearchQuery), 300);
+        return () => clearTimeout(timer);
+    }, [menuSearchQuery]);
 
     // Click outside to close suggestions
     useEffect(() => {
@@ -313,8 +337,8 @@ function Kasir() {
         if (filter !== 'all' && o.status !== filter) return false;
 
         // Search filter (by name, table, or order ID)
-        if (searchQuery) {
-            const query = searchQuery.toLowerCase();
+        if (debouncedSearch) {
+            const query = debouncedSearch.toLowerCase();
             const matchName = (o.customerName || '').toLowerCase().includes(query);
             const matchTable = (o.tableNumber || '').toString().includes(query);
             const matchId = (o.id || '').toLowerCase().includes(query);
@@ -1493,11 +1517,29 @@ function Kasir() {
                                     className="w-full bg-black/20 border border-white/10 rounded-lg p-3 text-sm text-white focus:border-red-500 outline-none h-20 resize-none"
                                 />
                             )}
+
+                            {!isAdmin && (
+                                <div className="mt-4 pt-4 border-t border-white/10">
+                                    <label className="block text-xs font-medium text-gray-400 mb-1.5 ml-1">
+                                        PIN Supervisor <span className="text-red-500">*</span>
+                                    </label>
+                                    <input
+                                        type="password"
+                                        value={cancelPin}
+                                        onChange={(e) => setCancelPin(e.target.value)}
+                                        className="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2.5 text-centertracking-widest text-white focus:border-red-500 outline-none"
+                                        placeholder="••••••"
+                                        maxLength={6}
+                                        autoComplete="new-password"
+                                    />
+                                    <p className="text-[10px] text-gray-500 mt-1 text-center">Izin khusus diperlukan untuk Void</p>
+                                </div>
+                            )}
                         </div>
 
                         <div className="grid grid-cols-2 gap-3">
                             <button
-                                onClick={() => { setShowCancelModal(false); setCancellationReason(''); setCustomReason(''); }}
+                                onClick={() => { setShowCancelModal(false); setCancellationReason(''); setCustomReason(''); setCancelPin(''); }}
                                 className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-gray-400 font-medium"
                             >
                                 Kembali
@@ -1577,7 +1619,8 @@ function Kasir() {
                             </div>
 
                             {/* Modal Body - Scrollable */}
-                            <div className="p-5 overflow-y-auto flex-1 custom-scrollbar">
+                            {/* Tambah padding bottom ekstra mb-10 agar tidak tertutup keyboard HP */}
+                            <div className="p-5 pb-10 overflow-y-auto flex-1 custom-scrollbar">
                                 <div className="space-y-6">
                                     {/* Section 1: Customer Details */}
                                     <div className="bg-white/5 rounded-2xl p-4 border border-white/5">
@@ -1715,8 +1758,8 @@ function Kasir() {
                                         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 max-h-[400px] overflow-y-auto pr-1 custom-scrollbar">
                                             {menuItems.filter(item => {
                                                 if (menuCategory !== 'all' && item.category !== menuCategory) return false;
-                                                if (menuSearchQuery) {
-                                                    const query = menuSearchQuery.toLowerCase();
+                                                if (debouncedMenuSearch) {
+                                                    const query = debouncedMenuSearch.toLowerCase();
                                                     return item.name.toLowerCase().includes(query) || (item.category || '').toLowerCase().includes(query);
                                                 }
                                                 return true;
@@ -1724,14 +1767,26 @@ function Kasir() {
                                                 <button
                                                     key={item.id}
                                                     onClick={() => addToCart(item)}
+                                                    style={{ contentVisibility: 'auto', containIntrinsicSize: '200px' }}
                                                     className="group relative bg-[#0F0A1F] hover:bg-[#1A1A2E] border border-white/5 hover:border-purple-500/50 rounded-xl overflow-hidden text-left transition-all duration-300 hover:shadow-xl hover:-translate-y-1 flex flex-col"
                                                 >
                                                     {/* Image */}
-                                                    <div className="h-28 overflow-hidden relative">
+                                                    <div className="h-28 overflow-hidden relative bg-white/10 animate-pulse skeleton-bg">
                                                         {item.image ? (
-                                                            <img src={item.image} alt={item.name} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
+                                                            <img
+                                                                src={item.image}
+                                                                alt={item.name}
+                                                                loading="lazy"
+                                                                decoding="async"
+                                                                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110 opacity-0"
+                                                                onLoad={(e) => {
+                                                                    e.target.classList.remove('opacity-0');
+                                                                    e.target.parentElement.classList.remove('animate-pulse');
+                                                                    e.target.parentElement.classList.remove('skeleton-bg');
+                                                                }}
+                                                            />
                                                         ) : (
-                                                            <div className="w-full h-full flex items-center justify-center bg-white/5 text-3xl">
+                                                            <div className="w-full h-full flex items-center justify-center bg-white/5 text-3xl opacity-100" onLoad={(e) => { e.target.parentElement.classList.remove('animate-pulse') }}>
                                                                 {getCategoryEmoji(item.category)}
                                                             </div>
                                                         )}

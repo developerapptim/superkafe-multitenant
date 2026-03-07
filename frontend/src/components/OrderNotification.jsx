@@ -8,6 +8,7 @@ const OrderNotification = () => {
     const [isMuted, setIsMuted] = useState(() => localStorage.getItem('pos_muted') === 'true');
     const [soundUrl, setSoundUrl] = useState(null); // Store sound URL
     const audioContextRef = useRef(null);
+    const lastPlayedRef = useRef(0); // For debouncing overlapping sounds
 
     // 1. Fetch Settings ONCE on mount
     useEffect(() => {
@@ -44,6 +45,11 @@ const OrderNotification = () => {
 
     // 2. Robust Play Sound Function
     const playNotificationSound = async () => {
+        // Debounce: prevent overlapping sounds during bulk offline sync
+        const now = Date.now();
+        if (now - lastPlayedRef.current < 2000) return; // 2 seconds minimum interval
+        lastPlayedRef.current = now;
+
         // Re-check mute state directly from storage to be 100% sure
         const currentMuteState = localStorage.getItem('pos_muted') === 'true';
         if (currentMuteState) return;
