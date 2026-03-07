@@ -1,4 +1,4 @@
-const Ingredient = require('../models/Ingredient');
+﻿const Ingredient = require('../models/Ingredient');
 const Gramasi = require('../models/Gramasi');
 const StockHistory = require('../models/StockHistory');
 const MenuItem = require('../models/MenuItem'); // For error msg
@@ -188,20 +188,27 @@ const deleteInventory = async (req, res) => {
         const recipes = await Recipe.find({ 'ingredients.ing_id': id });
 
         let validUsageMenus = [];
+        const orphanRecipeIds = [];
 
-        // 2. Check each recipe
+        // 2. Batch-load all menus for these recipes (N+1 FIX)
+        const menuIds = [...new Set(recipes.map(r => r.menuId))];
+        const menus = await MenuItem.find({ id: { $in: menuIds } });
+        const menuMap = new Map(menus.map(m => [String(m.id), m]));
+
         for (const recipe of recipes) {
-            const menu = await MenuItem.findOne({ id: recipe.menuId });
-
+            const menu = menuMap.get(String(recipe.menuId));
             if (!menu) {
-                // ORPHAN DETECTED: Menu is gone, but recipe remains.
-                // Auto-cleanup this ghost recipe
-                await Recipe.deleteOne({ _id: recipe._id });
-                console.log(`[Cleanup] Deleted orphan recipe for disconnected Menu ID: ${recipe.menuId}`);
+                orphanRecipeIds.push(recipe._id);
+                console.log(`[Cleanup] Orphan recipe detected for Menu ID: ${recipe.menuId}`);
             } else {
-                // VALID USAGE: Menu exists
                 validUsageMenus.push(menu.name);
             }
+        }
+
+        // Batch-delete orphan recipes
+        if (orphanRecipeIds.length > 0) {
+            await Recipe.deleteMany({ _id: { $in: orphanRecipeIds } });
+            console.log(`[Cleanup] Deleted ${orphanRecipeIds.length} orphan recipes`);
         }
 
         // 3. If valid usages exist, block deletion
@@ -370,8 +377,25 @@ const updateStock = async (req, res) => {
 const getStockHistory = async (req, res) => {
     try {
         // Tenant scoping is automatic via plugin
-        const items = await StockHistory.find().sort({ timestamp: -1 });
-        res.json(items);
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 20;
+        const skip = (page - 1) * limit;
+
+        const totalItems = await StockHistory.countDocuments();
+        const items = await StockHistory.find()
+            .sort({ timestamp: -1 })
+            .skip(skip)
+            .limit(limit);
+
+        res.json({
+            data: items,
+            pagination: {
+                currentPage: page,
+                totalPages: Math.ceil(totalItems / limit),
+                totalItems,
+                hasMore: (page * limit) < totalItems
+            }
+        });
     } catch (err) {
         console.error(err);
         res.status(500).json({ error: 'Server error' });
@@ -472,20 +496,20 @@ const deleteGramasi = async (req, res) => {
 };
 
 module.exports = {
-  getInventory,
-  getInventoryStats,
-  getInventoryById,
-  addInventory,
-  updateInventory,
-  deleteInventory,
-  restockIngredient,
-  updateStock,
-  getStockHistory,
-  getHistoryByIngredientId,
-  addStockHistory,
-  getTopUsage,
-  getGramasi,
-  addGramasi,
-  addGramasiBulk,
-  deleteGramasi
+    getInventory,
+    getInventoryStats,
+    getInventoryById,
+    addInventory,
+    updateInventory,
+    deleteInventory,
+    restockIngredient,
+    updateStock,
+    getStockHistory,
+    getHistoryByIngredientId,
+    addStockHistory,
+    getTopUsage,
+    getGramasi,
+    addGramasi,
+    addGramasiBulk,
+    deleteGramasi
 };

@@ -1,200 +1,14 @@
-const Order = require('../models/Order');
-const MenuItem = require('../models/MenuItem');
-const Recipe = require('../models/Recipe');
-const Ingredient = require('../models/Ingredient');
-const StockHistory = require('../models/StockHistory');
-const Shift = require('../models/Shift');
-const Customer = require('../models/Customer');
-const Settings = require('../models/Settings');
-const Voucher = require('../models/Voucher');
+﻿const Order = require('../models/Order');
 const Table = require('../models/Table');
 const axios = require('axios');
 
-// =========================================================
-// HELPER: Deduct Stock when order status changes to 'process'
-// =========================================================
-async function deductStockForOrder(order) {
-    console.log(`📉 [DEDUCT] Starting stock deduction for Order: ${order.id}`);
+// Services (Sprint 2 Refactor — extracted from this controller)
+const OrderService = require('../services/OrderService');
+const CustomerService = require('../services/CustomerService');
+const ShiftService = require('../services/ShiftService');
 
-    // Tenant scoping is automatic via plugin - all queries automatically filter by tenantId
-    const itemIds = order.items ? order.items.map(item => String(item.id)) : [];
-    if (itemIds.length === 0) return;
+// Stock deduction & reversion are now in OrderService.deductStock() / OrderService.revertStock()
 
-    let allMenuItems = await MenuItem.find({ id: { $in: itemIds } });
-
-    // Collect all menu IDs that need recipe checks (direct items + bundle components)
-    const menuIdsToCheck = [...itemIds];
-    const additionalMenuIdsToFetch = [];
-
-    allMenuItems.forEach(mi => {
-        if (mi.is_bundle && mi.bundle_items) {
-            mi.bundle_items.forEach(bi => {
-                if (bi.product_id) {
-                    menuIdsToCheck.push(String(bi.product_id));
-                    additionalMenuIdsToFetch.push(String(bi.product_id));
-                }
-            });
-        }
-    });
-
-    if (additionalMenuIdsToFetch.length > 0) {
-        const componentMenus = await MenuItem.find({ id: { $in: additionalMenuIdsToFetch } });
-        // Mongoose records aren't standard arrays, but concat usually works, better spread
-        allMenuItems = [...allMenuItems, ...componentMenus];
-    }
-
-    const recipes = await Recipe.find({ menuId: { $in: menuIdsToCheck } });
-
-    // Extract unique ingredient IDs from recipes
-    const ingredientIds = [...new Set(recipes.flatMap(r => r.ingredients.map(i => String(i.ing_id))))];
-    const ingredients = await Ingredient.find({ id: { $in: ingredientIds } });
-
-    const ingredientMap = new Map();
-    ingredients.forEach(i => ingredientMap.set(String(i.id), i));
-
-    const recipeMap = new Map();
-    recipes.forEach(r => recipeMap.set(String(r.menuId), r.ingredients));
-
-    const menuItemMap = new Map();
-    allMenuItems.forEach(m => {
-        menuItemMap.set(String(m.id), m);
-        menuItemMap.set(String(m._id), m);
-    });
-
-    // Helper: deduct stock for a single menu item
-    const deductSingleItem = async (menuId, qtyOrdered, itemName, isFromBundle = false) => {
-        const recipeIngredients = recipeMap.get(menuId);
-        if (!recipeIngredients) return;
-
-        for (const ri of recipeIngredients) {
-            const ingKey = String(ri.ing_id);
-            const ingData = ingredientMap.get(ingKey);
-
-            let required = Number(ri.jumlah) || 0;
-
-            if (ingData && (ingData.type === 'physical' || !ingData.type)) {
-                const qtyToDeduct = required * qtyOrdered;
-
-                if (!isNaN(qtyToDeduct) && qtyToDeduct > 0) {
-                    const oldStock = Number(ingData.stok) || 0;
-                    ingData.stok = oldStock - qtyToDeduct;
-                    await ingData.save();
-
-                    const label = isFromBundle ? `(Bundle Component)` : '';
-                    console.log(`   📦 ${ingData.nama} ${label}: ${oldStock} → ${ingData.stok} (-${qtyToDeduct})`);
-
-                    // Log Stock History
-                    const history = new StockHistory({
-                        id: `hist_out_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
-                        ing_id: ingData.id,
-                        ingName: ingData.nama,
-                        type: 'out',
-                        qty: qtyToDeduct,
-                        stokSebelum: oldStock,
-                        stokSesudah: ingData.stok,
-                        note: `Order ${order.id} (Process) - ${itemName} ${label}`,
-                        date: new Date().toISOString().split('T')[0],
-                        time: new Date().toLocaleTimeString('id-ID', { hour12: false })
-                    });
-                    await history.save();
-                }
-            }
-        }
-    };
-
-    if (order.items && Array.isArray(order.items)) {
-        for (const item of order.items) {
-            const menuId = String(item.id);
-            const qtyOrdered = Number(item.qty || item.count) || 0;
-            const menuItem = menuItemMap.get(menuId);
-
-            // BUNDLE LOGIC: Jika produk bundle, kurangi stok item penyusunnya
-            if (menuItem && menuItem.is_bundle && menuItem.bundle_items && menuItem.bundle_items.length > 0) {
-                console.log(`   🎁 Bundle detected: ${item.name}, deducting component stock...`);
-                for (const bundleComponent of menuItem.bundle_items) {
-                    const componentId = String(bundleComponent.product_id);
-                    const componentMenu = menuItemMap.get(componentId);
-                    const componentMenuId = componentMenu ? String(componentMenu.id) : componentId;
-                    const componentQty = (bundleComponent.quantity || 1) * qtyOrdered;
-                    const componentName = componentMenu ? componentMenu.name : `Component ${componentId}`;
-
-                    await deductSingleItem(componentMenuId, componentQty, componentName, true);
-                }
-            } else {
-                // Non-bundle: deduct normally
-                await deductSingleItem(menuId, qtyOrdered, item.name);
-            }
-        }
-    }
-    console.log(`✅ [DEDUCT] Stock deduction complete for Order: ${order.id}`);
-}
-
-// =========================================================
-// HELPER: Revert Stock when order is cancelled after processing
-// =========================================================
-async function revertStockForOrder(order) {
-    console.log(`📈 [REVERT] Starting stock reversion for Order: ${order.id}`);
-
-    // Tenant scoping is automatic via plugin
-    const itemIds = order.items ? order.items.map(item => String(item.id)) : [];
-    if (itemIds.length === 0) return;
-
-    const recipes = await Recipe.find({ menuId: { $in: itemIds } });
-
-    const ingredientIds = [...new Set(recipes.flatMap(r => r.ingredients.map(i => String(i.ing_id))))];
-    const ingredients = await Ingredient.find({ id: { $in: ingredientIds } });
-
-    const ingredientMap = new Map();
-    ingredients.forEach(i => ingredientMap.set(String(i.id), i));
-
-    const recipeMap = new Map();
-    recipes.forEach(r => recipeMap.set(String(r.menuId), r.ingredients));
-
-    if (order.items && Array.isArray(order.items)) {
-        for (const item of order.items) {
-            const menuId = String(item.id);
-            const recipeIngredients = recipeMap.get(menuId);
-
-            if (recipeIngredients) {
-                for (const ri of recipeIngredients) {
-                    const ingKey = String(ri.ing_id);
-                    const ingData = ingredientMap.get(ingKey);
-
-                    let required = Number(ri.jumlah) || 0;
-                    let qtyOrdered = Number(item.qty || item.count) || 0;
-
-                    if (ingData && (ingData.type === 'physical' || !ingData.type)) {
-                        const qtyToRevert = required * qtyOrdered;
-
-                        if (!isNaN(qtyToRevert) && qtyToRevert > 0) {
-                            const oldStock = Number(ingData.stok) || 0;
-                            ingData.stok = oldStock + qtyToRevert;
-                            await ingData.save();
-
-                            console.log(`   📦 ${ingData.nama}: ${oldStock} → ${ingData.stok} (+${qtyToRevert})`);
-
-                            // Log Stock History
-                            const history = new StockHistory({
-                                id: `hist_in_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
-                                ing_id: ingData.id,
-                                ingName: ingData.nama,
-                                type: 'in',
-                                qty: qtyToRevert,
-                                stokSebelum: oldStock,
-                                stokSesudah: ingData.stok,
-                                note: `Order ${order.id} (Cancelled) - ${item.name} REVERTED`,
-                                date: new Date().toISOString().split('T')[0],
-                                time: new Date().toLocaleTimeString('id-ID', { hour12: false })
-                            });
-                            await history.save();
-                        }
-                    }
-                }
-            }
-        }
-    }
-    console.log(`✅ [REVERT] Stock reversion complete for Order: ${order.id}`);
-}
 
 const checkPhone = async (req, res) => {
     try {
@@ -261,74 +75,17 @@ const createOrder = async (req, res) => {
         }
         console.log("🆔 Order ID:", orderData.id);
 
-        // 1. Calculate HPP ONLY (Stock deduction moved to 'process' status)
-        console.log("1️⃣ Starting HPP Calculation (No Stock Deduction at Creation)");
-        // Tenant scoping is automatic via plugin
-        const itemIds = orderData.items ? orderData.items.map(item => String(item.id)) : [];
-        const recipes = await Recipe.find({ menuId: { $in: itemIds } });
-
-        const ingredientIds = [...new Set(recipes.flatMap(r => r.ingredients.map(i => String(i.ing_id))))];
-        const ingredients = await Ingredient.find({ id: { $in: ingredientIds } });
-
-        const ingredientMap = new Map();
-        ingredients.forEach(i => ingredientMap.set(String(i.id), i));
-
-        const recipeMap = new Map();
-        recipes.forEach(r => recipeMap.set(String(r.menuId), r.ingredients));
-
-        let orderTotalHPP = 0;
-        const enrichedItems = [];
-
-        if (orderData.items && Array.isArray(orderData.items)) {
-            for (const item of orderData.items) {
-                const menuId = String(item.id);
-                const recipeIngredients = recipeMap.get(menuId);
-                let itemHPP = 0;
-
-                if (recipeIngredients) {
-                    for (const ri of recipeIngredients) {
-                        const ingKey = String(ri.ing_id);
-                        const ingData = ingredientMap.get(ingKey);
-
-                        let required = Number(ri.jumlah) || 0;
-
-                        if (ingData) {
-                            // Calculate HPP
-                            const costPerUnit = (ingData.isi_prod && ingData.isi_prod > 0)
-                                ? (ingData.harga_beli / ingData.isi_prod)
-                                : ingData.harga_beli;
-                            const validCost = isNaN(costPerUnit) ? 0 : costPerUnit;
-                            itemHPP += (validCost * required);
-                        }
-                    }
-                }
-
-                const qtyOrderedFinal = Number(item.qty || item.count) || 0;
-                orderTotalHPP += (itemHPP * qtyOrderedFinal);
-
-                enrichedItems.push({
-                    ...item,
-                    hpp_locked: itemHPP
-                });
-            }
-        }
+        // 1. Calculate HPP (via OrderService)
+        console.log("1️⃣ Starting HPP Calculation");
+        const { enrichedItems, orderTotalHPP } = await OrderService.calculateHPP(orderData.items);
         console.log("✅ HPP Calculation Complete. Total HPP:", orderTotalHPP);
 
         // 2. Create Order Object (stockDeducted = false by default)
         console.log("2️⃣ Saving Order to DB (Stock NOT deducted yet)");
 
-        // Handle voucher: increment used_count if voucher was applied
+        // Handle voucher (via OrderService — atomic with quota guard)
         if (orderData.voucherCode) {
-            try {
-                // Tenant scoping is automatic via plugin
-                await Voucher.findOneAndUpdate(
-                    { code: orderData.voucherCode.toUpperCase() },
-                    { $inc: { used_count: 1 } }
-                );
-                console.log(`🎫 Voucher ${orderData.voucherCode} used_count incremented`);
-            } catch (voucherErr) {
-                console.error('⚠️ Voucher update error (non-blocking):', voucherErr);
-            }
+            await OrderService.applyVoucher(orderData.voucherCode);
         }
 
         const newOrder = new Order({
@@ -347,28 +104,11 @@ const createOrder = async (req, res) => {
         console.log("✅ Order Saved Successfully");
 
         if (newOrder.status === 'done' || newOrder.paymentStatus === 'paid') {
-            // Tenant scoping is automatic via plugin
-            const activeShift = await Shift.findOne({ endTime: null });
-            if (activeShift) {
-                if (newOrder.paymentMethod === 'cash') {
-                    activeShift.cashSales = (activeShift.cashSales || 0) + newOrder.total;
-                    activeShift.currentCash = (activeShift.currentCash || 0) + newOrder.total;
-                } else {
-                    activeShift.nonCashSales = (activeShift.nonCashSales || 0) + newOrder.total;
-                    activeShift.currentNonCash = (activeShift.currentNonCash || 0) + newOrder.total;
-                }
-
-                if (!activeShift.orders) activeShift.orders = [];
-                activeShift.orders.push(newOrder.id);
-
-                // Link Order to Shift ID
-                newOrder.shiftId = activeShift.id;
-                await newOrder.save(); // Save again with shiftId
-
-                await activeShift.save();
-                console.log("✅ Shift Updated");
-            } else {
-                console.log("⚠️ No Active Shift Found");
+            // Record sale in shift (via ShiftService — atomic)
+            const shiftId = await ShiftService.recordSale(newOrder.id, newOrder.total, newOrder.paymentMethod);
+            if (shiftId) {
+                await Order.updateOne({ _id: newOrder._id }, { $set: { shiftId } });
+                newOrder.shiftId = shiftId;
             }
         } else {
             console.log("ℹ️ Order not paid/done, skipping shift update");
@@ -406,101 +146,35 @@ const createOrder = async (req, res) => {
             console.log(`ℹ️ Skipping Table Update: Type=${newOrder.orderType}, Table=${newOrder.tableNumber}`);
         }
 
-        // 4. Update Customer Loyalty
-        console.log("4️⃣ Extending Customer Logic");
-        if (newOrder.customerPhone || (newOrder.customerName && newOrder.customerName !== 'Pelanggan Baru')) {
-            console.log("🔍 Processing Customer Logic");
-            // Tenant scoping is automatic via plugin
-            let customer = null;
-            const query = [];
-
-            if (newOrder.customerId && newOrder.customerId !== 'guest') query.push({ id: newOrder.customerId });
-            if (newOrder.customerPhone && newOrder.customerPhone.length > 5) query.push({ phone: newOrder.customerPhone });
-
-            // If No Phone/ID but has Name, try to find by Name (Case Insensitive) ?
-            // Risk: "Aldy" vs "aldy" vs "Aldy " -> Duplicates.
-            // Decision: If only Name provided, we create NEW customer or update if exactly matches?
-            // For now, let's include name in search if phone is missing
-            if ((!newOrder.customerPhone || newOrder.customerPhone.length < 6) && newOrder.customerName) {
-                query.push({ name: new RegExp('^' + newOrder.customerName.trim() + '$', 'i') });
-            }
-
-            if (query.length > 0) {
-                customer = await Customer.findOne({ $or: query });
-            }
-
-            if (!customer) {
-                console.log("✨ Creating New Customer");
-                customer = new Customer({
-                    id: `cust_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
-                    name: newOrder.customerName || 'Pelanggan Baru',
-                    phone: newOrder.customerPhone, // Can be null/empty
-                    tier: 'regular',
-                    points: 0,
-                    totalSpent: 0,
-                    visitCount: 0,
-                    createdAt: new Date()
-                });
-            } else {
-                console.log("✅ Customer Found:", customer.name);
-            }
-
+        // 4. Update Customer Loyalty (via CustomerService)
+        console.log("4️⃣ Processing Customer Logic");
+        const customer = await CustomerService.findOrCreateCustomer(newOrder);
+        if (customer) {
             // Link customer to order
             if (newOrder.customerId !== customer.id) {
+                await Order.updateOne({ _id: newOrder._id }, { $set: { customerId: customer.id } });
                 newOrder.customerId = customer.id;
-                await newOrder.save();
                 console.log("🔗 Order Linked to Customer ID:", customer.id);
             }
 
-            // Sync Name/Phone if missing in customer
+            // Build sync fields
+            const syncFields = {};
             if (newOrder.customerName && (!customer.name || customer.name === 'Pelanggan Baru')) {
-                customer.name = newOrder.customerName;
+                syncFields.name = newOrder.customerName;
             }
             if (newOrder.customerPhone && !customer.phone) {
-                customer.phone = newOrder.customerPhone;
+                syncFields.phone = newOrder.customerPhone;
             }
 
-            // Calculate Loyalty Points
             if (newOrder.status === 'done' || newOrder.paymentStatus === 'paid') {
-                console.log("💎 Calculating Loyalty Points");
                 try {
-                    const settings = await Settings.findOne({ key: 'businessSettings' });
-
-                    // 1. Get Settings & Thresholds
-                    const thresholds = settings?.loyaltySettings?.tierThresholds || { silver: 500000, gold: 2000000 };
-                    const ratio = settings?.loyaltySettings?.pointRatio || 10000;
-
-                    // 2. Determine Current Tier (based on totalSpent BEFORE this order)
-                    let currentTier = 'bronze';
-                    if (customer.totalSpent >= thresholds.gold) currentTier = 'gold';
-                    else if (customer.totalSpent >= thresholds.silver) currentTier = 'silver';
-
-                    // 3. Determine Multiplier
-                    let multiplier = 1;
-                    if (currentTier === 'gold') multiplier = 1.5;
-                    else if (currentTier === 'silver') multiplier = 1.25;
-
-                    console.log(`📊 Tier: ${currentTier}, Multiplier: ${multiplier}x`);
-
-                    // 4. Calculate Points
-                    const basePoints = Math.floor(newOrder.total / ratio);
-                    const pointsEarned = Math.floor(basePoints * multiplier);
-
-                    customer.totalSpent += newOrder.total;
-                    customer.visitCount += 1;
-                    customer.points += pointsEarned;
-                    customer.lastOrderDate = new Date();
-                    // Update tier in DB just in case, though calculated dynamically in frontend
-                    customer.tier = currentTier;
-
-                    if (pointsEarned > 0) customer.lastPointsEarned = new Date();
-                    console.log(`💎 Awarded ${pointsEarned} points (${basePoints} base * ${multiplier}x)`);
+                    await CustomerService.awardLoyaltyPoints(customer, newOrder.total, syncFields);
                 } catch (loyaltyErr) {
                     console.error("⚠️ Loyalty Calculation Error:", loyaltyErr);
                 }
+            } else {
+                await CustomerService.syncCustomerFields(customer, syncFields);
             }
-
-            await customer.save();
             console.log("✅ Customer Updated/Saved");
         } else {
             console.log("ℹ️ No valid customer info provided, skipping customer logic");
@@ -510,7 +184,7 @@ const createOrder = async (req, res) => {
 
         // SEND WA NOTIFICATION VIA N8N WEBHOOK
         try {
-            const webhookUrl = 'http://76.13.196.116:5677/webhook/76a56ec0-0deb-4ebe-9c03-3a1981506916';
+            const webhookUrl = process.env.N8N_WEBHOOK_ORDER_CREATE || 'http://76.13.196.116:5677/webhook/76a56ec0-0deb-4ebe-9c03-3a1981506916';
 
             // Format string dari item pesanan
             const itemsString = newOrder.items.map(item => `${item.qty || item.count}x ${item.name}`).join(', ');
@@ -677,7 +351,7 @@ const updateOrderStatus = async (req, res) => {
         // Deduct stock when status changes to 'process' and stock hasn't been deducted yet
         if (status === 'process' && !order.stockDeducted) {
             console.log(`🔄 Status -> 'process': Triggering stock deduction for Order ${order.id}`);
-            await deductStockForOrder(order);
+            await OrderService.deductStock(order);
             order.stockDeducted = true;
         }
 
@@ -691,7 +365,7 @@ const updateOrderStatus = async (req, res) => {
             // Revert stock if previously deducted
             if (order.stockDeducted) {
                 console.log(`🔄 Status -> 'cancel': Triggering stock reversion for Order ${order.id}`);
-                await revertStockForOrder(order);
+                await OrderService.revertStock(order);
                 order.stockDeducted = false;
             }
 
@@ -709,7 +383,7 @@ const updateOrderStatus = async (req, res) => {
         // TRIGGER WA NOTIFICATION: PESANAN SELESAI
         if (status === 'done' && previousStatus !== 'done') {
             try {
-                const webhookUrl = 'http://76.13.196.116:5677/webhook/ce3ade2e-9516-43ed-9ca8-2913407877d1';
+                const webhookUrl = process.env.N8N_WEBHOOK_ORDER_DONE || 'http://76.13.196.116:5677/webhook/ce3ade2e-9516-43ed-9ca8-2913407877d1';
 
                 let phoneFormatted = '';
                 if (order.phone) {
@@ -771,76 +445,27 @@ const payOrder = async (req, res) => {
         // order.status = 'done'; // REMOVED: Do not auto-complete. Let frontend handle flow (Pay -> Process -> Done)
         if (note) order.note = note;
 
-        // 2. Update Shift (Record Sales)
-        // Tenant scoping is automatic via plugin
-        const activeShift = await Shift.findOne({ endTime: null });
-        if (activeShift) {
-            // Link Order to Shift ID (for reporting)
-            order.shiftId = activeShift.id;
-
-            if (order.paymentMethod === 'cash') {
-                activeShift.cashSales = (activeShift.cashSales || 0) + order.total;
-                activeShift.currentCash = (activeShift.currentCash || 0) + order.total;
-            } else {
-                activeShift.nonCashSales = (activeShift.nonCashSales || 0) + order.total;
-                activeShift.currentNonCash = (activeShift.currentNonCash || 0) + order.total;
-            }
-
-            if (!activeShift.orders) activeShift.orders = [];
-            activeShift.orders.push(order.id);
-
-            await activeShift.save();
+        // 2. Update Shift (via ShiftService)
+        const shiftId = await ShiftService.recordSale(order.id, order.total, order.paymentMethod);
+        if (shiftId) {
+            order.shiftId = shiftId;
         }
 
-        // 3. Update Customer Loyalty & Auto-create
-        let customer = null;
-        if (order.customerId && order.customerId !== 'guest') {
-            customer = await Customer.findOne({ id: order.customerId });
-        } else if ((order.customerPhone && order.customerPhone.length > 5) || (order.customerName && order.customerName !== 'Pelanggan Baru')) {
-            // Find by Phone or Name
-            const query = [];
-            if (order.customerPhone && order.customerPhone.length > 5) {
-                query.push({ phone: order.customerPhone });
-            }
-            if (!order.customerPhone && order.customerName) {
-                query.push({ name: new RegExp('^' + order.customerName.trim() + '$', 'i') });
-            }
-
-            if (query.length > 0) {
-                customer = await Customer.findOne({ $or: query });
-            }
-
-            if (!customer) {
-                // Create new Customer
-                customer = new Customer({
-                    id: `cust_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
-                    name: order.customerName || 'Pelanggan Baru',
-                    phone: order.customerPhone,
-                    tier: 'regular',
-                    createdAt: new Date()
-                });
-            }
-            // Link to order
-            order.customerId = customer.id;
-        }
-
+        // 3. Update Customer Loyalty (via CustomerService)
+        const customer = await CustomerService.findOrCreateCustomer(order);
         if (customer) {
-            const settings = await Settings.findOne({ key: 'businessSettings' });
-            const ratio = settings?.loyaltySettings?.pointRatio || 10000;
-            const pointsEarned = Math.floor(order.total / ratio);
-
-            customer.totalSpent += order.total;
-            customer.visitCount += 1;
-            customer.points += pointsEarned;
-            customer.lastOrderDate = new Date();
-            if (pointsEarned > 0) customer.lastPointsEarned = new Date();
-
-            await customer.save();
+            if (order.customerId !== customer.id) {
+                order.customerId = customer.id;
+            }
+            try {
+                await CustomerService.awardLoyaltyPoints(customer, order.total);
+            } catch (loyaltyErr) {
+                console.error('Loyalty Error:', loyaltyErr);
+            }
         }
 
         await order.save();
 
-        // Emit Socket Event
         // Emit Socket Event
         const io = req.app.get('io');
         if (io) {

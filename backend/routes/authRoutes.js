@@ -2,10 +2,11 @@ const express = require('express');
 const router = express.Router();
 const AuthController = require('../controllers/AuthController');
 const { checkJwt } = require('../middleware/auth'); // Use existing checkJwt from middleware
+const { strictLimiter } = require('../middleware/rateLimiter');
 
 // Public
-router.post('/login', AuthController.login);
-router.post('/auth/login', AuthController.login); // Legacy
+router.post('/login', strictLimiter, AuthController.login);
+router.post('/auth/login', strictLimiter, AuthController.login); // Legacy
 
 // Protected (Verify Token)
 // Protected (Verify Token)

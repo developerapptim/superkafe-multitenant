@@ -2,11 +2,12 @@ const express = require('express');
 const router = express.Router();
 const UploadController = require('../controllers/UploadController');
 const ImageController = require('../controllers/ImageController');
-const { 
-  uploadAudio, 
-  uploadMenuImage, 
-  uploadProfileImage, 
-  uploadGeneralImage 
+const {
+  uploadAudio,
+  uploadMenuImage,
+  optimizeMenuImage,
+  uploadProfileImage,
+  uploadGeneralImage
 } = require('../middleware/uploadMiddleware');
 const { checkApiKey } = require('../middleware/auth');
 const tenantResolver = require('../middleware/tenantResolver');
@@ -20,7 +21,7 @@ router.post('/settings/sound', uploadAudio.single('soundFile'), UploadController
 
 // ===== IMAGE UPLOADS =====
 // Menu item images
-router.post('/images/menu', uploadMenuImage.single('image'), ImageController.uploadMenuImage);
+router.post('/images/menu', uploadMenuImage.single('image'), optimizeMenuImage, ImageController.uploadMenuImage);
 
 // Profile images
 router.post('/images/profile', uploadProfileImage.single('image'), ImageController.uploadProfileImage);

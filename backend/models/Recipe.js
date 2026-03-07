@@ -12,6 +12,7 @@ const RecipeSchema = new mongoose.Schema({
 });
 
 // Tenant-scoped compound indexes for optimal query performance
+RecipeSchema.index({ tenantId: 1, menuId: 1 }, { unique: true });
 RecipeSchema.index({ tenantId: 1, last_updated: -1 }); // Time-based queries per tenant
 
 // Apply tenant scoping plugin for automatic tenant isolation

@@ -1,6 +1,9 @@
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const sharp = require('sharp');
+const path = require('path');
+const fs = require('fs');
 
 // Ensure directories exist
 const publicDir = path.join(__dirname, '../public');
@@ -43,17 +46,11 @@ const generateUniqueFilename = (originalname, prefix = 'file') => {
     return `${prefix}-${timestamp}-${random}${ext}`;
 };
 
-// 1. Payment Proof Storage (LOCAL DISK)
-const paymentStorage = multer.diskStorage({
-    destination: (req, file, cb) => cb(null, directories.payments),
-    filename: (req, file, cb) => {
-        const uniqueName = generateUniqueFilename(file.originalname, 'payment');
-        cb(null, uniqueName);
-    }
-});
+// 1. Payment Proof Storage (MEMORY STORAGE + SHARP)
+const memoryStorage = multer.memoryStorage();
 
 exports.uploadPayment = multer({
-    storage: paymentStorage,
+    storage: memoryStorage,
     limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
     fileFilter: (req, file, cb) => {
         if (file.mimetype.startsWith('image/')) {
@@ -63,6 +60,27 @@ exports.uploadPayment = multer({
         }
     }
 });
+
+exports.optimizePayment = async (req, res, next) => {
+    if (!req.file) return next();
+    try {
+        const uniqueName = generateUniqueFilename(req.file.originalname, 'payment').replace(/\.[^/.]+$/, "") + ".webp";
+        const filepath = path.join(directories.payments, uniqueName);
+
+        await sharp(req.file.buffer)
+            .resize(800, null, { withoutEnlargement: true })
+            .webp({ quality: 80 })
+            .toFile(filepath);
+
+        req.file.filename = uniqueName;
+        req.file.path = filepath;
+        req.file.mimetype = 'image/webp';
+        next();
+    } catch (error) {
+        console.error('Sharp memory compression failed for payment:', error);
+        next(error);
+    }
+};
 
 // 2. Audio Storage (UNCHANGED)
 const audioStorage = multer.diskStorage({
@@ -137,28 +155,9 @@ exports.uploadBanner = multer({
     }
 });
 
-// 6. Menu Image Storage (NEW - LOCAL DISK - TENANT NAMESPACED)
-const menuImageStorage = multer.diskStorage({
-    destination: (req, file, cb) => {
-        // Use tenant ID from request context for namespacing
-        const tenantId = req.tenant?.id || 'default';
-        const tenantDir = path.join(directories.images.menu, tenantId);
-        
-        // Create tenant-specific directory if it doesn't exist
-        if (!fs.existsSync(tenantDir)) {
-            fs.mkdirSync(tenantDir, { recursive: true });
-        }
-        
-        cb(null, tenantDir);
-    },
-    filename: (req, file, cb) => {
-        const uniqueName = generateUniqueFilename(file.originalname, 'menu');
-        cb(null, uniqueName);
-    }
-});
-
+// 6. Menu Image Storage (NEW - MEMORY STORAGE + SHARP)
 exports.uploadMenuImage = multer({
-    storage: menuImageStorage,
+    storage: memoryStorage,
     limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
     fileFilter: (req, file, cb) => {
         const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
@@ -170,18 +169,46 @@ exports.uploadMenuImage = multer({
     }
 });
 
+exports.optimizeMenuImage = async (req, res, next) => {
+    if (!req.file) return next();
+    try {
+        const tenantId = req.tenant?.id || 'default';
+        const tenantDir = path.join(directories.images.menu, tenantId);
+
+        if (!fs.existsSync(tenantDir)) {
+            fs.mkdirSync(tenantDir, { recursive: true });
+        }
+
+        const uniqueName = generateUniqueFilename(req.file.originalname, 'menu').replace(/\.[^/.]+$/, "") + ".webp";
+        const filepath = path.join(tenantDir, uniqueName);
+
+        await sharp(req.file.buffer)
+            .resize(800, null, { withoutEnlargement: true })
+            .webp({ quality: 80 })
+            .toFile(filepath);
+
+        req.file.filename = uniqueName;
+        req.file.path = filepath;
+        req.file.mimetype = 'image/webp';
+        next();
+    } catch (error) {
+        console.error('Sharp memory compression failed for menu image:', error);
+        next(error);
+    }
+};
+
 // 7. Profile Image Storage (NEW - LOCAL DISK - TENANT NAMESPACED)
 const profileImageStorage = multer.diskStorage({
     destination: (req, file, cb) => {
         // Use tenant ID from request context for namespacing
         const tenantId = req.tenant?.id || 'default';
         const tenantDir = path.join(directories.images.profiles, tenantId);
-        
+
         // Create tenant-specific directory if it doesn't exist
         if (!fs.existsSync(tenantDir)) {
             fs.mkdirSync(tenantDir, { recursive: true });
         }
-        
+
         cb(null, tenantDir);
     },
     filename: (req, file, cb) => {
@@ -209,12 +236,12 @@ const generalImageStorage = multer.diskStorage({
         // Use tenant ID from request context for namespacing
         const tenantId = req.tenant?.id || 'default';
         const tenantDir = path.join(directories.images.general, tenantId);
-        
+
         // Create tenant-specific directory if it doesn't exist
         if (!fs.existsSync(tenantDir)) {
             fs.mkdirSync(tenantDir, { recursive: true });
         }
-        
+
         cb(null, tenantDir);
     },
     filename: (req, file, cb) => {

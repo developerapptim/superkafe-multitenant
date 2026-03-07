@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const InventoryController = require('../controllers/InventoryController');
 const { checkApiKey, checkJwt } = require('../middleware/auth');
+const { validateRequest, restockSchema } = require('../middleware/validator');
 
 // Apply JWT check to all for tracking user actions
 router.use(checkJwt);
@@ -12,7 +13,7 @@ router.post('/', InventoryController.addInventory);
 router.put('/:id', InventoryController.updateInventory);
 router.delete('/:id', InventoryController.deleteInventory);
 router.put('/:id/stock', InventoryController.updateStock);
-router.post('/restock', InventoryController.restockIngredient); // Restock with Moving Average
+router.post('/restock', validateRequest(restockSchema), InventoryController.restockIngredient); // Restock with Moving Average
 router.get('/top-usage', InventoryController.getTopUsage); // New Endpoint
 
 

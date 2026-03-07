@@ -13,6 +13,7 @@ const ExpenseSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 // Tenant-scoped compound indexes for optimal query performance
+ExpenseSchema.index({ tenantId: 1, date: -1, category: 1 });
 ExpenseSchema.index({ tenantId: 1, createdAt: -1 }); // Time-based queries per tenant
 
 // Apply tenant scoping plugin for automatic tenant isolation

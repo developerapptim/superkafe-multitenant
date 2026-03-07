@@ -37,6 +37,7 @@ const IngredientSchema = new mongoose.Schema({
 IngredientSchema.index({ nama: 1, stok: 1 });
 
 // Tenant-scoped compound indexes for optimal query performance
+IngredientSchema.index({ tenantId: 1, id: 1 }, { unique: true });
 IngredientSchema.index({ tenantId: 1, last_updated: -1 }); // Time-based queries per tenant
 
 // Apply tenant scoping plugin for automatic tenant isolation

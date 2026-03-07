@@ -38,9 +38,10 @@ const OrderSchema = new mongoose.Schema({
 // Indexes for Analytics Performance
 OrderSchema.index({ status: 1, timestamp: -1 }); // Most critical for report filtering
 OrderSchema.index({ paymentMethod: 1 }); // For payment stats
-OrderSchema.index({ customerPhone: 1 }); // For retention analysis
+OrderSchema.index({ tenantId: 1, phone: 1 }); // For retention analysis (tenant-scoped)
 
 // Tenant-scoped compound indexes for optimal query performance
+OrderSchema.index({ tenantId: 1, id: 1 }, { unique: true });
 OrderSchema.index({ tenantId: 1, timestamp: -1 }); // Time-based queries per tenant
 OrderSchema.index({ tenantId: 1, status: 1 }); // Status-based queries per tenant
 OrderSchema.index({ tenantId: 1, status: 1, timestamp: -1 }); // Optimized for dashboard dashboard & pending counts

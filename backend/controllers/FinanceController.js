@@ -166,28 +166,38 @@ const deleteCashTransaction = async (req, res) => {
 const getCashAnalytics = async (req, res) => {
     try {
         // Tenant scoping is automatic via plugin
-        // Real Aggregation from CashTransactions
-        // 1. Daily Data (Last 7 Days)
         const sevenDaysAgo = new Date();
         sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
-        const transactions = await CashTransaction.find({
-            createdAt: { $gte: sevenDaysAgo }
-        });
+        // 1. Daily Data (Last 7 Days) using Aggregation
+        const dailyData = await CashTransaction.aggregate([
+            { $match: { createdAt: { $gte: sevenDaysAgo } } },
+            {
+                $group: {
+                    _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt", timezone: "Asia/Jakarta" } },
+                    income: { $sum: { $cond: [{ $eq: ["$type", "in"] }, "$amount", 0] } },
+                    expense: { $sum: { $cond: [{ $eq: ["$type", "out"] }, "$amount", 0] } }
+                }
+            },
+            { $sort: { _id: 1 } }
+        ]);
 
-        // Group by Date for Chart
-        // TODO: Implement proper grouping. For now return empty or simple.
+        // 2. Totals using Aggregation
+        const totals = await CashTransaction.aggregate([
+            {
+                $group: {
+                    _id: null,
+                    totalIncome: { $sum: { $cond: [{ $eq: ["$type", "in"] }, "$amount", 0] } },
+                    totalExpense: { $sum: { $cond: [{ $eq: ["$type", "out"] }, "$amount", 0] } }
+                }
+            }
+        ]);
 
-        // 2. Totals
-        // We can aggregate all time or this month? User prompt screenshot shows "Estimasi Laba Bersih".
-        // Let's just return basic sums for now.
-
-        const allTrans = await CashTransaction.find();
-        const totalIncome = allTrans.filter(t => t.type === 'in').reduce((sum, t) => sum + t.amount, 0);
-        const totalExpense = allTrans.filter(t => t.type === 'out').reduce((sum, t) => sum + t.amount, 0);
+        const totalIncome = totals.length > 0 ? totals[0].totalIncome : 0;
+        const totalExpense = totals.length > 0 ? totals[0].totalExpense : 0;
 
         res.json({
-            dailyData: [], // Populate if needed
+            dailyData: dailyData.map(d => ({ date: d._id, income: d.income, expense: d.expense })),
             totalIncome,
             totalExpense,
             netProfit: totalIncome - totalExpense,
@@ -195,7 +205,7 @@ const getCashAnalytics = async (req, res) => {
             totalOperationalExpense: totalExpense // Approx
         });
     } catch (err) {
-        console.error(err);
+        console.error('getCashAnalytics Error:', err);
         res.status(500).json({ error: 'Server error' });
     }
 };
@@ -208,12 +218,26 @@ const getCashBreakdown = async (req, res) => {
         // 1. Shift Balance (Current Cash)
         const shift = await Shift.findOne({ endTime: null });
         const cashBalance = shift ? shift.currentCash : 0;
-        const nonCashBalance = shift ? shift.currentNonCash : 0; // or calculate from transactions
+        const nonCashBalance = shift ? shift.currentNonCash : 0;
 
-        // 2. Debts
-        const debts = await Debt.find({ status: 'pending' });
-        const totalKasbon = debts.filter(d => d.type === 'kasbon').reduce((sum, d) => sum + d.amount, 0);
-        const totalPiutang = debts.filter(d => d.type === 'piutang').reduce((sum, d) => sum + d.amount, 0);
+        // 2. Debts using Aggregation Pipeline
+        const debtAggregation = await Debt.aggregate([
+            { $match: { status: 'pending' } },
+            {
+                $group: {
+                    _id: "$type",
+                    totalAmount: { $sum: "$amount" }
+                }
+            }
+        ]);
+
+        let totalKasbon = 0;
+        let totalPiutang = 0;
+
+        debtAggregation.forEach(d => {
+            if (d._id === 'kasbon') totalKasbon = d.totalAmount;
+            if (d._id === 'piutang') totalPiutang = d.totalAmount;
+        });
 
         res.json({
             cashBalance,
@@ -222,6 +246,7 @@ const getCashBreakdown = async (req, res) => {
             totalPiutang
         });
     } catch (err) {
+        console.error('getCashBreakdown Error:', err);
         res.status(500).json({ error: 'Server error' });
     }
 };
@@ -544,19 +569,19 @@ const getProfitLoss = async (req, res) => {
 };
 
 module.exports = {
-  getExpenses,
-  addExpense,
-  getSummary,
-  getCashTransactions,
-  addCashTransaction,
-  deleteCashTransaction,
-  getCashAnalytics,
-  getCashBreakdown,
-  getDebts,
-  addDebt,
-  updateDebt,
-  settleDebt,
-  deleteDebt,
-  unifiedExpense,
-  getProfitLoss
+    getExpenses,
+    addExpense,
+    getSummary,
+    getCashTransactions,
+    addCashTransaction,
+    deleteCashTransaction,
+    getCashAnalytics,
+    getCashBreakdown,
+    getDebts,
+    addDebt,
+    updateDebt,
+    settleDebt,
+    deleteDebt,
+    unifiedExpense,
+    getProfitLoss
 };

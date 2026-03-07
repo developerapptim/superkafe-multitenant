@@ -2,7 +2,9 @@ const express = require('express');
 const router = express.Router();
 const OrderController = require('../controllers/OrderController');
 const { checkApiKey } = require('../middleware/auth');
-const { uploadPayment } = require('../middleware/uploadMiddleware');
+const { uploadPayment, optimizePayment } = require('../middleware/uploadMiddleware');
+const { strictLimiter } = require('../middleware/rateLimiter');
+const { validateRequest, orderSchema } = require('../middleware/validator');
 
 // router.use(checkApiKey); // Optional: if some are public, don't use global use
 
@@ -14,7 +16,7 @@ router.get('/:id', checkApiKey, OrderController.getOrderById); // New
 // Public-ish endpoint (secured by API Key) to check existing orders
 router.post('/check-phone', checkApiKey, OrderController.checkPhone);
 
-router.post('/', uploadPayment.single('paymentProof'), OrderController.createOrder);
+router.post('/', strictLimiter, uploadPayment.single('paymentProof'), optimizePayment, validateRequest(orderSchema), OrderController.createOrder);
 
 router.patch('/:id/status', checkApiKey, OrderController.updateOrderStatus);
 router.patch('/:id/pay', checkApiKey, OrderController.payOrder); // Fix: Add pay route

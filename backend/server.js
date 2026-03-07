@@ -96,6 +96,11 @@ app.use(cors(corsOptions));
 app.use(express.json({ limit: '200mb' }));
 app.use(express.urlencoded({ limit: '200mb', extended: true }));
 
+// NEW: Request Logging (Slow Queries)
+const slowQueryLogger = require('./middleware/slowQueryLogger');
+const logger = require('./utils/logger');
+app.use(slowQueryLogger);
+
 // ===== STATIC FILES =====
 // Serve uploads folder (images, audio, payments, etc.)
 const uploadsPath = path.join(__dirname, 'public', 'uploads');
@@ -196,13 +201,11 @@ app.use((err, req, res, next) => {
 
   // Handle tenant scoping errors
   if (err.code === 'TENANT_MISMATCH') {
-    console.error('[TENANT SCOPING ERROR] Cross-tenant modification attempt', {
+    logger.error('[TENANT SCOPING ERROR] Cross-tenant modification attempt', {
       requestId,
       severity: 'HIGH',
-      error: {
-        message: err.message,
-        code: err.code
-      },
+      errorMessage: err.message,
+      errorCode: err.code,
       tenant: req.tenant?.slug || 'unknown',
       userId: req.user?.id || 'unauthenticated',
       path: req.path,
@@ -220,7 +223,7 @@ app.use((err, req, res, next) => {
 
   // Handle validation errors
   if (err.name === 'ValidationError') {
-    console.warn('[VALIDATION ERROR]', {
+    logger.warn('[VALIDATION ERROR]', {
       requestId,
       error: err.message,
       tenant: req.tenant?.slug || 'unknown',
@@ -235,15 +238,13 @@ app.use((err, req, res, next) => {
   }
 
   // Handle all other errors
-  console.error('[UNHANDLED ERROR]', {
+  logger.error('[UNHANDLED ERROR]', {
     requestId,
     severity: 'ERROR',
-    error: {
-      message: err.message,
-      name: err.name,
-      code: err.code,
-      stack: err.stack
-    },
+    errorMessage: err.message,
+    errorName: err.name,
+    errorCode: err.code,
+    stack: err.stack,
     tenant: req.tenant?.slug || 'unknown',
     userId: req.user?.id || 'unauthenticated',
     path: req.path,
@@ -261,4 +262,4 @@ app.use((err, req, res, next) => {
 });
 
 const PORT = process.env.PORT || 5001;
-server.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`)); // Listen on server, not app
+server.listen(PORT, () => logger.info(`🚀 Server running on port ${PORT}`)); // Listen on server, not app
