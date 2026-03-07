@@ -60,11 +60,13 @@ jobs:
           DUITKU_CALLBACK_URL: ${{ secrets.DUITKU_CALLBACK_URL }}
           FRONTEND_URL: ${{ secrets.FRONTEND_URL }}
           BACKEND_URL: ${{ secrets.BACKEND_URL }}
+          N8N_WEBHOOK_ORDER_CREATE: ${{ secrets.N8N_WEBHOOK_ORDER_CREATE }}
+          N8N_WEBHOOK_ORDER_DONE: ${{ secrets.N8N_WEBHOOK_ORDER_DONE }}
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           password: ${{ secrets.SSH_PASSWORD }}
-          envs: MONGODB_URI,JWT_SECRET,API_KEY,SMTP_USER,SMTP_PASS,DUITKU_MERCHANT_CODE,DUITKU_API_KEY,DUITKU_MODE,DUITKU_CALLBACK_URL,FRONTEND_URL,BACKEND_URL
+          envs: MONGODB_URI,JWT_SECRET,API_KEY,SMTP_USER,SMTP_PASS,DUITKU_MERCHANT_CODE,DUITKU_API_KEY,DUITKU_MODE,DUITKU_CALLBACK_URL,FRONTEND_URL,BACKEND_URL,N8N_WEBHOOK_ORDER_CREATE,N8N_WEBHOOK_ORDER_DONE
           script: |
             cd /root/superkafe-multitenant
             git fetch --all
@@ -82,6 +84,8 @@ jobs:
             echo "DUITKU_MODE=$DUITKU_MODE" >> backend/.env
             echo "BACKEND_URL=$BACKEND_URL" >> backend/.env
             echo "DUITKU_CALLBACK_URL=$DUITKU_CALLBACK_URL" >> backend/.env
+            echo "N8N_WEBHOOK_ORDER_CREATE=$N8N_WEBHOOK_ORDER_CREATE" >> backend/.env
+            echo "N8N_WEBHOOK_ORDER_DONE=$N8N_WEBHOOK_ORDER_DONE" >> backend/.env
 
             docker compose down --remove-orphans
             docker compose pull
