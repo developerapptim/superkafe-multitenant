@@ -267,7 +267,7 @@ export default function DataCenter() {
                                 <button
                                     onClick={() => handleExport('stock')}
                                     disabled={isLoading}
-                                    className="w-full bg-green-600 hover:bg-green-500 text-white py-2 rounded-lg font-medium transition-colors disabled:opacity-50"
+                                    className="w-full bg-purple-600 hover:bg-purple-500 text-white py-2 rounded-lg font-medium transition-colors disabled:opacity-50"
                                 >
                                     Download .xlsx
                                 </button>
@@ -308,7 +308,7 @@ export default function DataCenter() {
                                 <button
                                     onClick={() => handleImport('menu')}
                                     disabled={isLoading}
-                                    className="w-full bg-purple-600 hover:bg-purple-500 text-white py-2 rounded-lg"
+                                    className="w-full bg-purple-600 hover:bg-purple-500 text-white py-2 rounded-lg transition-colors disabled:opacity-50"
                                 >
                                     {isLoading ? 'Uploading...' : 'Upload Data Menu'}
                                 </button>
@@ -318,7 +318,7 @@ export default function DataCenter() {
                                 <div className="text-5xl mb-4">🥬</div>
                                 <h3 className="font-bold mb-2">Import Bahan Baku</h3>
                                 <p className="text-xs text-gray-400 mb-4">Update inventaris & stok awal.</p>
-                                <button className="text-green-400 text-sm hover:underline mb-4">Download Template Stok</button>
+                                <button className="text-purple-400 text-sm hover:underline mb-4">Download Template Stok</button>
 
                                 <input
                                     type="file"
@@ -328,14 +328,14 @@ export default function DataCenter() {
                         file:mr-4 file:py-2 file:px-4
                         file:rounded-full file:border-0
                         file:text-sm file:font-semibold
-                        file:bg-green-600 file:text-white
-                        hover:file:bg-green-700
+                        file:bg-purple-600 file:text-white
+                        hover:file:bg-purple-700
                         mb-4"
                                 />
                                 <button
                                     onClick={() => handleImport('stock')}
                                     disabled={isLoading}
-                                    className="w-full bg-green-600 hover:bg-green-500 text-white py-2 rounded-lg"
+                                    className="w-full bg-purple-600 hover:bg-purple-500 text-white py-2 rounded-lg transition-colors disabled:opacity-50"
                                 >
                                     {isLoading ? 'Uploading...' : 'Upload Data Stok'}
                                 </button>
@@ -432,7 +432,7 @@ export default function DataCenter() {
                             <button
                                 onClick={() => document.getElementById('restoreInput').click()}
                                 disabled={isLoading}
-                                className="flex justify-center items-center gap-2 bg-gray-700 hover:bg-gray-600 px-8 py-3 rounded-xl font-bold text-lg text-gray-300 transition-transform hover:scale-105 disabled:opacity-50 w-full md:w-auto"
+                                className="flex justify-center items-center gap-2 bg-blue-600 hover:bg-blue-500 px-8 py-3 rounded-xl font-bold text-lg text-white transition-transform hover:scale-105 disabled:opacity-50 w-full md:w-auto"
                             >
                                 <span>⬆️</span> Restore Database
                             </button>

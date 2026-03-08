@@ -361,12 +361,12 @@ function Laporan() {
                                         className="w-32 h-32 rounded-full relative"
                                         style={{
                                             background: `conic-gradient(
-                                            #8b5cf6 0% ${(retention.new / (retention.new + retention.returning) * 100) || 0}%, 
-                                            #14b8a6 ${(retention.new / (retention.new + retention.returning) * 100) || 0}% 100%
+                                            var(--chart-retention-new, #8b5cf6) 0% ${(retention.new / (retention.new + retention.returning) * 100) || 0}%, 
+                                            var(--chart-retention-returning, #14b8a6) ${(retention.new / (retention.new + retention.returning) * 100) || 0}% 100%
                                         )`
                                         }}
                                     >
-                                        <div className="absolute inset-4 bg-[#1E1B4B] rounded-full flex items-center justify-center">
+                                        <div className="absolute inset-4 admin-bg-main rounded-full flex items-center justify-center border admin-border-accent">
                                             <span className="text-xs text-gray-400">{retention.new + retention.returning} Cust</span>
                                         </div>
                                     </div>
@@ -414,12 +414,12 @@ function Laporan() {
                                     className="w-32 h-32 rounded-full relative"
                                     style={{
                                         background: `conic-gradient(
-                                        #22c55e 0% ${paymentStats.cashPercent}%, 
-                                        #3b82f6 ${paymentStats.cashPercent}% 100%
+                                        var(--chart-cash, #22c55e) 0% ${paymentStats.cashPercent}%, 
+                                        var(--chart-qris, #3b82f6) ${paymentStats.cashPercent}% 100%
                                     )`
                                     }}
                                 >
-                                    <div className="absolute inset-4 bg-[#1E1B4B] rounded-full flex items-center justify-center">
+                                    <div className="absolute inset-4 admin-bg-main rounded-full flex items-center justify-center border admin-border-accent">
                                         <span className="text-xs text-gray-400">{stats.orders} Pesanan</span>
                                     </div>
                                 </div>

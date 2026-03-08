@@ -130,6 +130,8 @@
 /* Search Bar & Inputs */
 [data-customer-theme="light-coffee"] .customer-view input[type="text"],
 [data-customer-theme="light-coffee"] .customer-view input[type="tel"],
+[data-customer-theme="light-coffee"] .customer-view input[type="number"],
+[data-customer-theme="light-coffee"] .customer-view textarea,
 [data-customer-theme="light-coffee"] .customer-view select {
     background: var(--customer-accent-cream) !important;
     border: 1px solid var(--customer-border) !important;
@@ -138,9 +140,11 @@
     border-radius: 12px !important;
 }
 
-[data-customer-theme="light-coffee"] .customer-view input::placeholder {
+[data-customer-theme="light-coffee"] .customer-view input::placeholder,
+[data-customer-theme="light-coffee"] .customer-view textarea::placeholder {
     color: var(--customer-text-muted) !important;
 }
+
 
 /* Category Pills - Inactive */
 [data-customer-theme="light-coffee"] .customer-view .overflow-x-auto button,
@@ -177,6 +181,7 @@
 /* Cards — Enhanced shadow for tablet readability */
 [data-customer-theme="light-coffee"] .customer-view .grid>div,
 [data-customer-theme="light-coffee"] .customer-view .space-y-3>div,
+[data-customer-theme="light-coffee"] .customer-view .bg-\[\#1a1a2e\],
 [data-customer-theme="light-coffee"] .customer-view .bg-white\/5 {
     background: var(--customer-bg-card) !important;
     background-color: var(--customer-bg-card) !important;
@@ -209,6 +214,7 @@
 [data-customer-theme="light-coffee"] .customer-view .text-purple-400,
 [data-customer-theme="light-coffee"] .customer-view .text-green-400,
 [data-customer-theme="light-coffee"] .customer-view .text-purple-300,
+[data-customer-theme="light-coffee"] .customer-view .text-white,
 [data-customer-theme="light-coffee"] .customer-view span.font-bold {
     color: var(--customer-text-dark) !important;
     font-weight: 800 !important;
@@ -435,6 +441,8 @@
 /* 4. SEARCH, FILTERS, CATEGORIES */
 [data-customer-theme="merah-putih"] .customer-view input[type="text"],
 [data-customer-theme="merah-putih"] .customer-view input[type="tel"],
+[data-customer-theme="merah-putih"] .customer-view input[type="number"],
+[data-customer-theme="merah-putih"] .customer-view textarea,
 [data-customer-theme="merah-putih"] .customer-view select {
     background: var(--mkp-accent-yellow-light) !important;
     border: 1px solid var(--mkp-border) !important;
@@ -443,9 +451,11 @@
     border-radius: 12px !important;
 }
 
-[data-customer-theme="merah-putih"] .customer-view input::placeholder {
+[data-customer-theme="merah-putih"] .customer-view input::placeholder,
+[data-customer-theme="merah-putih"] .customer-view textarea::placeholder {
     color: var(--mkp-text-muted) !important;
 }
+
 
 /* Category Pills - Inactive */
 [data-customer-theme="merah-putih"] .customer-view .overflow-x-auto button,
@@ -476,6 +486,7 @@
 /* 5. PRODUCT CARDS & TEXT */
 [data-customer-theme="merah-putih"] .customer-view .grid>div,
 [data-customer-theme="merah-putih"] .customer-view .space-y-3>div,
+[data-customer-theme="merah-putih"] .customer-view .bg-\[\#1a1a2e\],
 [data-customer-theme="merah-putih"] .customer-view .bg-white\/5 {
     background: var(--mkp-bg-card) !important;
     background-color: var(--mkp-bg-card) !important;
@@ -505,6 +516,7 @@
 [data-customer-theme="merah-putih"] .customer-view .text-purple-400,
 [data-customer-theme="merah-putih"] .customer-view .text-green-400,
 [data-customer-theme="merah-putih"] .customer-view .text-purple-300,
+[data-customer-theme="merah-putih"] .customer-view .text-white,
 [data-customer-theme="merah-putih"] .customer-view span.font-bold {
     color: var(--mkp-accent-red) !important;
     font-weight: 800 !important;

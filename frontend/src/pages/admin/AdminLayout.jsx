@@ -115,42 +115,46 @@ function AdminLayout() {
     }, []);
 
     // Extract tenant information from JWT token for ThemeProvider
-    const [tenantInfo, setTenantInfo] = useState({ tenantId: null, initialTheme: 'default' });
+    const [tenantInfo, setTenantInfo] = useState(() => {
+        let initialTheme = 'default';
+        let tenantId = null;
+
+        if (typeof window !== 'undefined') {
+            const token = localStorage.getItem('token');
+            const tenantData = localStorage.getItem('tenant');
+
+            if (token) {
+                try {
+                    const decoded = jwtDecode(token);
+                    tenantId = decoded.tenantId;
+
+                    if (tenantData) {
+                        try {
+                            const tenant = JSON.parse(tenantData);
+                            initialTheme = tenant.selectedTheme || 'default';
+                            console.log('[AdminLayout] Loaded theme from localStorage synchronously:', initialTheme);
+                        } catch (parseError) {
+                            console.error('[AdminLayout] Failed to parse tenant data:', parseError);
+                        }
+                    }
+                } catch (error) {
+                    console.error('[AdminLayout] Failed to decode token:', error);
+                }
+            }
+
+            // Synchronously inject theme to prevent FOUC on main layout wrapper
+            document.documentElement.setAttribute('data-theme', initialTheme);
+        }
+
+        return {
+            tenantId,
+            initialTheme
+        };
+    });
 
     // First-time theme popup state
     const [showThemePopup, setShowThemePopup] = useState(false);
     const [hasSeenThemePopup, setHasSeenThemePopup] = useState(true); // Default to true to avoid flash
-
-    useEffect(() => {
-        const token = localStorage.getItem('token');
-        const tenantData = localStorage.getItem('tenant');
-
-        if (token) {
-            try {
-                const decoded = jwtDecode(token);
-                const tenantId = decoded.tenantId;
-
-                // Try to get initial theme from tenant data in localStorage
-                let initialTheme = 'default';
-                if (tenantData) {
-                    try {
-                        const tenant = JSON.parse(tenantData);
-                        initialTheme = tenant.selectedTheme || 'default';
-                        console.log('[AdminLayout] Loaded theme from localStorage:', initialTheme);
-                    } catch (parseError) {
-                        console.error('[AdminLayout] Failed to parse tenant data:', parseError);
-                    }
-                }
-
-                setTenantInfo({
-                    tenantId: tenantId || null,
-                    initialTheme: initialTheme
-                });
-            } catch (error) {
-                console.error('[AdminLayout] Failed to decode token:', error);
-            }
-        }
-    }, []);
 
     // Check if user should see first-time theme popup
     useEffect(() => {

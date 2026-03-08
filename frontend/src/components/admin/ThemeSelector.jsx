@@ -76,7 +76,7 @@ const ThemeSelector = ({ currentTheme, onThemeChange, disabled = false, disableP
 
     return (
         <div className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className={`grid grid-cols-1 md:grid-cols-2 ${isCustomerSelector ? 'lg:grid-cols-3' : ''} gap-4`}>
                 {Object.entries(themePresets).map(([themeKey, themeConfig]) => {
                     if (themeConfig.isCustomerOnly && !isCustomerSelector) return null;
 
@@ -88,8 +88,7 @@ const ThemeSelector = ({ currentTheme, onThemeChange, disabled = false, disableP
                             key={themeKey}
                             whileHover={!disabled ? { scale: 1.02 } : {}}
                             whileTap={!disabled ? { scale: 0.98 } : {}}
-                            className={`relative cursor-pointer transition-all ${disabled ? 'opacity-50 cursor-not-allowed' : ''
-                                }`}
+                            className={`relative cursor-pointer transition-all ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
                             onClick={() => handleThemeSelect(themeKey)}
                             onMouseEnter={() => applyThemePreview(themeKey)}
                             onMouseLeave={revertThemePreview}
@@ -141,59 +140,51 @@ const ThemeSelector = ({ currentTheme, onThemeChange, disabled = false, disableP
                                         : 'Tema terang dengan nuansa cokelat hangat'}
                                 </p>
 
-                                {/* Visual Preview */}
-                                <div className="space-y-3">
+                                {/* Visual Preview - Simplified */}
+                                <div className="flex justify-between items-center mt-2 border-t border-white/10 pt-3">
                                     {/* Main Background Preview */}
-                                    <div className="flex items-center gap-3">
+                                    <div className="flex flex-col items-center gap-2">
                                         <div
-                                            className="w-12 h-12 rounded-lg border border-white/20"
+                                            className="w-10 h-10 rounded-full shadow-md border-2 border-white/10"
                                             style={{ backgroundColor: themeConfig.bgMain }}
+                                            title="Background Utama"
                                         />
-                                        <div className="flex-1">
-                                            <p className="text-xs text-gray-400">Background Utama</p>
-                                            <p className="text-sm font-mono">{themeConfig.bgMain}</p>
-                                        </div>
+                                        <p className="text-[10px] text-gray-400">Bg Utama</p>
                                     </div>
 
                                     {/* Sidebar Background Preview */}
-                                    <div className="flex items-center gap-3">
+                                    <div className="flex flex-col items-center gap-2">
                                         <div
-                                            className="w-12 h-12 rounded-lg border border-white/20"
+                                            className="w-10 h-10 rounded-full shadow-md border-2 border-white/10"
                                             style={{ backgroundColor: themeConfig.bgSidebar }}
+                                            title="Background Sidebar"
                                         />
-                                        <div className="flex-1">
-                                            <p className="text-xs text-gray-400">Background Sidebar</p>
-                                            <p className="text-sm font-mono">{themeConfig.bgSidebar}</p>
-                                        </div>
+                                        <p className="text-[10px] text-gray-400">Bg Sidebar</p>
                                     </div>
 
                                     {/* Accent Color Preview */}
-                                    <div className="flex items-center gap-3">
+                                    <div className="flex flex-col items-center gap-2">
                                         <div
-                                            className="w-12 h-12 rounded-lg border border-white/20"
+                                            className="w-10 h-10 rounded-full shadow-md border-2 border-white/10"
                                             style={{ backgroundColor: themeConfig.accentColor }}
+                                            title="Warna Aksen"
                                         />
-                                        <div className="flex-1">
-                                            <p className="text-xs text-gray-400">Warna Aksen</p>
-                                            <p className="text-sm font-mono">{themeConfig.accentColor}</p>
-                                        </div>
+                                        <p className="text-[10px] text-gray-400">Aksen</p>
                                     </div>
 
                                     {/* Text Color Preview */}
-                                    <div className="flex items-center gap-3">
+                                    <div className="flex flex-col items-center gap-2">
                                         <div
-                                            className="w-12 h-12 rounded-lg border border-white/20 flex items-center justify-center"
+                                            className="w-10 h-10 rounded-full shadow-md border-2 border-white/10 flex items-center justify-center font-bold"
                                             style={{
                                                 backgroundColor: themeConfig.bgMain,
                                                 color: themeConfig.textPrimary
                                             }}
+                                            title="Warna Teks"
                                         >
-                                            <span className="font-bold">Aa</span>
+                                            Aa
                                         </div>
-                                        <div className="flex-1">
-                                            <p className="text-xs text-gray-400">Warna Teks</p>
-                                            <p className="text-sm font-mono">{themeConfig.textPrimary}</p>
-                                        </div>
+                                        <p className="text-[10px] text-gray-400">Teks</p>
                                     </div>
                                 </div>
 

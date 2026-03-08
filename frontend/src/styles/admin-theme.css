@@ -7,12 +7,22 @@
  * Feature: Seamless Branding Integration
  * Requirements: 8.1, 8.2
  * 
- * CSS Variables (set by ThemeContext):
+ * CSS Variables (set by ThemeContext or native CSS):
  * - --bg-main: Main background color
  * - --bg-sidebar: Sidebar background color
  * - --accent-color: Accent/primary color
  * - --text-primary: Primary text color
  */
+
+/* Default Theme Variables (Dark Purple) */
+:root,
+[data-theme="default"] {
+  --bg-main: #0F0A1F;
+  --bg-sidebar: #1E1B4B;
+  --accent-color: #8B5CF6;
+  --text-primary: #FFFFFF;
+}
+
 
 /* Admin-scoped theme classes */
 .admin-bg-main {
@@ -143,6 +153,22 @@
  * perfectly in the light theme without breaking existing component code.
  */
 [data-theme="light-coffee"] {
+  /* Core Theme Variables */
+  --bg-main: #FFFFFF;
+  --bg-sidebar: #F3EBE6;
+  --accent-color: #6D4C41;
+  --text-primary: #3E2723;
+
+  /* Chart Colors (Light Coffee) */
+  --chart-cash: #22c55e;
+  /* Keep Green for Cash */
+  --chart-qris: var(--accent-color);
+  /* Brown for QRIS to match legend */
+  --chart-retention-new: var(--accent-color);
+  /* Brown for New */
+  --chart-retention-returning: #D4A373;
+  /* Caramel for Returning to match bg-teal override if any, or just aesthetic */
+
   /* Redefine root CSS variables for index.css elements */
   --bg-body-gradient: var(--bg-main);
   --bg-glass: rgba(235, 227, 222, 0.9);
@@ -164,11 +190,22 @@
   color: var(--text-primary) !important;
 }
 
-/* Force gray text to use muted dark typography instead of light gray */
+/* Force gray and yellow text to use muted dark typography instead of light colors */
 [data-theme="light-coffee"] .text-gray-200,
 [data-theme="light-coffee"] .text-gray-300,
-[data-theme="light-coffee"] .text-gray-400 {
+[data-theme="light-coffee"] .text-gray-400,
+[data-theme="light-coffee"] .text-yellow-200 {
   color: var(--text-secondary) !important;
+}
+
+/* Custom info banner (Yellow) */
+[data-theme="light-coffee"] .bg-yellow-500\/10 {
+  background-color: rgba(212, 163, 115, 0.15) !important;
+  border-color: rgba(212, 163, 115, 0.3) !important;
+}
+
+[data-theme="light-coffee"] .border-yellow-500\/30 {
+  border-color: rgba(212, 163, 115, 0.3) !important;
 }
 
 /* Intercept semi-transparent white/black backgrounds inside cards/tables */
@@ -176,6 +213,9 @@
 [data-theme="light-coffee"] .bg-white\/10,
 [data-theme="light-coffee"] .bg-black\/20,
 [data-theme="light-coffee"] .bg-\[\#1a1625\],
+[data-theme="light-coffee"] .bg-\[\#0a0510\],
+[data-theme="light-coffee"] .bg-\[\#151235\],
+[data-theme="light-coffee"] .bg-\[\#0F0A2A\],
 [data-theme="light-coffee"] .bg-gray-800,
 [data-theme="light-coffee"] .bg-gray-900 {
   background-color: rgba(253, 248, 245, 0.9) !important;
@@ -190,6 +230,23 @@
 [data-theme="light-coffee"] .bg-black\/80 {
   background-color: rgba(253, 248, 245, 0.8) !important;
   border: 1px solid rgba(140, 98, 68, 0.1) !important;
+}
+
+/* Danger Zone Overrides */
+[data-theme="light-coffee"] .bg-red-900\/10,
+[data-theme="light-coffee"] .bg-red-500\/10 {
+  background-color: rgba(255, 235, 238, 0.6) !important;
+  border: 1px solid rgba(239, 83, 80, 0.2) !important;
+}
+
+[data-theme="light-coffee"] .border-red-900\/30,
+[data-theme="light-coffee"] .border-red-500\/30 {
+  border-color: rgba(239, 83, 80, 0.2) !important;
+  color: var(--text-primary) !important;
+}
+
+[data-theme="light-coffee"] .text-red-300 {
+  color: #D32F2F !important;
 }
 
 /* Fix table headers and arbitrary purple fills */
@@ -240,6 +297,19 @@
   background-image: none !important;
   background-color: var(--accent-color) !important;
   color: #FFFFFF !important;
+}
+
+[data-theme="light-coffee"] .bg-teal-500 {
+  background-color: #D4A373 !important;
+  /* Caramel to match retention returning chart */
+}
+
+/* File Input Buttons */
+[data-theme="light-coffee"] input[type="file"]::file-selector-button {
+  background-image: none !important;
+  background-color: var(--accent-color) !important;
+  color: #FFFFFF !important;
+  border: none !important;
 }
 
 /* Luxurious 3-Stage Gradient for Buttons/Tabs */

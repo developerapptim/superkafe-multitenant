@@ -469,17 +469,6 @@ function Pengaturan() {
                 </div>
             </AccordionSection>
 
-            {/* Subscription & Billing Section */}
-            <AccordionSection
-                id="subscription"
-                title="Langganan & Tagihan"
-                icon="🎟️"
-                isOpen={openSection === 'subscription'}
-                onToggle={() => toggleSection('subscription')}
-                isDirty={false}
-            >
-                <SubscriptionSection subscription={subscription} />
-            </AccordionSection>
 
             {/* Theme Settings */}
             <AccordionSection
@@ -975,6 +964,18 @@ function Pengaturan() {
                         </div>
                     )}
                 </div>
+            </AccordionSection>
+
+            {/* Subscription & Billing Section */}
+            <AccordionSection
+                id="subscription"
+                title="Langganan & Tagihan"
+                icon="🎟️"
+                isOpen={openSection === 'subscription'}
+                onToggle={() => toggleSection('subscription')}
+                isDirty={false}
+            >
+                <SubscriptionSection subscription={subscription} />
             </AccordionSection>
 
             {/* Account Security (Change Password) */}

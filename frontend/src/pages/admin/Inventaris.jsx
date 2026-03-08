@@ -144,6 +144,7 @@ function Inventaris() {
     const [loading, setLoading] = useState(false); // Changed to false to prevent initial flicker
     const [error, setError] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
+    const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
     const [activeTab, setActiveTab] = useState('bahan');
     const [currentPage, setCurrentPage] = useState(1);
     const [paginationInfo, setPaginationInfo] = useState(null);
@@ -226,7 +227,7 @@ function Inventaris() {
             const res = await inventoryAPI.getAll({
                 page: currentPage,
                 limit: ITEMS_PER_PAGE,
-                search: searchTerm,
+                search: debouncedSearchTerm,
                 status: filterStatus
             });
 
@@ -242,6 +243,8 @@ function Inventaris() {
                 console.warn(`[Inventory] Hidden ${nonPhysicalItems.length} legacy 'non_physical' items directly from API response. These should be migrated to Expenses.`);
             }
             items = items.filter(i => i.type !== 'non_physical');
+
+            setIngredients(items);
 
             const pagination = responseData.pagination || null;
             setPaginationInfo(pagination);
@@ -278,7 +281,7 @@ function Inventaris() {
     // Fetch data
     useEffect(() => {
         fetchData();
-    }, [currentPage, filterStatus]);
+    }, [currentPage, filterStatus, debouncedSearchTerm]);
 
     // Register Pull-to-Refresh Handler
     useEffect(() => {
@@ -294,8 +297,8 @@ function Inventaris() {
     // Debounced search
     useEffect(() => {
         const timer = setTimeout(() => {
+            setDebouncedSearchTerm(searchTerm);
             setCurrentPage(1);
-            fetchData();
         }, 400);
         return () => clearTimeout(timer);
     }, [searchTerm]);

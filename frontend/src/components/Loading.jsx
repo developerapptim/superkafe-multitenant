@@ -3,10 +3,25 @@ import { useState } from 'react';
 function Loading() {
     const [isLight] = useState(() => {
         try {
-            const tenantData = typeof window !== 'undefined' ? localStorage.getItem('tenant') : null;
-            if (tenantData) {
-                const tenant = JSON.parse(tenantData);
-                return tenant.selectedTheme === 'light-coffee';
+            if (typeof window !== 'undefined') {
+                const path = window.location.pathname;
+
+                // If it's an admin route, check tenant theme
+                if (path.includes('/admin')) {
+                    const tenantData = localStorage.getItem('tenant');
+                    if (tenantData) {
+                        const tenant = JSON.parse(tenantData);
+                        return tenant.selectedTheme === 'light-coffee';
+                    }
+                }
+                // If it's a customer route or other, check appSettings customerTheme
+                else {
+                    const appSettingsData = localStorage.getItem('appSettings');
+                    if (appSettingsData) {
+                        const appSettings = JSON.parse(appSettingsData);
+                        return appSettings.customerTheme === 'light-coffee';
+                    }
+                }
             }
         } catch (error) {
             console.error('Error reading theme in Loading:', error);
