@@ -353,7 +353,7 @@ function AdminLayout() {
                             <div className="flex-1 flex items-center gap-2 overflow-hidden">
                                 <h1 className="text-white font-semibold text-lg truncate">
                                     {(() => {
-                                        const path = location.pathname;
+                                        const basePath = location.pathname.substring(location.pathname.indexOf('/admin'));
                                         const titles = {
                                             '/admin/dashboard': '📊 Dashboard',
                                             '/admin/menu': '🍽️ Manajemen Menu',
@@ -369,8 +369,10 @@ function AdminLayout() {
                                             '/admin/pengaturan': '⚙️ Pengaturan',
                                             '/admin/data-center': '🗄️ Pusat Data',
                                             '/admin/feedback': '💬 Masukan Pelanggan',
+                                            '/admin/marketing': '📢 Marketing & Promo',
+                                            '/admin/subscription/upgrade': '🚀 Upgrade Paket'
                                         };
-                                        return titles[path] || 'Admin Panel';
+                                        return titles[basePath] || 'Admin Panel';
                                     })()}
                                 </h1>
                                 <TrialStatusBanner subscriptionData={subscriptionData} />
@@ -393,7 +395,7 @@ function AdminLayout() {
                             <div className="flex items-center gap-3">
                                 <h2 className="text-white font-bold text-lg">
                                     {(() => {
-                                        const path = location.pathname;
+                                        const basePath = location.pathname.substring(location.pathname.indexOf('/admin'));
                                         const titles = {
                                             '/admin/dashboard': '📊 Dashboard',
                                             '/admin/menu': '🍽️ Manajemen Menu',
@@ -409,8 +411,10 @@ function AdminLayout() {
                                             '/admin/pengaturan': '⚙️ Pengaturan',
                                             '/admin/data-center': '🗄️ Pusat Data',
                                             '/admin/feedback': '💬 Masukan Pelanggan',
+                                            '/admin/marketing': '📢 Marketing & Promo',
+                                            '/admin/subscription/upgrade': '🚀 Upgrade Paket'
                                         };
-                                        return titles[path] || 'Admin Panel';
+                                        return titles[basePath] || 'Admin Panel';
                                     })()}
                                 </h2>
                                 <TrialStatusBanner subscriptionData={subscriptionData} />

@@ -7,6 +7,7 @@
 import { toPng } from 'html-to-image';
 import jsPDF from 'jspdf';
 import toast from 'react-hot-toast';
+import { downloadFile } from './downloadHelper';
 
 /**
  * Format currency to IDR
@@ -381,7 +382,14 @@ export const downloadReceiptPDF = async (order, settings = {}, toastId = null) =
         });
 
         pdf.addImage(dataUrl, 'PNG', 0, 0, pdfWidth, pdfHeight);
-        pdf.save(`Struk-${order.id || Date.now()}.pdf`);
+
+        // Convert to Base64 and use Capacitor Helper
+        const pdfBase64 = pdf.output('datauristring').split(',')[1];
+        await downloadFile({
+            filename: `Struk-${order.id || Date.now()}.pdf`,
+            dataBase64: pdfBase64,
+            mimeType: 'application/pdf'
+        });
 
         // Cleanup
         document.body.removeChild(container);

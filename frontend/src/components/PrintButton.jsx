@@ -1,5 +1,8 @@
 import { useState } from 'react';
 import { printReceipt, downloadReceiptPDF } from '../utils/receiptPrinter';
+import { FiPrinter, FiDownload } from 'react-icons/fi';
+import useSWR from 'swr';
+import api from '../services/api';
 
 /**
  * PrintButton Component
@@ -11,8 +14,10 @@ import { printReceipt, downloadReceiptPDF } from '../utils/receiptPrinter';
  * @param {string} props.variant - 'primary' | 'secondary' | 'icon'
  * @param {string} props.className - Additional CSS classes
  */
-export default function PrintButton({ order, settings, variant = 'primary', className = '' }) {
+export default function PrintButton({ order, size = 'normal', variant = 'primary', className = '' }) {
+    const { data: settings } = useSWR('/settings', url => api.get(url).then(res => res.data));
     const [isPrinting, setIsPrinting] = useState(false);
+    const [isDownloading, setIsDownloading] = useState(false);
 
     const handlePrint = async () => {
         if (!order || isPrinting) return;
@@ -29,15 +34,12 @@ export default function PrintButton({ order, settings, variant = 'primary', clas
     };
 
     const handleDownloadPDF = async () => {
-        if (!order || isPrinting) return;
-
-        setIsPrinting(true);
+        if (!order || isDownloading) return;
+        setIsDownloading(true);
         try {
             await downloadReceiptPDF(order, settings);
         } finally {
-            setTimeout(() => {
-                if (window && window.isMounted !== false) setIsPrinting(false);
-            }, 2500);
+            setIsDownloading(false);
         }
     };
 
@@ -57,15 +59,15 @@ export default function PrintButton({ order, settings, variant = 'primary', clas
                     className={`${variants.icon} ${isPrinting ? 'opacity-50 cursor-wait' : ''} ${className}`}
                     title="Cetak Struk"
                 >
-                    {isPrinting ? '⏳' : '🖨️'}
+                    {isPrinting ? '⏳' : <FiPrinter />}
                 </button>
                 <button
                     onClick={handleDownloadPDF}
-                    disabled={isPrinting}
-                    className={`${variants.icon} ${isPrinting ? 'opacity-50 cursor-wait' : ''}`}
+                    disabled={isDownloading}
+                    className="p-3 rounded-xl bg-orange-500/20 text-orange-400 hover:bg-orange-500/30 transition-colors disabled:opacity-50"
                     title="Download PDF"
                 >
-                    📄
+                    <FiDownload size={20} className={isDownloading ? "animate-bounce" : ""} />
                 </button>
             </div>
         );
@@ -85,18 +87,20 @@ export default function PrintButton({ order, settings, variant = 'primary', clas
                     </>
                 ) : (
                     <>
-                        <span>🖨️</span>
+                        <FiPrinter size={size === 'small' ? 14 : 16} />
                         <span>Cetak Struk</span>
                     </>
                 )}
             </button>
             <button
                 onClick={handleDownloadPDF}
-                disabled={isPrinting}
-                className={`px-4 py-2.5 rounded-xl border border-white/10 hover:bg-white/5 text-gray-400 hover:text-white transition-all ${isPrinting ? 'opacity-50 cursor-wait' : ''}`}
+                disabled={isDownloading}
+                className={`py-2 px-3 rounded-lg flex items-center justify-center gap-1 transition-colors border shadow-md disabled:opacity-50
+                    ${variant === 'primary' ? 'bg-orange-500/20 text-orange-400 border-orange-500/30 hover:bg-orange-500/30' : 'bg-gray-800 text-gray-300 border-gray-600 hover:bg-gray-700'}
+                `}
                 title="Download PDF"
             >
-                📄
+                <FiDownload size={size === 'small' ? 14 : 16} className={isDownloading ? "animate-bounce" : ""} />
             </button>
         </div>
     );

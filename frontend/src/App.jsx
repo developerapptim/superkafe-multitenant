@@ -9,6 +9,19 @@ import api from './services/api';
 import Loading from './components/Loading';
 import './App.css';
 
+import * as Sentry from "@sentry/react";
+
+// Initialize Sentry before the App component to catch all React errors
+Sentry.init({
+  dsn: import.meta.env.VITE_SENTRY_DSN,
+  integrations: [
+    Sentry.browserTracingIntegration(),
+    Sentry.replayIntegration(),
+  ],
+  tracesSampleRate: 1.0, // Trace 100% of transactions (adjust in production)
+  replaysSessionSampleRate: 0.1, // Sample 10% of sessions for session replay
+  replaysOnErrorSampleRate: 1.0, // Always sample replays on error
+});
 // Auth & Protected Routes
 import ProtectedRoute from './components/ProtectedRoute';
 import LegacyAdminRedirect from './components/LegacyAdminRedirect';

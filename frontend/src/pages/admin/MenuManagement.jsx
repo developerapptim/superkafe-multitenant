@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useOutletContext } from 'react-router-dom';
 import { Reorder, motion, AnimatePresence, useDragControls } from "framer-motion";
@@ -203,6 +203,11 @@ function MenuManagement() {
 
     // Local state for Reorder (Sync with filteredItems)
     const [localItems, setLocalItems] = useState([]);
+    const localItemsRef = useRef(localItems);
+
+    useEffect(() => {
+        localItemsRef.current = localItems;
+    }, [localItems]);
 
     useEffect(() => {
         setLocalItems(filteredItems);
@@ -232,14 +237,13 @@ function MenuManagement() {
 
     const saveOrder = async () => {
         // Prepare IDs
-        const ids = localItems.map(i => i.id);
+        const ids = localItemsRef.current.map(i => i.id);
         if (ids.length === 0) return;
 
         try {
             await menuAPI.reorder(ids);
-            toast.success('Urutan disimpan', { id: 'reorder-toast', duration: 2000 });
-            // mutate('/menu'); // Optional, but local state is already ahead. localItems is authoritative for UI now.
-            // Actually, we should probably silence the mutate or it might jump back if SWR revalidates.
+            toast.success('Urutan disimpan', { id: `reorder-${Date.now()}`, duration: 2000 });
+            mutate('/menu');
         } catch (err) {
             toast.error('Gagal menyimpan urutan');
         }
@@ -340,10 +344,12 @@ function MenuManagement() {
 
             mutate('/menu'); // Refresh menu cache
             setShowMenuModal(false);
-            toast.success('Menu berhasil disimpan', { id: toastId });
+            toast.dismiss(toastId);
+            toast.success('Menu berhasil disimpan', { duration: 3000 });
         } catch (err) {
             console.error('Error saving menu:', err);
-            toast.error('Gagal menyimpan menu', { id: toastId });
+            toast.dismiss(toastId);
+            toast.error('Gagal menyimpan menu', { duration: 3000 });
         }
     };
 
@@ -400,10 +406,12 @@ function MenuManagement() {
         try {
             await menuAPI.delete(id);
             mutate('/menu'); // Refresh menu cache
-            toast.success('Menu berhasil dihapus', { id: loadingToast });
+            toast.dismiss(loadingToast);
+            toast.success('Menu berhasil dihapus', { duration: 3000 });
         } catch (err) {
             console.error('Error deleting menu:', err);
-            toast.error('Gagal menghapus menu', { id: loadingToast });
+            toast.dismiss(loadingToast);
+            toast.error('Gagal menghapus menu', { duration: 3000 });
         }
     };
 
@@ -452,13 +460,15 @@ function MenuManagement() {
         try {
             await categoriesAPI.delete(id);
             mutate('/categories'); // Refresh categories
-            toast.success('Kategori berhasil dihapus', { id: loadingToast });
+            toast.dismiss(loadingToast);
+            toast.success('Kategori berhasil dihapus', { duration: 3000 });
             if (selectedCategory === id) setSelectedCategory('all');
         } catch (err) {
             console.error('Error deleting category:', err);
             // Show specific error message from backend if available
             const errorMsg = err.response?.data?.error || 'Gagal menghapus kategori';
-            toast.error(errorMsg, { id: loadingToast, duration: 4000 });
+            toast.dismiss(loadingToast);
+            toast.error(errorMsg, { duration: 4000 });
         }
     };
     const handleCategorySubmit = async (e) => {
@@ -487,10 +497,12 @@ function MenuManagement() {
             setShowCategoryModal(false);
             setCategoryForm({ name: '', emoji: '📦' });
             setEditingCategory(null);
-            toast.success('Kategori berhasil disimpan', { id: toastId });
+            toast.dismiss(toastId);
+            toast.success('Kategori berhasil disimpan', { duration: 3000 });
         } catch (err) {
             console.error('Error saving category:', err);
-            toast.error('Gagal menyimpan kategori', { id: toastId });
+            toast.dismiss(toastId);
+            toast.error('Gagal menyimpan kategori', { duration: 3000 });
         }
     };
 

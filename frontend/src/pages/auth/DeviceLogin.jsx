@@ -199,6 +199,15 @@ const DeviceLogin = () => {
 
                 <motion.button
                   whileTap={{ scale: 0.98 }}
+                  onClick={() => navigate('/auth/login')}
+                  className="flex items-center justify-center gap-2 px-6 py-3 bg-white border border-gray-200 rounded-xl hover:border-amber-700 hover:shadow-lg transition-all text-gray-900"
+                >
+                  <FiUser />
+                  <span>Login Staff</span>
+                </motion.button>
+
+                <motion.button
+                  whileTap={{ scale: 0.98 }}
                   onClick={handleUnbindDevice}
                   className="flex items-center justify-center gap-2 px-6 py-3 bg-white border border-red-200 rounded-xl hover:border-red-500 hover:shadow-lg transition-all text-red-600"
                 >

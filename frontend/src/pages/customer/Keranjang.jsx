@@ -11,6 +11,7 @@ import Struk from '../../components/Struk';
 import { toPng } from 'html-to-image';
 import jsPDF from 'jspdf';
 import PointsEarnedBanner from '../../components/PointsEarnedBanner';
+import { downloadFile } from '../../utils/downloadHelper';
 
 // Fetcher for SWR
 const fetcher = url => api.get(url).then(res => res.data);
@@ -45,6 +46,7 @@ function Keranjang() {
     const [voucherDiscount, setVoucherDiscount] = useState(0);
     const [voucherApplied, setVoucherApplied] = useState(false);
     const [applyingVoucher, setApplyingVoucher] = useState(false);
+    const [isDownloading, setIsDownloading] = useState(false);
 
     // Smart Autocomplete State
     const [historyOptions, setHistoryOptions] = useState([]);
@@ -299,6 +301,7 @@ function Keranjang() {
 
 
     const handleDownloadPDF = async () => {
+        if (isDownloading) return;
         const element = document.getElementById('printable-receipt');
         if (!element) return;
 
@@ -327,12 +330,22 @@ function Keranjang() {
             });
 
             pdf.addImage(dataUrl, 'PNG', 0, 0, pdfWidth, pdfHeight);
-            pdf.save(`Struk-${submittedOrder.id}.pdf`);
 
-            toast.success('Struk berhasil didownload!', { id: toastId });
+            setIsDownloading(true);
+            const pdfBase64 = pdf.output('datauristring').split(',')[1];
+
+            await downloadFile({
+                filename: `Struk-${submittedOrder.id}.pdf`,
+                dataBase64: pdfBase64,
+                mimeType: 'application/pdf'
+            });
+
+            toast.success('Struk berhasil disimpan!', { id: toastId });
         } catch (err) {
             console.error('PDF Error:', err);
-            toast.error('Gagal membuat PDF. Coba refresh halaman.', { id: toastId });
+            toast.error('Gagal menyimpan PDF. Coba refresh halaman.', { id: toastId });
+        } finally {
+            setIsDownloading(false);
         }
     };
 
@@ -370,9 +383,10 @@ function Keranjang() {
                 <div className="space-y-3 no-print">
                     <button
                         onClick={handleDownloadPDF}
-                        className="w-full py-3 rounded-xl bg-purple-600 font-bold flex items-center justify-center gap-2 hover:bg-purple-700 transition-colors shadow-lg shadow-purple-600/30"
+                        disabled={isDownloading}
+                        className="w-full py-3 rounded-xl bg-purple-600 font-bold flex items-center justify-center gap-2 hover:bg-purple-700 transition-colors shadow-lg shadow-purple-600/30 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                        📥 Download Struk (PDF)
+                        {isDownloading ? '⏳ Memproses...' : '📥 Simpan Struk (PDF)'}
                     </button>
 
                     <button

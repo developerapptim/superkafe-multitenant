@@ -58,6 +58,7 @@ const AccordionSection = ({ id, title, icon, isOpen, onToggle, isDirty, children
 };
 
 function Pengaturan() {
+    const { isWeb } = usePlatform();
     const { data: settingsData, error } = useSWR('/settings', fetcher);
     const isLoading = !settingsData && !error;
     const [saving, setSaving] = useState(false);
@@ -967,16 +968,18 @@ function Pengaturan() {
             </AccordionSection>
 
             {/* Subscription & Billing Section */}
-            <AccordionSection
-                id="subscription"
-                title="Langganan & Tagihan"
-                icon="🎟️"
-                isOpen={openSection === 'subscription'}
-                onToggle={() => toggleSection('subscription')}
-                isDirty={false}
-            >
-                <SubscriptionSection subscription={subscription} />
-            </AccordionSection>
+            {isWeb && (
+                <AccordionSection
+                    id="subscription"
+                    title="Langganan & Tagihan"
+                    icon="🎟️"
+                    isOpen={openSection === 'subscription'}
+                    onToggle={() => toggleSection('subscription')}
+                    isDirty={false}
+                >
+                    <SubscriptionSection subscription={subscription} />
+                </AccordionSection>
+            )}
 
             {/* Account Security (Change Password) */}
             <AccordionSection

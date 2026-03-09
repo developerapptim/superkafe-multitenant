@@ -1,5 +1,19 @@
 require('dotenv').config();
 
+// Sentry initialization MUST be imported early, before any other requires
+const Sentry = require('@sentry/node');
+const { nodeProfilingIntegration } = require('@sentry/profiling-node');
+
+Sentry.init({
+  dsn: process.env.SENTRY_DSN,
+  integrations: [
+    nodeProfilingIntegration(),
+  ],
+  // Performance Monitoring
+  tracesSampleRate: 1.0, // Capture 100% of the transactions (reduce in prod)
+  // Set sampling rate for profiling - this is relative to tracesSampleRate
+  profilesSampleRate: 1.0,
+});
 // Validate environment variables before any other initialization
 const { validateAndExit } = require('./utils/envValidator');
 validateAndExit();
@@ -270,8 +284,16 @@ app.use('/api/service-request', require('./routes/serviceRequestRoutes'));
 app.use('/api/reservations', require('./routes/reservationRoutes'));
 app.use('/api', require('./routes/marketingRoutes')); // Marketing: vouchers, banners, apply-voucher
 
+// ==== SENTRY DEBUG ROUTE ====
+app.get('/api/debug-sentry', function mainHandler(req, res) {
+  throw new Error('Sentry test exception dari Superkafe API!');
+});
+
 // ===== GLOBAL ERROR HANDLER =====
-// This must be after all routes to catch errors from route handlers
+// The Sentry error handler must be before any other error middleware and after all controllers
+Sentry.setupExpressErrorHandler(app);
+
+// Custom Unhandled Error Listener
 app.use((err, req, res, next) => {
   const requestId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 

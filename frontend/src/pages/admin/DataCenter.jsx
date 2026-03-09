@@ -4,6 +4,7 @@ import useSWR from 'swr';
 import api from '../../services/api';
 import { toast } from 'react-hot-toast';
 import { useRefresh } from '../../context/RefreshContext';
+import { downloadFile, blobToBase64 } from '../../utils/downloadHelper';
 
 const fetcher = url => api.get(url).then(res => res.data);
 
@@ -48,15 +49,17 @@ export default function DataCenter() {
                 responseType: 'blob', // Important for file download
             });
 
-            // Create download link
-            const downloadUrl = window.URL.createObjectURL(new Blob([response.data]));
-            const link = document.createElement('a');
-            link.href = downloadUrl;
+            // Convert Blob to Base64
+            const base64Data = await blobToBase64(response.data);
             const dateStr = new Date().toISOString().slice(0, 10);
-            link.setAttribute('download', `Warkop - ${type} -${dateStr}.xlsx`);
-            document.body.appendChild(link);
-            link.click();
-            link.remove();
+
+            // Download via Helper
+            await downloadFile({
+                filename: `Warkop-${type}-${dateStr}.xlsx`,
+                dataBase64: base64Data,
+                mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+            });
+
             toast.success(`Berhasil export data ${type} `);
         } catch (err) {
             console.error(err);
@@ -99,13 +102,14 @@ export default function DataCenter() {
             const response = await api.get('/data', {
                 responseType: 'blob'
             });
-            const url = window.URL.createObjectURL(new Blob([response.data]));
-            const link = document.createElement('a');
-            link.href = url;
-            link.setAttribute('download', `Warkop - FullBackup - ${Date.now()}.json`);
-            document.body.appendChild(link);
-            link.click();
-            link.remove();
+            const base64Data = await blobToBase64(response.data);
+
+            await downloadFile({
+                filename: `Warkop-FullBackup-${Date.now()}.json`,
+                dataBase64: base64Data,
+                mimeType: 'application/json'
+            });
+
             toast.success('Backup berhasil didownload');
         } catch (err) {
             toast.error('Backup gagal');

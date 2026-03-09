@@ -184,18 +184,18 @@ export default function CustomSelect({ label, value, onChange, options = [], pla
 
             {isOpen && createPortal(
                 <div
-                    className="custom-select-dropdown bg-[#1f2937] border border-purple-500/30 rounded-lg shadow-xl flex flex-col animate-in fade-in zoom-in-95 duration-100 overflow-hidden"
+                    className="custom-select-dropdown admin-card admin-card-shadow border border-purple-500/30 rounded-lg flex flex-col animate-in fade-in zoom-in-95 duration-100 overflow-hidden"
                     style={dropdownStyles}
                 >
 
                     {/* Search Input Sticky Header */}
-                    <div className="p-2 border-b border-white/10 bg-[#1f2937] sticky top-0 z-20">
+                    <div className="p-2 border-b border-white/10 bg-transparent sticky top-0 z-20">
                         <input
                             ref={searchInputRef}
                             type="text"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="w-full px-3 py-2 text-sm rounded-lg bg-black/40 border border-white/10 text-white placeholder-gray-500 focus:outline-none focus:border-purple-500/50 transition-colors"
+                            className="w-full px-3 py-2 text-sm rounded-lg admin-input focus:outline-none transition-colors"
                             placeholder="🔍 Cari kategori..."
                             onClick={(e) => e.stopPropagation()}
                         />
