@@ -36,7 +36,7 @@ const SetupWizard = () => {
 
       try {
         const user = JSON.parse(userStr);
-        
+
         // Set default admin name from user (only once)
         if (user && user.name) {
           setInitialAdminName(user.name);
@@ -44,7 +44,7 @@ const SetupWizard = () => {
 
         // Redirect to dashboard if user already has tenant
         if (user && user.tenantSlug) {
-          toast.info('Anda sudah memiliki tenant');
+          toast('Anda sudah memiliki tenant', { icon: 'ℹ️' });
           // Store tenant slug before redirect
           localStorage.setItem('tenant_slug', user.tenantSlug);
           // Redirect to tenant-specific dashboard
@@ -102,7 +102,7 @@ const SetupWizard = () => {
 
     try {
       const response = await api.get(`/setup/check-slug/${slug}`);
-      
+
       if (response.data.success) {
         setSlugStatus({
           checking: false,
@@ -122,7 +122,7 @@ const SetupWizard = () => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    
+
     // Auto-generate slug from cafe name
     if (name === 'cafeName') {
       const autoSlug = value
@@ -131,7 +131,7 @@ const SetupWizard = () => {
         .replace(/\s+/g, '-')
         .replace(/-+/g, '-')
         .substring(0, 50);
-      
+
       setFormData({
         ...formData,
         cafeName: value,
@@ -144,7 +144,7 @@ const SetupWizard = () => {
         .replace(/[^a-z0-9-]/g, '')
         .replace(/-+/g, '-')
         .substring(0, 50);
-      
+
       setFormData({
         ...formData,
         slug: normalizedSlug
@@ -195,7 +195,7 @@ const SetupWizard = () => {
         localStorage.setItem('token', response.data.token);
         localStorage.setItem('user', JSON.stringify(response.data.user));
         localStorage.setItem('tenant_slug', response.data.tenant.slug);
-        
+
         // Simpan tenant data jika ada (termasuk theme)
         if (response.data.tenant) {
           localStorage.setItem('tenant', JSON.stringify(response.data.tenant));
@@ -205,7 +205,7 @@ const SetupWizard = () => {
 
         // Extract tenant slug from response and redirect to tenant-specific dashboard
         const tenantSlug = response.data.tenant.slug;
-        
+
         // Redirect to tenant-specific dashboard
         setTimeout(() => {
           navigate(`/${tenantSlug}/admin/dashboard`);
@@ -250,9 +250,9 @@ const SetupWizard = () => {
         <div className="bg-white border border-gray-200 rounded-3xl p-8 shadow-xl">
           {/* Logo */}
           <div className="flex items-center justify-center mb-8">
-            <img 
-              src="https://res.cloudinary.com/dhjqb65mf/image/upload/v1771859487/SuperKafe_i51g7i.png" 
-              alt="SuperKafe Logo" 
+            <img
+              src="https://res.cloudinary.com/dhjqb65mf/image/upload/v1771859487/SuperKafe_i51g7i.png"
+              alt="SuperKafe Logo"
               className="h-16 w-auto"
             />
           </div>
@@ -299,13 +299,12 @@ const SetupWizard = () => {
                   value={formData.slug}
                   onChange={handleChange}
                   placeholder="warkop-kopi-kenangan"
-                  className={`w-full pl-12 pr-12 py-3 bg-gray-50 border rounded-xl focus:outline-none focus:ring-2 transition-all placeholder:text-gray-400 text-gray-900 ${
-                    slugStatus.available === true
+                  className={`w-full pl-12 pr-12 py-3 bg-gray-50 border rounded-xl focus:outline-none focus:ring-2 transition-all placeholder:text-gray-400 text-gray-900 ${slugStatus.available === true
                       ? 'border-green-500 focus:ring-green-500'
                       : slugStatus.available === false
-                      ? 'border-red-500 focus:ring-red-500'
-                      : 'border-gray-300 focus:ring-amber-700 focus:border-transparent'
-                  }`}
+                        ? 'border-red-500 focus:ring-red-500'
+                        : 'border-gray-300 focus:ring-amber-700 focus:border-transparent'
+                    }`}
                   required
                   minLength={3}
                   maxLength={50}
@@ -321,13 +320,12 @@ const SetupWizard = () => {
                 </div>
               </div>
               {slugStatus.message && (
-                <p className={`text-xs mt-1 ${
-                  slugStatus.available === true
+                <p className={`text-xs mt-1 ${slugStatus.available === true
                     ? 'text-green-600'
                     : slugStatus.available === false
-                    ? 'text-red-600'
-                    : 'text-gray-500'
-                }`}>
+                      ? 'text-red-600'
+                      : 'text-gray-500'
+                  }`}>
                   {slugStatus.message}
                 </p>
               )}

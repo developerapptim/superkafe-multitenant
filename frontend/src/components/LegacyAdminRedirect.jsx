@@ -48,15 +48,23 @@ const LegacyAdminRedirect = () => {
     try {
         const decoded = jwtDecode(token);
 
-        // Check if user has tenant information
-        if (!decoded.tenant) {
-            // User hasn't completed setup, redirect to setup wizard
-            return <Navigate to="/setup-cafe" replace />;
+        // Cari tenant slug dari JWT (admin/owner biasanya "tenant", staff biasanya "tenantSlug")
+        // atau ambil dari localStorage jika tidak ada di JWT
+        const targetTenant = decoded.tenant || decoded.tenantSlug || localStorage.getItem('tenant_slug');
+
+        if (!targetTenant) {
+            // Jika user benar-benar tidak terikat dengan tenant manapun
+            if (decoded.role !== 'staff' && decoded.role !== 'kasir') {
+                return <Navigate to="/setup-cafe" replace />;
+            } else {
+                // Should not happen for staff, but just in case
+                return <Navigate to="/auth/device-login" replace />;
+            }
         }
 
         // Preserve the sub-path if any (e.g., /admin/menu -> /{slug}/admin/menu)
         const subPath = location.pathname.replace('/admin', '');
-        const newPath = `/${decoded.tenant}/admin${subPath}`;
+        const newPath = `/${targetTenant}/admin${subPath}`;
 
         return <Navigate to={newPath} replace />;
     } catch (error) {
