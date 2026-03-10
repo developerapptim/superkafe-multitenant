@@ -8,7 +8,12 @@ import { FiDelete } from 'react-icons/fi';
 const Numpad = ({ value, onChange, maxLength = 6, onSubmit }) => {
   const handleNumberClick = (num) => {
     if (value.length < maxLength) {
-      onChange(value + num);
+      const newVal = value + num;
+      onChange(newVal);
+      // Auto-submit when maxLength reached
+      if (newVal.length === maxLength && onSubmit) {
+        setTimeout(() => onSubmit(newVal), 150);
+      }
     }
   };
 
@@ -43,17 +48,16 @@ const Numpad = ({ value, onChange, maxLength = 6, onSubmit }) => {
               key={index}
               initial={{ scale: 0.8 }}
               animate={{ scale: value.length > index ? 1 : 0.8 }}
-              className={`w-12 h-12 rounded-xl flex items-center justify-center text-2xl font-bold transition-all ${
-                value.length > index
+              className={`w-12 h-12 rounded-xl flex items-center justify-center text-2xl font-bold transition-all ${value.length > index
                   ? 'bg-gradient-to-br from-amber-700 to-amber-800 text-white shadow-lg'
                   : 'bg-gray-50 border border-gray-300 text-gray-400'
-              }`}
+                }`}
             >
               {value.length > index ? '●' : '○'}
             </motion.div>
           ))}
         </div>
-        
+
         {/* PIN Length Indicator */}
         <div className="mt-4 text-center text-sm text-gray-600">
           {value.length} / {maxLength} digit

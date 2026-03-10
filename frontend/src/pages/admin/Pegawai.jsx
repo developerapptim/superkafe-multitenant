@@ -265,6 +265,7 @@ function Pegawai() {
                                         <th className="text-left p-3 font-medium text-gray-400">Nama</th>
                                         <th className="text-left p-3 font-medium text-gray-400">Posisi</th>
                                         <th className="text-left p-3 font-medium text-gray-400 hidden md:table-cell">Telepon</th>
+                                        <th className="text-center p-3 font-medium text-gray-400">PIN</th>
                                         <th className="text-left p-3 font-medium text-gray-400">Status</th>
                                         <th className="text-right p-3 font-medium text-gray-400">Aksi</th>
                                     </tr>
@@ -289,6 +290,13 @@ function Pegawai() {
                                             <td className="p-3 text-gray-400">{getRoleLabel(emp.role)}</td>
                                             <td className="p-3 text-gray-400 hidden md:table-cell">{emp.phone || '-'}</td>
                                             <td className="p-3 text-gray-400 hidden lg:table-cell">{formatCurrency(emp.daily_rate)}</td>
+                                            <td className="p-3 text-center">
+                                                {emp.hasPin ? (
+                                                    <span className="px-2 py-1 rounded-full text-xs bg-purple-500/20 text-purple-400" title="PIN sudah diatur">🔑</span>
+                                                ) : (
+                                                    <span className="px-2 py-1 rounded-full text-xs bg-gray-500/20 text-gray-500" title="Belum ada PIN">—</span>
+                                                )}
+                                            </td>
                                             <td className="p-3">
                                                 <span className={`px-2 py-1 rounded-full text-xs ${emp.status === 'active' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
                                                     }`}>

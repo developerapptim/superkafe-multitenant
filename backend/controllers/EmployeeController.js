@@ -7,8 +7,13 @@ const JWT_SECRET = process.env.JWT_SECRET || 'change_this_secret';
 const getEmployees = async (req, res) => {
     try {
         // Tenant scoping is automatic via plugin
-        const employees = await Employee.find({ status: { $ne: 'inactive' } }).select('-password');
-        res.json(employees);
+        const employees = await Employee.find({ status: { $ne: 'inactive' } }).lean();
+        // Add hasPin indicator and strip sensitive fields
+        const sanitized = employees.map(emp => {
+            const { password, pin, ...rest } = emp;
+            return { ...rest, hasPin: !!(pin || emp.pin_code) };
+        });
+        res.json(sanitized);
     } catch (err) {
         res.status(500).json({ error: 'Server error' });
     }
@@ -45,6 +50,13 @@ const createEmployee = async (req, res) => {
             hashedPassword = await bcrypt.hash(password, salt);
         }
 
+        // Hash PIN if provided
+        let hashedPin = undefined;
+        if (pin_code) {
+            const pinSalt = await bcrypt.genSalt(10);
+            hashedPin = await bcrypt.hash(pin_code, pinSalt);
+        }
+
         const newEmployee = new Employee({
             id: `emp_${Date.now()}`,
             name,
@@ -55,7 +67,7 @@ const createEmployee = async (req, res) => {
             address,
             salary: Number(salary) || 0,
             daily_rate: Number(daily_rate) || 0,
-            pin_code: pin_code, // Save the kiosk PIN
+            pin: hashedPin, // Hashed PIN (replaces legacy pin_code)
             role_access: role_access || [],
             status: 'active',
             isActive: true
@@ -86,11 +98,19 @@ const updateEmployee = async (req, res) => {
             updates.password = await bcrypt.hash(updates.password, salt);
         }
 
+        // Hash PIN if provided (from pin_code or pin field)
+        const pinValue = updates.pin_code || updates.pin;
+        if (pinValue) {
+            const pinSalt = await bcrypt.genSalt(10);
+            updates.pin = await bcrypt.hash(pinValue, pinSalt);
+            delete updates.pin_code; // Don't store plaintext
+        }
+
         const employee = await Employee.findOneAndUpdate(
             { id },
             { $set: updates },
             { new: true }
-        ).select('-password');
+        ).select('-password -pin');
 
         if (!employee) return res.status(404).json({ error: 'Employee not found' });
 

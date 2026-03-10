@@ -1,7 +1,9 @@
 import { motion } from 'framer-motion';
-import { FiLock, FiExternalLink, FiCopy, FiSmartphone } from 'react-icons/fi';
+import { FiLock, FiExternalLink, FiCopy, FiSmartphone, FiLogOut } from 'react-icons/fi';
 import usePlatform from '../hooks/usePlatform';
 import toast from 'react-hot-toast';
+import { useNavigate } from 'react-router-dom';
+import { clearAuthSession } from '../utils/authHelper';
 
 /**
  * SubscriptionLockScreen
@@ -10,6 +12,12 @@ import toast from 'react-hot-toast';
  */
 const SubscriptionLockScreen = ({ tenantSlug, onDismiss }) => {
     const { isNative, isWeb } = usePlatform();
+    const navigate = useNavigate();
+
+    const handleLogout = () => {
+        clearAuthSession();
+        navigate('/auth/login');
+    };
 
     const billingUrl = `https://superkafe.com/${tenantSlug}/admin/subscription/upgrade`;
 
@@ -161,6 +169,15 @@ const SubscriptionLockScreen = ({ tenantSlug, onDismiss }) => {
                             </button>
                         </>
                     )}
+
+                    {/* Logout Button */}
+                    <button
+                        onClick={handleLogout}
+                        className="mt-6 flex items-center justify-center gap-2 px-6 py-3 border border-red-500/30 rounded-xl text-sm font-semibold text-red-400 mx-auto transition-all hover:bg-red-500/10 active:scale-95"
+                    >
+                        <FiLogOut size={16} />
+                        Logout
+                    </button>
                 </motion.div>
 
                 {/* Subtle help text */}

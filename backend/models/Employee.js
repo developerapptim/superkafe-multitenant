@@ -27,6 +27,9 @@ const EmployeeSchema = new mongoose.Schema({
     // Google Auth Fields
     googleId: { type: String, sparse: true },
     authProvider: { type: String, enum: ['local', 'google'], default: 'local' },
+    // PIN Brute-Force Protection
+    pinFailedAttempts: { type: Number, default: 0 },
+    pinLockedUntil: { type: Date, default: null },
     createdAt: { type: Date, default: Date.now }
 });
 

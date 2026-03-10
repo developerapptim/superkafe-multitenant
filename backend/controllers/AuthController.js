@@ -8,26 +8,26 @@ const JWT_SECRET = process.env.JWT_SECRET || 'warkop_secret_jwt';
 
 // Helper: Generate slug dari nama
 function generateSlug(name) {
-  return name
-    .toLowerCase()
-    .replace(/[^a-z0-9\s-]/g, '')
-    .trim()
-    .replace(/\s+/g, '-')
-    .replace(/-+/g, '-')
-    .substring(0, 50);
+    return name
+        .toLowerCase()
+        .replace(/[^a-z0-9\s-]/g, '')
+        .trim()
+        .replace(/\s+/g, '-')
+        .replace(/-+/g, '-')
+        .substring(0, 50);
 }
 
 // Helper: Ensure unique slug
 async function ensureUniqueSlug(baseSlug) {
-  let slug = baseSlug;
-  let counter = 1;
-  
-  while (await Tenant.findOne({ slug })) {
-    slug = `${baseSlug}-${counter}`;
-    counter++;
-  }
-  
-  return slug;
+    let slug = baseSlug;
+    let counter = 1;
+
+    while (await Tenant.findOne({ slug })) {
+        slug = `${baseSlug}-${counter}`;
+        counter++;
+    }
+
+    return slug;
 }
 
 // Restricted roles that can only have one active session at a time
@@ -66,7 +66,7 @@ const login = async (req, res) => {
 
         if (!employee.tenantId) {
             console.log(`⚠️ Legacy user detected: ${employee.name} (missing tenantId)`);
-            
+
             // Generate slug from user name
             const baseSlug = generateSlug(employee.name || employee.username || 'tenant');
             const uniqueSlug = await ensureUniqueSlug(baseSlug);
@@ -84,7 +84,7 @@ const login = async (req, res) => {
             await tenant.save();
             updates.tenantId = tenant._id;
             needsUpdate = true;
-            
+
             console.log(`✅ Auto-created tenant: ${tenant.name} (slug: ${tenant.slug})`);
         }
 
@@ -143,10 +143,14 @@ const login = async (req, res) => {
             isMatch = await bcrypt.compare(password, employee.password);
         }
 
-        if (!isMatch) {
-            if (employee.pin_code === password || employee.pin === password) {
-                isMatch = true;
-            }
+        // Try bcrypt hashed PIN
+        if (!isMatch && employee.pin) {
+            isMatch = await bcrypt.compare(password, employee.pin);
+        }
+
+        // Fallback: legacy plaintext pin_code (backward compat until re-hashed)
+        if (!isMatch && employee.pin_code && employee.pin_code === password) {
+            isMatch = true;
         }
 
         if (!isMatch) {

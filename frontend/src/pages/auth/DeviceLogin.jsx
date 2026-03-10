@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiShoppingBag, FiUser, FiShield, FiLogOut } from 'react-icons/fi';
+import { FiShoppingBag, FiLogOut } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import api from '../../services/api';
 import Numpad from '../../components/Numpad';
@@ -102,10 +102,6 @@ const DeviceLogin = () => {
     setPin('');
   };
 
-  const handleAdminLogin = () => {
-    navigate('/auth/login');
-  };
-
   const handleUnbindDevice = () => {
     if (confirm('Apakah Anda yakin ingin melepas binding device ini? Anda perlu login dengan email untuk menggunakan device ini lagi.')) {
       localStorage.removeItem('tenant_slug');
@@ -138,8 +134,8 @@ const DeviceLogin = () => {
               className="h-16 w-auto"
             />
           </div>
-          <h1 className="text-3xl font-bold mb-2 text-gray-900">{tenantName}</h1>
-          <p className="text-gray-600">Pilih staff atau login sebagai admin</p>
+          <h1 className="text-3xl font-bold mb-2 text-gray-900">{tenantName || 'SuperKafe'}</h1>
+          <p className="text-gray-600">Pilih staff untuk login dengan PIN</p>
         </div>
 
         <AnimatePresence mode="wait">
@@ -186,26 +182,7 @@ const DeviceLogin = () => {
                 ))}
               </div>
 
-              {/* Admin Login Button */}
-              <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                <motion.button
-                  whileTap={{ scale: 0.98 }}
-                  onClick={handleAdminLogin}
-                  className="flex items-center justify-center gap-2 px-6 py-3 bg-white border border-gray-200 rounded-xl hover:border-amber-700 hover:shadow-lg transition-all text-gray-900"
-                >
-                  <FiShield />
-                  <span>Login Admin</span>
-                </motion.button>
-
-                <motion.button
-                  whileTap={{ scale: 0.98 }}
-                  onClick={() => navigate('/auth/login')}
-                  className="flex items-center justify-center gap-2 px-6 py-3 bg-white border border-gray-200 rounded-xl hover:border-amber-700 hover:shadow-lg transition-all text-gray-900"
-                >
-                  <FiUser />
-                  <span>Login Staff</span>
-                </motion.button>
-
+              <div className="flex flex-col sm:flex-row gap-3 justify-center mt-6">
                 <motion.button
                   whileTap={{ scale: 0.98 }}
                   onClick={handleUnbindDevice}
