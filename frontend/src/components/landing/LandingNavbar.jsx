@@ -6,9 +6,9 @@ const LandingNavbar = () => {
 
   const handleLoginClick = (e) => {
     e.preventDefault();
-    
+
     const session = checkActiveSession();
-    
+
     if (session) {
       const dashboardUrl = getDashboardUrl();
       if (dashboardUrl) {
@@ -17,7 +17,7 @@ const LandingNavbar = () => {
         return;
       }
     }
-    
+
     // No active session, go to login page
     navigate('/auth/login');
   };
@@ -27,13 +27,19 @@ const LandingNavbar = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           <div className="flex items-center space-x-2">
-            <img 
-              src="https://res.cloudinary.com/dhjqb65mf/image/upload/v1771859487/SuperKafe_i51g7i.png" 
-              alt="SuperKafe Logo" 
+            <style>
+              {`@import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&display=swap');`}
+            </style>
+            <img
+              src="https://res.cloudinary.com/dhjqb65mf/image/upload/v1771859487/SuperKafe_i51g7i.png"
+              alt="SuperKafe Logo"
               className="h-10 w-auto"
             />
-            <span className="text-xs px-2 py-1 bg-amber-100 text-amber-800 rounded-full border border-amber-200">
-              by LockApp.id
+            <span
+              className="text-2xl font-semibold tracking-tight text-[#4A2311] ml-1 mt-1"
+              style={{ fontFamily: "'Fredoka', 'Nunito', 'Quicksand', sans-serif" }}
+            >
+              SuperKafe
             </span>
           </div>
           <div className="flex items-center space-x-4">

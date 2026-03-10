@@ -247,7 +247,8 @@ const setupTenant = async (req, res) => {
         tenantSlug: newTenant.slug, // CRITICAL: Add tenantSlug for frontend header
         tenantId: newTenant._id.toString(),
         tenantDbName: dbName,
-        userId: user._id
+        userId: user._id,
+        hasPin: false
       },
       process.env.JWT_SECRET || 'your-secret-key',
       { expiresIn: '7d' }

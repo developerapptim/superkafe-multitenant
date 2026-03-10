@@ -14,6 +14,7 @@ import PullToRefresh from 'react-simple-pull-to-refresh';
 import { useRefresh } from '../../context/RefreshContext';
 import { ThemeProvider, useTheme } from '../../context/ThemeContext';
 import FirstTimeThemePopup from '../../components/admin/FirstTimeThemePopup';
+import FirstTimePinPopup from '../../components/admin/FirstTimePinPopup';
 import TrialStatusBanner from '../../components/TrialStatusBanner';
 import SubscriptionLockScreen from '../../components/SubscriptionLockScreen';
 import { useSocket } from '../../context/SocketContext';
@@ -114,10 +115,10 @@ function AdminLayout() {
         };
     }, []);
 
-    // Extract tenant information from JWT token for ThemeProvider
     const [tenantInfo, setTenantInfo] = useState(() => {
         let initialTheme = 'default';
         let tenantId = null;
+        let hasPin = true; // default true so we don't show popup unnecessarily
 
         if (typeof window !== 'undefined') {
             const token = localStorage.getItem('token');
@@ -127,6 +128,9 @@ function AdminLayout() {
                 try {
                     const decoded = jwtDecode(token);
                     tenantId = decoded.tenantId;
+                    if (decoded.hasPin === false) {
+                        hasPin = false;
+                    }
 
                     if (tenantData) {
                         try {
@@ -148,9 +152,24 @@ function AdminLayout() {
 
         return {
             tenantId,
-            initialTheme
+            initialTheme,
+            hasPin
         };
     });
+
+    // First-time PIN setup popup state
+    const [showPinPopup, setShowPinPopup] = useState(() => {
+        const hasSetupPinLocal = localStorage.getItem('has_setup_pin') === 'true';
+        return (user.role === 'admin' || user.role === 'owner') &&
+            tenantInfo.tenantId &&
+            tenantInfo.hasPin === false &&
+            !hasSetupPinLocal;
+    });
+
+    const handlePinSetupComplete = () => {
+        localStorage.setItem('has_setup_pin', 'true');
+        setShowPinPopup(false);
+    };
 
     // First-time theme popup state
     const [showThemePopup, setShowThemePopup] = useState(false);
@@ -167,8 +186,8 @@ function AdminLayout() {
 
                 setHasSeenThemePopup(hasSeenPopup);
 
-                // Show popup if user hasn't seen it yet
-                if (!hasSeenPopup) {
+                // Show theme popup if user hasn't seen it yet and PIN popup is not showing
+                if (!hasSeenPopup && !showPinPopup) {
                     setShowThemePopup(true);
                 }
             } catch (error) {
@@ -179,7 +198,7 @@ function AdminLayout() {
         };
 
         checkThemePopup();
-    }, [tenantInfo.tenantId]);
+    }, [tenantInfo.tenantId, showPinPopup]);
 
     // Global Keyboard Shortcut (Ctrl + K)
     useEffect(() => {
@@ -509,6 +528,13 @@ function AdminLayout() {
                             </div>
                         </div>
                     )}
+
+                    {/* First-Time PIN Setup Popup */}
+                    <FirstTimePinPopup
+                        isOpen={showPinPopup}
+                        onSuccess={handlePinSetupComplete}
+                        onSkip={handlePinSetupComplete}
+                    />
 
                     {/* First-Time Theme Selection Popup */}
                     <FirstTimeThemePopup

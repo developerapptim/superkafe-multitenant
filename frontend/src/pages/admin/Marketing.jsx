@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import useSWR, { mutate } from 'swr';
 import toast from 'react-hot-toast';
+import imageCompression from 'browser-image-compression';
 import api, { voucherAPI, bannerAPI } from '../../services/api';
 import { useRefresh } from '../../context/RefreshContext';
 
@@ -145,11 +146,20 @@ function Marketing() {
         e.preventDefault();
         if (!bannerFile) { toast.error('Pilih gambar banner!'); return; }
 
-        const toastId = toast.loading('Mengupload banner...');
+        const toastId = toast.loading('Memproses dan mengupload banner...');
         setUploadingBanner(true);
         try {
+            // Kompresi Gambar ke WebP (maks 1MB)
+            const options = {
+                maxSizeMB: 1,
+                maxWidthOrHeight: 1280,
+                useWebWorker: true,
+                fileType: 'image/webp'
+            };
+            const compressedFile = await imageCompression(bannerFile, options);
+
             const formData = new FormData();
-            formData.append('image', bannerFile);
+            formData.append('image', compressedFile, compressedFile.name || 'banner.webp');
             formData.append('title', bannerTitle);
 
             await bannerAPI.create(formData);

@@ -48,7 +48,8 @@ const getEmployeeTokenPayload = async (user) => {
           tenantSlug: tenant.slug, // CRITICAL: Add tenantSlug for frontend header
           tenantId: tenant._id.toString(),
           tenantDbName: tenant.dbName,
-          userId: user._id.toString()
+          userId: user._id.toString(),
+          hasPin: !!(employee.pin || employee.pin_code)
         };
       }
     }
@@ -274,7 +275,7 @@ const googleAuth = async (req, res) => {
     // Mode 1: Verify ID Token
     if (idToken && !email) {
       const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
-      
+
       try {
         const ticket = await client.verifyIdToken({
           idToken: idToken,
@@ -288,7 +289,7 @@ const googleAuth = async (req, res) => {
           message: 'Google token tidak valid'
         });
       }
-    } 
+    }
     // Mode 2: Direct data
     else if (email && name) {
       googleUser = {
@@ -377,8 +378,8 @@ const googleAuth = async (req, res) => {
     // Response sukses
     const response = {
       success: true,
-      message: isNewUser 
-        ? 'Akun berhasil dibuat dengan Google!' 
+      message: isNewUser
+        ? 'Akun berhasil dibuat dengan Google!'
         : 'Login dengan Google berhasil!',
       isNewUser: isNewUser,
       token: token,

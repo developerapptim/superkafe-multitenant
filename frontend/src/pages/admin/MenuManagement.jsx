@@ -5,6 +5,7 @@ import { Reorder, motion, AnimatePresence, useDragControls } from "framer-motion
 import CustomSelect from '../../components/CustomSelect';
 import useSWR, { mutate } from 'swr';
 import toast from 'react-hot-toast';
+import imageCompression from 'browser-image-compression';
 import api, { menuAPI, categoriesAPI } from '../../services/api';
 import { useRefresh } from '../../context/RefreshContext';
 
@@ -262,18 +263,35 @@ function MenuManagement() {
     const generateId = () => `menu_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
     // Handle image upload
-    const handleImageUpload = (e) => {
+    const handleImageUpload = async (e) => {
         const file = e.target.files[0];
         if (file) {
             if (file.size > 5 * 1024 * 1024) {
-                toast.error('Ukuran gambar maksimal 5MB');
+                toast.error('Ukuran gambar maksimal 5MB sebelum kompresi');
                 return;
             }
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                setFormData({ ...formData, image: reader.result });
-            };
-            reader.readAsDataURL(file);
+
+            const toastId = toast.loading('Mengompres gambar...');
+            try {
+                // Kompresi Gambar ke WebP (maks 1MB)
+                const options = {
+                    maxSizeMB: 1,
+                    maxWidthOrHeight: 800, // Cukup besar untuk menu item
+                    useWebWorker: true,
+                    fileType: 'image/webp'
+                };
+                const compressedFile = await imageCompression(file, options);
+
+                const reader = new FileReader();
+                reader.onloadend = () => {
+                    setFormData({ ...formData, image: reader.result });
+                    toast.success('Gambar berhasil dikompres ke WebP!', { id: toastId });
+                };
+                reader.readAsDataURL(compressedFile);
+            } catch (error) {
+                console.error('Error saat kompresi gambar:', error);
+                toast.error('Gagal mengompres gambar', { id: toastId });
+            }
         }
     };
 
