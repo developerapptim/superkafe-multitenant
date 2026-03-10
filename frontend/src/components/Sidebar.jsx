@@ -405,12 +405,12 @@ function Sidebar({ onLogout, isCollapsed, toggleSidebar }) {
                 >
                   <span className="text-lg lg:text-xl shrink-0 leading-none relative">
                     {item.icon}
-                    {item.path === '/admin/kasir' && pendingOrderCount > 0 && (
+                    {item.section === 'pos' && pendingOrderCount > 0 && (
                       <span className="absolute -top-2 -right-3 bg-red-500 text-white text-[10px] font-bold rounded-full h-5 w-5 flex items-center justify-center shadow-sm border border-[#1e1b4b] animate-bounce-slow">
                         {pendingOrderCount > 99 ? '99+' : pendingOrderCount}
                       </span>
                     )}
-                    {item.path === '/admin/meja' && pendingReservationsCount > 0 && (
+                    {item.section === 'table' && pendingReservationsCount > 0 && (
                       <span className="absolute -top-2 -right-3 bg-red-500 text-white text-[10px] font-bold rounded-full h-5 w-5 flex items-center justify-center shadow-sm border border-[#1e1b4b] animate-bounce-slow">
                         {pendingReservationsCount > 99 ? '99+' : pendingReservationsCount}
                       </span>
@@ -418,10 +418,10 @@ function Sidebar({ onLogout, isCollapsed, toggleSidebar }) {
                   </span>
                   <span className={`hidden lg:block text-sm font-medium whitespace-nowrap transition-all duration-300 ${isCollapsed ? 'w-0 opacity-0 overflow-hidden' : 'w-auto opacity-100'}`}>
                     {item.label}
-                    {item.path === '/admin/kasir' && pendingOrderCount > 0 && isCollapsed && (
+                    {item.section === 'pos' && pendingOrderCount > 0 && isCollapsed && (
                       <span className="absolute top-0 right-0 w-3 h-3 bg-red-500 rounded-full border-2 border-[#1e1b4b]"></span>
                     )}
-                    {item.path === '/admin/meja' && pendingReservationsCount > 0 && isCollapsed && (
+                    {item.section === 'table' && pendingReservationsCount > 0 && isCollapsed && (
                       <span className="absolute top-0 right-0 w-3 h-3 bg-red-500 rounded-full border-2 border-[#1e1b4b]"></span>
                     )}
                   </span>

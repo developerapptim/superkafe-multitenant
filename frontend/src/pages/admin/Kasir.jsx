@@ -75,12 +75,13 @@ function Kasir() {
 
     // SWR Data Fetching
     const { data: menuData } = useSWR('/menu', fetcher, { refreshInterval: 60000 }); // Refresh menu every 1 min
-    // Opt: Disable Polling (0) or set to very long (60s) as backup
+    // Hybrid: 15s polling fallback + instant socket push for any missed events
     const { data: ordersData, isValidating: isOrdersValidating } = useSWR('/orders?limit=200', fetcher, {
-        refreshInterval: 0, // Disabled: Rely on Socket
-        revalidateOnFocus: true
+        refreshInterval: 15000, // Polling fallback every 15s — catches missed socket events
+        revalidateOnFocus: true,
+        revalidateOnReconnect: true, // Refresh when browser reconnects to network
     });
-    const { data: tablesData } = useSWR('/tables', fetcher, { refreshInterval: 0 }); // socket triggers update
+    const { data: tablesData } = useSWR('/tables', fetcher, { refreshInterval: 30000 }); // Refresh every 30s
 
     const { data: shiftData } = useSWR('/shift/current-balance', fetcher);
     const { data: settings } = useSWR('/settings', fetcher);

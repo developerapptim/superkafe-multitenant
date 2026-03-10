@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useOutletContext } from 'react-router-dom';
+import { useNavigate, useOutletContext, useParams } from 'react-router-dom';
 import { createPortal } from 'react-dom';
 import CustomSelect from '../../components/CustomSelect';
 import toast from 'react-hot-toast';
@@ -28,6 +28,7 @@ const formatPhoneNumber = (phone) => {
 
 function Keranjang() {
     const navigate = useNavigate();
+    const { tenantSlug } = useParams();
     const { tableId, settings, isTableLocked, clearScannedTable } = useOutletContext();
     const { cart, updateQty, updateNote, removeFromCart, clearCart, cartTotal } = useCart();
 
@@ -390,14 +391,14 @@ function Keranjang() {
                     </button>
 
                     <button
-                        onClick={() => navigate(`/${tableId ? `?meja=${tableId}` : ''}`)}
+                        onClick={() => navigate(`/${tenantSlug}${tableId ? `?meja=${tableId}` : ''}`)}
                         className="w-full py-3 rounded-xl bg-white/10 font-bold hover:bg-white/20 transition-colors"
                     >
                         🏠 Menu Utama
                     </button>
 
                     <button
-                        onClick={() => navigate('/pesanan')}
+                        onClick={() => navigate(`/${tenantSlug}/pesanan`)}
                         className="w-full py-3 rounded-xl border border-blue-500/30 text-blue-400 font-bold hover:bg-blue-500/10 transition-colors"
                     >
                         📋 Lihat Status Pesanan
@@ -424,7 +425,7 @@ function Keranjang() {
                 <h2 className="text-xl font-bold mb-2">Keranjang Kosong</h2>
                 <p className="text-gray-400 mb-6">Yuk pilih menu favoritmu!</p>
                 <button
-                    onClick={() => navigate(`/${tableId ? `?meja=${tableId}` : ''}`)}
+                    onClick={() => navigate(`/${tenantSlug}${tableId ? `?meja=${tableId}` : ''}`)}
                     className="px-6 py-3 rounded-xl bg-gradient-to-r from-purple-600 to-blue-600 font-medium"
                 >
                     Lihat Menu

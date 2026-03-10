@@ -1,39 +1,71 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import toast from 'react-hot-toast';
-import api from '../services/api'; // Import API for settings
+import api from '../services/api';
 import { useSocket } from '../context/SocketContext';
 
 const OrderNotification = () => {
     const socket = useSocket();
     const [isMuted, setIsMuted] = useState(() => localStorage.getItem('pos_muted') === 'true');
-    const [soundUrl, setSoundUrl] = useState(null); // Store sound URL
+    const [soundUrl, setSoundUrl] = useState(null);
     const audioContextRef = useRef(null);
-    const lastPlayedRef = useRef(0); // For debouncing overlapping sounds
+    const lastPlayedRef = useRef(0);
+    const isAudioUnlockedRef = useRef(false); // Track if audio is unlocked via user gesture
 
-    // 1. Fetch Settings ONCE on mount
+    // ─── Unlock AudioContext on first user interaction ───────────────────
+    // Browsers require a user gesture before audio can play.
+    // We create + resume the AudioContext on any click/tap to pre-unlock it.
+    useEffect(() => {
+        const unlockAudio = () => {
+            if (isAudioUnlockedRef.current) return;
+            try {
+                if (!audioContextRef.current) {
+                    audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
+                }
+                if (audioContextRef.current.state === 'suspended') {
+                    audioContextRef.current.resume().then(() => {
+                        isAudioUnlockedRef.current = true;
+                        console.log('🔊 AudioContext unlocked by user gesture');
+                    });
+                } else {
+                    isAudioUnlockedRef.current = true;
+                }
+            } catch (e) {
+                console.warn('Audio unlock failed:', e);
+            }
+        };
+
+        // Any interactive event will unlock the audio
+        document.addEventListener('click', unlockAudio, { once: false });
+        document.addEventListener('keydown', unlockAudio, { once: false });
+        document.addEventListener('touchstart', unlockAudio, { once: false });
+
+        return () => {
+            document.removeEventListener('click', unlockAudio);
+            document.removeEventListener('keydown', unlockAudio);
+            document.removeEventListener('touchstart', unlockAudio);
+        };
+    }, []);
+
+    // ─── Fetch notification sound URL ────────────────────────────────────
     useEffect(() => {
         const fetchSettings = async () => {
             try {
-                // Try getting from localStorage first (fast)
                 const cached = localStorage.getItem('appSettings');
                 if (cached) {
                     const parsed = JSON.parse(cached);
                     if (parsed.notificationSoundUrl) setSoundUrl(parsed.notificationSoundUrl);
                 }
-
-                // Then fetch fresh data
                 const res = await api.get('/settings');
                 if (res.data?.notificationSoundUrl) {
                     setSoundUrl(res.data.notificationSoundUrl);
-                    // Update local storage if needed, but AdminLayout handles main sync
                 }
             } catch (err) {
-                console.error('Failed to fetch sound settings:', err);
+                console.warn('Failed to fetch sound settings:', err);
             }
         };
         fetchSettings();
 
-        // Listen for Mute Toggles from other components
+        // Listen for mute toggles from Kasir.jsx header button
         const handleStorageChange = (e) => {
             if (e.key === 'pos_muted') {
                 setIsMuted(e.newValue === 'true');
@@ -43,100 +75,94 @@ const OrderNotification = () => {
         return () => window.removeEventListener('storage', handleStorageChange);
     }, []);
 
-    // 2. Robust Play Sound Function
-    const playNotificationSound = async () => {
-        // Debounce: prevent overlapping sounds during bulk offline sync
+    // ─── Play Notification Sound ─────────────────────────────────────────
+    const playNotificationSound = useCallback(async () => {
+        // Rate-limit: don't overlap sounds within 2 seconds
         const now = Date.now();
-        if (now - lastPlayedRef.current < 2000) return; // 2 seconds minimum interval
+        if (now - lastPlayedRef.current < 2000) return;
         lastPlayedRef.current = now;
 
-        // Re-check mute state directly from storage to be 100% sure
-        const currentMuteState = localStorage.getItem('pos_muted') === 'true';
-        if (currentMuteState) return;
+        // Check mute state directly from storage (most reliable)
+        if (localStorage.getItem('pos_muted') === 'true') return;
 
+        // Strategy A: Play custom sound file if configured
+        if (soundUrl) {
+            try {
+                const audio = new Audio(soundUrl);
+                audio.volume = 0.8;
+                await audio.play();
+                return; // Success — stop here
+            } catch (audioErr) {
+                console.warn('Custom sound failed, using oscillator fallback:', audioErr.message);
+            }
+        }
+
+        // Strategy B: Oscillator "Ding-Dong" fallback
         try {
-            // Initialize Context if missing
+            // Ensure AudioContext is initialized + resumed
             if (!audioContextRef.current) {
                 audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
             }
             const ctx = audioContextRef.current;
 
-            // CRITICAL: Always resume suspended context
             if (ctx.state === 'suspended') {
                 await ctx.resume();
             }
 
-            // Strategy A: Play Custom Sound URL
-            if (soundUrl) {
-                try {
-                    const audio = new Audio(soundUrl);
-                    await audio.play();
-                    return; // Success
-                } catch (audioErr) {
-                    console.warn('Custom sound failed, falling back to beep:', audioErr);
-                }
+            if (ctx.state !== 'running') {
+                console.warn('AudioContext not running, cannot play sound. State:', ctx.state);
+                return;
             }
-
-            // Strategy B: Fallback Oscillator (Ding-Dong)
-            const osc = ctx.createOscillator();
-            const gain = ctx.createGain();
-
-            osc.connect(gain);
-            gain.connect(ctx.destination);
 
             const now = ctx.currentTime;
 
-            // Ding
-            osc.frequency.setValueAtTime(880, now); // A5
-            gain.gain.setValueAtTime(0.1, now);
+            const playNote = (freq, startTime, duration) => {
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(freq, startTime);
+                gain.gain.setValueAtTime(0.15, startTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
+                osc.start(startTime);
+                osc.stop(startTime + duration);
+            };
 
-            // Dong
-            osc.frequency.setValueAtTime(659.25, now + 0.4); // E5
-            gain.gain.exponentialRampToValueAtTime(0.001, now + 1.2);
-
-            osc.type = 'sine';
-            osc.start(now);
-            osc.stop(now + 1.2);
+            playNote(880, now, 0.4);         // High note (Ding)
+            playNote(659.25, now + 0.4, 0.8); // Low note (Dong)
 
         } catch (e) {
-            console.error('Audio playback completely failed:', e);
-            // Fallback: Visual Toast is already handled below
+            console.error('Audio playback failed:', e);
         }
-    };
+    }, [soundUrl]);
 
-    // 3. Socket Listener
+    // ─── Socket Listener ─────────────────────────────────────────────────
     useEffect(() => {
         if (!socket) return;
 
         const handleOrderUpdate = (data) => {
             if (data.action === 'create') {
                 console.log('🔔 New Order Received!');
-
-                // Play Sound
                 playNotificationSound();
-
-                // Show Toast
-                toast('Pesanan Baru Masuk!', {
-                    icon: '🔔',
-                    duration: 5000,
+                toast('Pesanan Baru Masuk! 🔔', {
+                    duration: 6000,
                     position: 'top-right',
                     style: {
-                        background: '#333',
+                        background: '#1e1b4b',
                         color: '#fff',
-                        border: '1px solid #a855f7'
+                        border: '1px solid #a855f7',
+                        fontWeight: 'bold'
                     }
                 });
             }
         };
 
         socket.on('orders:update', handleOrderUpdate);
+        return () => socket.off('orders:update', handleOrderUpdate);
+    }, [socket, playNotificationSound]);
 
-        return () => {
-            socket.off('orders:update', handleOrderUpdate);
-        };
-    }, [socket, soundUrl]);
-
-    return null; // Invisible component
+    return null;
 };
 
 export default OrderNotification;

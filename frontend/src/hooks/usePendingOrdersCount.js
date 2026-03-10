@@ -1,40 +1,54 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import api from '../services/api';
-import { useSocket } from '../context/SocketContext'; // New: Import Socket
+import { useSocket } from '../context/SocketContext';
 
 export const usePendingOrdersCount = () => {
     const [count, setCount] = useState(0);
-    const socket = useSocket(); // New: Get Socket
+    const socket = useSocket();
+    const intervalRef = useRef(null);
 
-    const fetchCount = async () => {
+    const fetchCount = useCallback(async () => {
         try {
             const { data } = await api.get('/orders/pending-count');
-            setCount(data.count);
+            setCount(data.count ?? 0);
         } catch (error) {
-            console.error('Error fetching pending orders:', error);
+            // Silently fail — count stays at last known value
+            console.warn('[PendingCount] Failed to fetch:', error.message);
         }
-    };
-
-    // Initial Fetch
-    useEffect(() => {
-        fetchCount();
     }, []);
 
-    // Socket Listener
+    // Initial fetch on mount
+    useEffect(() => {
+        fetchCount();
+    }, [fetchCount]);
+
+    // Polling fallback — runs every 10s regardless of socket status.
+    // This acts as a "catch-all" in case socket events are missed.
+    useEffect(() => {
+        intervalRef.current = setInterval(fetchCount, 10_000);
+        return () => clearInterval(intervalRef.current);
+    }, [fetchCount]);
+
+    // Socket event listener
     useEffect(() => {
         if (!socket) return;
 
         const handleOrderUpdate = (data) => {
             console.log('⚡ Socket Event (Badge):', data);
-            fetchCount(); // Refresh count on ANY order change
+            // Fetch fresh count on ANY order change to stay accurate
+            fetchCount();
         };
 
         socket.on('orders:update', handleOrderUpdate);
 
+        // Re-fetch on reconnect to sync any missed events
+        socket.on('connect', fetchCount);
+
         return () => {
             socket.off('orders:update', handleOrderUpdate);
+            socket.off('connect', fetchCount);
         };
-    }, [socket]);
+    }, [socket, fetchCount]);
 
     return count;
 };
