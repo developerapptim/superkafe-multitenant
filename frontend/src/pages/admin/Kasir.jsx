@@ -3,6 +3,7 @@ import toast from 'react-hot-toast';
 import useSWR, { mutate } from 'swr';
 import api, { menuAPI, ordersAPI, tablesAPI, shiftAPI, API_BASE_URL } from '../../services/api';
 import PrintButton from '../../components/PrintButton';
+import CustomSelect from '../../components/CustomSelect';
 import { useSocket } from '../../context/SocketContext';
 import useOfflineSync from '../../hooks/useOfflineSync'; // New: Offline Hook
 import { useRefresh } from '../../context/RefreshContext';
@@ -84,7 +85,7 @@ function Kasir() {
     const { data: tablesData } = useSWR('/tables', fetcher, { refreshInterval: 30000 }); // Refresh every 30s
 
     const { data: shiftData } = useSWR('/shift/current-balance', fetcher);
-    const { data: settings } = useSWR('/settings', fetcher);
+    const { data: settings } = useSWR('/settings/public', fetcher);
 
     // Derived state from SWR data
     const [offlineMenu, setOfflineMenu] = useState([]);
@@ -1481,22 +1482,22 @@ function Kasir() {
             {/* CANCEL CONFIRMATION MODAL */}
             {showCancelModal && (
                 <div className="modal-overlay z-[60]">
-                    <div className="bg-surface border border-red-500/30 rounded-2xl w-full max-w-sm animate-scale-up p-5 shadow-2xl relative">
+                    <div className="bg-white text-gray-900 border border-gray-200 rounded-2xl w-full max-w-sm animate-scale-up p-5 shadow-2xl relative">
                         <div className="text-center mb-5">
-                            <div className="w-14 h-14 rounded-full bg-red-500/20 flex items-center justify-center mx-auto mb-3">
+                            <div className="w-14 h-14 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-3">
                                 <span className="text-2xl">⚠️</span>
                             </div>
-                            <h3 className="text-xl font-bold text-white">Konfirmasi Pembatalan</h3>
-                            <p className="text-xs text-gray-400 mt-1">Stok akan dikembalikan otomatis ke inventaris.</p>
+                            <h3 className="text-xl font-bold text-gray-900">Konfirmasi Pembatalan</h3>
+                            <p className="text-xs text-gray-500 mt-1">Stok akan dikembalikan otomatis ke inventaris.</p>
                         </div>
 
                         {/* Warning if Paid */}
                         {selectedOrderForDetail?.paymentStatus === 'paid' && (
-                            <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3 mb-4 flex items-start gap-2">
+                            <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4 flex items-start gap-2">
                                 <span className="text-lg">💸</span>
                                 <div>
-                                    <p className="text-xs font-bold text-red-400">PERINGATAN!</p>
-                                    <p className="text-[10px] text-red-300/80 leading-tight">
+                                    <p className="text-xs font-bold text-red-700">PERINGATAN!</p>
+                                    <p className="text-[10px] text-red-600 leading-tight">
                                         Pesanan ini sudah LUNAS. Pastikan Anda melakukan REFUND manual uang kepada pelanggan.
                                     </p>
                                 </div>
@@ -1505,11 +1506,12 @@ function Kasir() {
 
                         <div className="space-y-4 mb-6">
                             <div>
-                                <label className="block text-xs font-medium text-gray-400 mb-1.5 ml-1">Alasan Pembatalan <span className="text-red-500">*</span></label>
+                                <label className="block text-xs font-medium text-gray-700 mb-1.5 ml-1">Alasan Pembatalan <span className="text-red-500">*</span></label>
                                 <CustomSelect
                                     value={cancellationReason}
                                     onChange={setCancellationReason}
                                     placeholder="Pilih Alasan..."
+                                    forceLight={true}
                                     options={[
                                         { value: 'Pelanggan Membatalkan', label: 'Pelanggan Membatalkan', icon: '👤' },
                                         { value: 'Stok Habis / Rusak', label: 'Stok Habis / Rusak', icon: '📦' },
@@ -1524,20 +1526,20 @@ function Kasir() {
                                     value={customReason}
                                     onChange={(e) => setCustomReason(e.target.value)}
                                     placeholder="Tulis alasan spesifik..."
-                                    className="w-full bg-black/20 border border-white/10 rounded-lg p-3 text-sm text-white focus:border-red-500 outline-none h-20 resize-none"
+                                    className="w-full bg-white border border-gray-300 rounded-lg p-3 text-sm text-gray-900 focus:border-red-500 focus:ring-1 focus:ring-red-500 outline-none h-20 resize-none"
                                 />
                             )}
 
                             {!isAdmin && (
-                                <div className="mt-4 pt-4 border-t border-white/10">
-                                    <label className="block text-xs font-medium text-gray-400 mb-1.5 ml-1">
+                                <div className="mt-4 pt-4 border-t border-gray-200">
+                                    <label className="block text-xs font-medium text-gray-700 mb-1.5 ml-1">
                                         PIN Supervisor <span className="text-red-500">*</span>
                                     </label>
                                     <input
                                         type="password"
                                         value={cancelPin}
                                         onChange={(e) => setCancelPin(e.target.value)}
-                                        className="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2.5 text-centertracking-widest text-white focus:border-red-500 outline-none"
+                                        className="w-full bg-white border border-gray-300 rounded-lg px-3 py-2.5 text-center tracking-widest text-gray-900 focus:border-red-500 focus:ring-1 focus:ring-red-500 outline-none"
                                         placeholder="••••••"
                                         maxLength={6}
                                         autoComplete="new-password"
@@ -1550,13 +1552,13 @@ function Kasir() {
                         <div className="grid grid-cols-2 gap-3">
                             <button
                                 onClick={() => { setShowCancelModal(false); setCancellationReason(''); setCustomReason(''); setCancelPin(''); }}
-                                className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-gray-400 font-medium"
+                                className="px-4 py-3 rounded-xl bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold transition-all"
                             >
                                 Kembali
                             </button>
                             <button
                                 onClick={handleCancelOrder}
-                                className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold shadow-lg shadow-red-600/20"
+                                className="px-4 py-3 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold shadow-lg shadow-red-600/20 transition-all transform hover:-translate-y-0.5"
                             >
                                 Ya, Batalkan
                             </button>

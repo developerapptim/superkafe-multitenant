@@ -445,14 +445,38 @@ const voidOrder = async (req, res) => {
                 return res.status(401).json({ error: 'PIN Supervisor dibutuhkan untuk membatalkan pesanan.' });
             }
 
-            // Look for any active manager/admin with this PIN
-            const supervisor = await Employee.findOne({
-                pin_code: pin,
+            const bcrypt = require('bcryptjs');
+
+            // Fetch all potential supervisors (we compare PIN manually to support both hash + plaintext)
+            const supervisors = await Employee.find({
                 role: { $in: ['admin', 'owner', 'manager'] },
                 status: 'active'
-            });
+            }).select('pin pin_code role').lean();
 
-            if (!supervisor) {
+            let verified = false;
+            let hasAnyPin = false;
+            for (const sup of supervisors) {
+                if (sup.pin || sup.pin_code) hasAnyPin = true;
+
+                // Check bcrypt-hashed PIN first (new format)
+                if (sup.pin) {
+                    try {
+                        const match = await bcrypt.compare(pin, sup.pin);
+                        if (match) { verified = true; break; }
+                    } catch (_) { /* skip */ }
+                }
+                // Fallback: legacy plaintext pin_code
+                if (!verified && sup.pin_code && sup.pin_code === pin) {
+                    verified = true;
+                    break;
+                }
+            }
+
+            if (!hasAnyPin) {
+                return res.status(401).json({ error: 'Belum ada Supervisor yang mengatur PIN. Silakan buat PIN di menu Pegawai.' });
+            }
+
+            if (!verified) {
                 return res.status(401).json({ error: 'PIN Supervisor tidak valid atau tidak memiliki akses.' });
             }
         }
@@ -728,6 +752,8 @@ const getPublicNota = async (req, res) => {
         const businessName = settings.name || settings.businessName || 'SuperKafe';
         const address = settings.address || '';
         const phone = settings.phone ? `Telp: ${settings.phone}` : '';
+        const wifiName = settings.wifiName || '';
+        const wifiPassword = settings.wifiPassword || '';
 
         const html = `
 <!DOCTYPE html>
@@ -774,9 +800,14 @@ const getPublicNota = async (req, res) => {
         .total-row { display: flex; justify-content: space-between; margin: 3px 0; }
         .grand-total { font-size: 14px; font-weight: bold; border-top: 1px dashed #000; padding-top: 5px; margin-top: 5px; }
         
-        .status-badge { display: inline-block; padding: 2px 8px; border-radius: 3px; font-weight: bold; font-size: 11px; margin-top: 5px;}
-        .status-paid { background: #d4edda; color: #155724; }
-        .status-unpaid { background: #f8d7da; color: #721c24; }
+        .status-badge { display: inline-block; padding: 3px 8px; border-radius: 4px; font-weight: bold; font-size: 11px; margin-top: 5px; text-align: center; }
+        .status-paid { background: #dcfce7; color: #15803d; border: 1px solid #15803d; }
+        .status-unpaid { background: #fee2e2; color: #dc2626; border: 1px solid #dc2626; }
+        
+        .order-badge { background: ${statusBg}; color: ${statusColor}; border: 1px solid ${statusColor}; }
+
+        .wifi-box { margin-top: 15px; border: 1px dashed #666; padding: 8px; text-align: center; background: #fafafa; border-radius: 4px; }
+        .wifi-box p { margin: 2px 0; font-size: 11px; }
         
         .footer { text-align: center; margin-top: 15px; margin-bottom: 20px;}
         
@@ -816,8 +847,8 @@ const getPublicNota = async (req, res) => {
 <body>
     <div class="header">
         <h1>${businessName}</h1>
-        <p class="small">${address}</p>
-        <p class="small">${phone}</p>
+        ${address ? `<p class="small" style="white-space: pre-wrap;">${address}</p>` : ''}
+        ${phone ? `<p class="small">${phone}</p>` : ''}
     </div>
     
     <div class="divider"></div>
@@ -826,6 +857,11 @@ const getPublicNota = async (req, res) => {
         <div class="info-row">
             <span>No. Order:</span>
             <span class="bold" style="color:red;">#${(order.id || '').slice(-6)}</span>
+        </div>
+        <div class="center" style="margin: 8px 0;">
+             <div class="status-badge order-badge">
+                 ${statusEmoji} ${statusLabel}
+             </div>
         </div>
         <div class="info-row">
             <span>Tgl:</span>
@@ -883,6 +919,13 @@ const getPublicNota = async (req, res) => {
         </div>
     </div>
     
+    ${wifiName ? `
+    <div class="wifi-box">
+        <span class="bold" style="font-size:12px;">📶 Free Wi-Fi</span>
+        <p>SSID: <span class="bold">${wifiName}</span></p>
+        ${wifiPassword ? `<p>Pass: <span class="bold">${wifiPassword}</span></p>` : ''}
+    </div>` : ''}
+
     <div class="divider"></div>
     
     <div class="footer">

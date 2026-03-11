@@ -48,6 +48,15 @@ export const generateReceiptHTML = (order, settings = {}) => {
     const address = settings.address || '';
     const phoneInfo = settings.phone ? `Telp: ${settings.phone}` : '';
     const isPaid = order.paymentStatus === 'paid';
+    
+    const wifiName = settings.wifiName || '';
+    const wifiPassword = settings.wifiPassword || '';
+    
+    const isDone = order.status === 'done';
+    const statusLabel = isDone ? 'PESANAN SELESAI' : 'PESANAN DIPROSES';
+    const statusEmoji = isDone ? '✅' : '⏳';
+    const statusColor = isDone ? '#15803d' : '#b45309';
+    const statusBg = isDone ? '#dcfce7' : '#fef3c7';
 
     return `
 <!DOCTYPE html>
@@ -94,9 +103,14 @@ export const generateReceiptHTML = (order, settings = {}) => {
         .total-row { display: flex; justify-content: space-between; margin: 3px 0; }
         .grand-total { font-size: 14px; font-weight: bold; border-top: 1px dashed #000; padding-top: 5px; margin-top: 5px; }
         
-        .status-badge { display: inline-block; padding: 2px 8px; border-radius: 3px; font-weight: bold; font-size: 11px; margin-top: 5px;}
-        .status-paid { background: #d4edda; color: #155724; }
-        .status-unpaid { background: #f8d7da; color: #721c24; }
+        .status-badge { display: inline-block; padding: 3px 8px; border-radius: 4px; font-weight: bold; font-size: 11px; margin-top: 5px; text-align: center; border: 1px solid transparent; }
+        .status-paid { background: #dcfce7; color: #15803d; border-color: #15803d; }
+        .status-unpaid { background: #fee2e2; color: #dc2626; border-color: #dc2626; }
+        
+        .order-badge { background: ${statusBg}; color: ${statusColor}; border-color: ${statusColor}; }
+
+        .wifi-box { margin-top: 15px; border: 1px dashed #666; padding: 8px; text-align: center; background: #fafafa; border-radius: 4px; }
+        .wifi-box p { margin: 2px 0; font-size: 11px; }
         
         .footer { text-align: center; margin-top: 15px; margin-bottom: 20px;}
         
@@ -110,8 +124,8 @@ export const generateReceiptHTML = (order, settings = {}) => {
     <div class="header">
         ${settings.logo && settings.showLogoInReceipt !== false ? `<img src="${settings.logo}" alt="Logo" />` : ''}
         <h1>${businessName}</h1>
-        <p class="small">${address}</p>
-        <p class="small">${phoneInfo}</p>
+        ${address ? `<p class="small" style="white-space: pre-wrap;">${address}</p>` : ''}
+        ${phoneInfo ? `<p class="small">${phoneInfo}</p>` : ''}
     </div>
     
     <div class="divider"></div>
@@ -120,6 +134,11 @@ export const generateReceiptHTML = (order, settings = {}) => {
         <div class="info-row">
             <span>No. Order:</span>
             <span class="bold" style="color:red;">#${(order.id || '').slice(-6)}</span>
+        </div>
+        <div class="center" style="margin: 8px 0;">
+             <div class="status-badge order-badge">
+                 ${statusEmoji} ${statusLabel}
+             </div>
         </div>
         <div class="info-row">
             <span>Tgl:</span>
@@ -186,6 +205,13 @@ export const generateReceiptHTML = (order, settings = {}) => {
         </div>
     </div>
     
+    ${wifiName ? `
+    <div class="wifi-box">
+        <span class="bold" style="font-size:12px;">📶 Free Wi-Fi</span>
+        <p>SSID: <span class="bold">${wifiName}</span></p>
+        ${wifiPassword ? `<p>Pass: <span class="bold">${wifiPassword}</span></p>` : ''}
+    </div>` : ''}
+
     <div class="divider"></div>
     
     <div class="footer">

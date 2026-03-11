@@ -1,15 +1,49 @@
 
 
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useContext } from 'react';
 import { createPortal } from 'react-dom';
+import { ThemeContext } from '../context/ThemeContext';
 
-export default function CustomSelect({ label, value, onChange, options = [], placeholder = "Pilih...", required = false, disabled = false, optionAlign = "left", textSize = "text-sm", isMulti = false }) {
+export default function CustomSelect({ label, value, onChange, options = [], placeholder = "Pilih...", required = false, disabled = false, optionAlign = "left", textSize = "text-sm", isMulti = false, forceLight = false }) {
     const [isOpen, setIsOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const containerRef = useRef(null);
     const searchInputRef = useRef(null);
     const [dropdownStyles, setDropdownStyles] = useState({});
+
+    const themeCtx = useContext(ThemeContext);
+    const currentTheme = themeCtx?.currentTheme || 'default';
+    const isLight = forceLight || currentTheme === 'light-coffee';
+    
+    console.log("CustomSelect debug:", { placeholder, forceLight, isLight, currentTheme });
+
+    // Theme-adaptive class sets
+    const triggerBase = isLight
+        ? 'bg-white border-gray-300 text-gray-900 hover:bg-gray-50'
+        : 'bg-white/5 border-purple-500/30 text-white hover:bg-white/10';
+    const triggerFocus = isLight
+        ? 'border-amber-600 ring-1 ring-amber-600/50'
+        : 'border-purple-500 ring-1 ring-purple-500';
+    const placeholderColor = isLight ? 'text-gray-400' : 'text-gray-500';
+    const valueColor = isLight ? 'text-gray-900' : 'text-white';
+    const dropdownBg = isLight
+        ? 'bg-white border border-gray-200 shadow-xl'
+        : 'bg-[#1E1B4B] border border-purple-500/30 shadow-2xl';
+    const searchBg = isLight
+        ? 'bg-gray-50 border-b border-gray-200'
+        : 'bg-transparent border-b border-white/10';
+    const searchInput = isLight
+        ? 'bg-white border border-gray-300 text-gray-900 placeholder-gray-400'
+        : 'bg-white/5 border-white/10 text-white placeholder-gray-500';
+    const optionSelected = isLight
+        ? 'bg-amber-50 text-amber-800'
+        : 'bg-purple-500/20 text-purple-300';
+    const optionDefault = isLight
+        ? 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'
+        : 'text-gray-300 hover:bg-white/5 hover:text-white';
+    const checkColor = isLight ? 'text-amber-600' : 'text-purple-400';
+    const caretColor = isLight ? 'text-gray-500' : 'text-gray-400';
 
     // Close on click outside
     useEffect(() => {
@@ -158,22 +192,23 @@ export default function CustomSelect({ label, value, onChange, options = [], pla
 
     return (
         <div className="relative" ref={containerRef}>
-            {label && <label className="block text-sm text-gray-400 mb-1">{label} {required && '*'}</label>}
+            {label && <label className={`block text-sm mb-1 ${isLight ? 'text-gray-600' : 'text-gray-400'}`}>{label} {required && '*'}</label>}
 
             <button
                 type="button"
                 onClick={() => !disabled && setIsOpen(!isOpen)}
-                className={`w-full px-4 py-3 rounded-xl bg-white/5 border flex justify-between items-center transition-colors
-                    ${disabled ? 'opacity-50 cursor-not-allowed border-white/5' : 'hover:bg-white/10 cursor-pointer'}
-                    ${isOpen ? 'border-purple-500 ring-1 ring-purple-500' : 'border-purple-500/30'}
+                className={`w-full px-4 py-3 rounded-xl border flex justify-between items-center transition-colors
+                    ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
+                    ${isOpen ? triggerFocus : ''}
+                    ${triggerBase}
                     ${optionAlign === 'center' ? 'text-center' : 'text-left'}
                 `}
             >
-                <div className={`flex-1 truncate ${(!isMulti && !value) || (isMulti && value.length === 0) ? 'text-gray-500' : 'text-white'} ${optionAlign === 'center' ? 'text-center' : 'text-left'}`}>
+                <div className={`flex-1 truncate ${(!isMulti && !value) || (isMulti && value.length === 0) ? placeholderColor : valueColor} ${optionAlign === 'center' ? 'text-center' : 'text-left'}`}>
                     {displayValue}
                 </div>
                 <svg
-                    className={`w-4 h-4 text-gray-400 ml-2 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
+                    className={`w-4 h-4 ${caretColor} ml-2 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -184,26 +219,25 @@ export default function CustomSelect({ label, value, onChange, options = [], pla
 
             {isOpen && createPortal(
                 <div
-                    className="custom-select-dropdown admin-card admin-card-shadow border border-purple-500/30 rounded-lg flex flex-col animate-in fade-in zoom-in-95 duration-100 overflow-hidden"
+                    className={`custom-select-dropdown rounded-lg flex flex-col animate-in fade-in zoom-in-95 duration-100 overflow-hidden ${dropdownBg}`}
                     style={dropdownStyles}
                 >
-
                     {/* Search Input Sticky Header */}
-                    <div className="p-2 border-b border-white/10 bg-transparent sticky top-0 z-20">
+                    <div className={`p-2 sticky top-0 z-20 ${searchBg}`}>
                         <input
                             ref={searchInputRef}
                             type="text"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="w-full px-3 py-2 text-sm rounded-lg admin-input focus:outline-none transition-colors"
-                            placeholder="🔍 Cari kategori..."
+                            className={`w-full px-3 py-2 text-sm rounded-lg border focus:outline-none transition-colors ${searchInput}`}
+                            placeholder="🔍 Cari..."
                             onClick={(e) => e.stopPropagation()}
                         />
                     </div>
 
                     <div className="overflow-y-auto flex-1 custom-scrollbar">
                         {filteredOptions.length === 0 ? (
-                            <div className="px-4 py-3 text-sm text-gray-500 text-center italic">
+                            <div className={`px-4 py-3 text-sm text-center italic ${isLight ? 'text-gray-400' : 'text-gray-500'}`}>
                                 {searchTerm ? 'Tidak ditemukan' : 'Tidak ada opsi'}
                             </div>
                         ) : (
@@ -215,7 +249,7 @@ export default function CustomSelect({ label, value, onChange, options = [], pla
                                     return (
                                         <div
                                             key={idx}
-                                            className="px-4 py-2 text-xs font-bold text-gray-500 uppercase tracking-wider bg-white/5 border-y border-white/5 first:border-t-0 sticky top-0"
+                                            className={`px-4 py-2 text-xs font-bold uppercase tracking-wider border-y first:border-t-0 sticky top-0 ${isLight ? 'text-gray-500 bg-gray-50 border-gray-100' : 'text-gray-500 bg-white/5 border-white/5'}`}
                                         >
                                             {opt.label}
                                         </div>
@@ -229,12 +263,12 @@ export default function CustomSelect({ label, value, onChange, options = [], pla
                                         onClick={() => isMulti ? handleMultiSelect(opt.value) : handleSingleSelect(opt.value)}
                                         className={`w-full px-4 py-3 ${textSize} transition-colors flex items-center 
                                         ${optionAlign === 'center' ? 'justify-center' : 'justify-between text-left'}
-                                        ${isSelected ? 'bg-purple-500/20 text-purple-300' : 'text-gray-300 hover:bg-white/5 hover:text-white'}
+                                        ${isSelected ? optionSelected : optionDefault}
                                     `}
                                     >
                                         <span className="flex-1 truncate">{opt.label}</span>
                                         {isSelected && optionAlign !== 'center' && (
-                                            <span className="ml-2 text-purple-400">✓</span>
+                                            <span className={`ml-2 ${checkColor}`}>✓</span>
                                         )}
                                     </button>
                                 );

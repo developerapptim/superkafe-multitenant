@@ -19,7 +19,7 @@ import { themePresets, getThemeConfig } from '../config/themeStyles';
  * Requirements: 2.5, 3.5, 5.1, 5.2, 9.3, 9.4
  */
 
-const ThemeContext = createContext(null);
+export const ThemeContext = createContext(null);
 
 /**
  * Hook to access theme context
