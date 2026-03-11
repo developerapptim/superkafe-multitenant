@@ -9,7 +9,10 @@ const tenantResolver = require('../middleware/tenantResolver');
 const { checkSubscription } = require('../middleware/subscriptionGuard');
 const checkIdempotency = require('../middleware/idempotency');
 
-// Apply tenantResolver globally to all order routes
+// Public route — no auth, no tenant scoping (accessible via WhatsApp link)
+router.get('/nota/:id', OrderController.getPublicNota);
+
+// Apply tenantResolver globally to all remaining order routes
 router.use(tenantResolver);
 
 // router.use(checkApiKey); // Optional: if some are public, don't use global use

@@ -1,6 +1,7 @@
-﻿const Order = require('../models/Order');
+const Order = require('../models/Order');
 const Table = require('../models/Table');
 const axios = require('axios');
+const WANotification = require('../services/WhatsAppNotificationService');
 
 // Services (Sprint 2 Refactor — extracted from this controller)
 const OrderService = require('../services/OrderService');
@@ -186,28 +187,8 @@ const createOrder = async (req, res) => {
 
         console.log("🎉 Order Creation Complete");
 
-        // SEND WA NOTIFICATION VIA N8N WEBHOOK
-        try {
-            const webhookUrl = process.env.N8N_WEBHOOK_ORDER_CREATE || 'http://76.13.196.116:5677/webhook/76a56ec0-0deb-4ebe-9c03-3a1981506916';
-
-            // Format string dari item pesanan
-            const itemsString = newOrder.items.map(item => `${item.qty || item.count}x ${item.name}`).join(', ');
-
-            const payload = {
-                name: newOrder.customerName || 'Pelanggan',
-                item: itemsString,
-                link_nota: `https://superkafe.com/nota/${newOrder.id}`
-            };
-
-            // Eksekusi POST tanpa await (non-blocking) agar performa kasir tetap cepat
-            axios.post(webhookUrl, payload).catch(err => {
-                console.error('⚠️ n8n Webhook Error (Non-blocking):', err.message);
-            });
-            console.log("📡 Triggered WA notification via n8n webhook");
-
-        } catch (webhookErr) {
-            console.error('⚠️ Failed to trigger WA notification:', webhookErr);
-        }
+        // SEND WA NOTIFICATION: PESANAN DIPROSES (fire-and-forget)
+        WANotification.sendNotification(newOrder, 'proses');
 
         // Emit Socket Event
         const io = req.app.get('io');
@@ -385,41 +366,9 @@ const updateOrderStatus = async (req, res) => {
         await order.save();
         console.log(`✅ Order ${order.id} status updated: ${previousStatus} → ${status || previousStatus}`);
 
-        // TRIGGER WA NOTIFICATION: PESANAN SELESAI
+        // TRIGGER WA NOTIFICATION: PESANAN SELESAI (fire-and-forget)
         if (status === 'done' && previousStatus !== 'done') {
-            try {
-                const webhookUrl = process.env.N8N_WEBHOOK_ORDER_DONE || 'http://76.13.196.116:5677/webhook/ce3ade2e-9516-43ed-9ca8-2913407877d1';
-
-                let phoneFormatted = '';
-                if (order.phone) {
-                    phoneFormatted = order.phone.replace(/\D/g, ''); // hapus non-digit
-                    if (phoneFormatted.startsWith('0')) {
-                        phoneFormatted = '62' + phoneFormatted.substring(1);
-                    }
-                }
-
-                // Webhook hanya dikirim jika ada nomor HP
-                if (phoneFormatted) {
-                    const payload = {
-                        phone: phoneFormatted,
-                        name: order.customerName || 'Pelanggan',
-                        link_nota: `https://superkafe.com/nota/${order.id}`
-                    };
-
-                    axios.post(webhookUrl, payload, {
-                        headers: {
-                            'Content-Type': 'application/json'
-                        }
-                    }).catch(err => {
-                        console.error('⚠️ n8n Webhook (Order Done) Error:', err.message);
-                    });
-                    console.log("📡 Triggered WA Order Done notification via n8n webhook");
-                } else {
-                    console.log("ℹ️ No phone number available to send WA Order Done notification.");
-                }
-            } catch (webhookErr) {
-                console.error('⚠️ Failed to trigger WA Order Done notification:', webhookErr);
-            }
+            WANotification.sendNotification(order, 'selesai');
         }
 
         // Emit Socket Event
@@ -706,6 +655,274 @@ const mergeOrders = async (req, res) => {
     }
 };
 
+/**
+ * Public Nota Endpoint — serves HTML receipt accessible via WhatsApp link.
+ * No authentication required so customers can view their receipt.
+ * 
+ * Displays contextual information:
+ * - Order status: PESANAN DIPROSES / PESANAN SELESAI
+ * - Payment status: BELUM BAYAR / LUNAS
+ */
+const getPublicNota = async (req, res) => {
+    try {
+        // Direct MongoDB query without tenant scoping (public endpoint)
+        const order = await Order.collection.findOne({ id: req.params.id });
+        if (!order) {
+            return res.status(404).send(`
+                <html><body style="font-family:sans-serif;text-align:center;padding:40px;">
+                    <h2>😕 Nota Tidak Ditemukan</h2>
+                    <p>Pesanan dengan ID ini tidak ditemukan.</p>
+                </body></html>
+            `);
+        }
+
+        // Determine statuses
+        const isDone = order.status === 'done';
+        const isPaid = order.paymentStatus === 'paid';
+
+        const statusLabel = isDone ? 'PESANAN SELESAI' : 'PESANAN DIPROSES';
+        const statusEmoji = isDone ? '✅' : '⏳';
+        const statusColor = isDone ? '#15803d' : '#b45309';
+        const statusBg = isDone ? '#dcfce7' : '#fef3c7';
+
+        const paymentLabel = isPaid ? 'LUNAS' : 'BELUM BAYAR';
+        const paymentColor = isPaid ? '#15803d' : '#dc2626';
+        const paymentBg = isPaid ? '#dcfce7' : '#fee2e2';
+
+        // Format currency
+        const fmt = (val) => new Intl.NumberFormat('id-ID', {
+            style: 'currency', currency: 'IDR', minimumFractionDigits: 0
+        }).format(val || 0);
+
+        // Format date
+        const orderDate = order.createdAt
+            ? new Date(order.createdAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
+            : (order.date || '-');
+        const orderTime = order.time || (order.createdAt
+            ? new Date(order.createdAt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
+            : '-');
+
+        // Build items HTML
+        const items = order.items || [];
+        const itemsHTML = items.map(item => {
+            const qty = item.qty || item.count || 1;
+            const price = item.price || 0;
+            const subtotal = qty * price;
+            return `
+                <tr>
+                    <td style="padding:6px 0;border-bottom:1px solid #f3f4f6;">
+                        <strong>${item.name || '-'}</strong>
+                        ${item.note ? `<br><small style="color:#6b7280;">📝 ${item.note}</small>` : ''}
+                    </td>
+                    <td style="padding:6px 8px;text-align:center;border-bottom:1px solid #f3f4f6;white-space:nowrap;">${qty}x</td>
+                    <td style="padding:6px 0;text-align:right;border-bottom:1px solid #f3f4f6;white-space:nowrap;">${fmt(subtotal)}</td>
+                </tr>
+            `;
+        }).join('');
+
+        const html = `
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nota Pesanan #${(order.id || '').slice(-6)}</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f9fafb;
+            color: #1f2937;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            padding: 16px;
+        }
+        .receipt {
+            background: white;
+            max-width: 420px;
+            width: 100%;
+            border-radius: 16px;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+            overflow: hidden;
+            height: fit-content;
+        }
+        .header {
+            background: linear-gradient(135deg, #1e1b4b, #312e81);
+            color: white;
+            padding: 24px;
+            text-align: center;
+        }
+        .header h1 { font-size: 20px; margin-bottom: 4px; }
+        .header p { font-size: 13px; opacity: 0.8; }
+        .status-bar {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            padding: 12px 16px;
+            background: #f8fafc;
+            border-bottom: 1px solid #e5e7eb;
+            flex-wrap: wrap;
+        }
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 0.3px;
+        }
+        .body { padding: 20px; }
+        .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 16px;
+        }
+        .info-item label {
+            font-size: 11px;
+            color: #9ca3af;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .info-item span {
+            display: block;
+            font-size: 14px;
+            font-weight: 600;
+            margin-top: 2px;
+        }
+        table { width: 100%; border-collapse: collapse; margin: 12px 0; }
+        .total-section {
+            border-top: 2px dashed #e5e7eb;
+            padding-top: 12px;
+            margin-top: 8px;
+        }
+        .total-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 4px 0;
+            font-size: 14px;
+        }
+        .grand-total {
+            font-size: 18px;
+            font-weight: 800;
+            color: #1e1b4b;
+            padding: 8px 0;
+            border-top: 2px solid #1e1b4b;
+            margin-top: 6px;
+        }
+        .footer {
+            text-align: center;
+            padding: 16px;
+            background: #f8fafc;
+            border-top: 1px solid #e5e7eb;
+            font-size: 12px;
+            color: #9ca3af;
+        }
+    </style>
+</head>
+<body>
+    <div class="receipt">
+        <div class="header">
+            <h1>☕ SuperKafe</h1>
+            <p>Nota Digital Pesanan</p>
+        </div>
+
+        <div class="status-bar">
+            <span class="badge" style="background:${statusBg};color:${statusColor};">
+                ${statusEmoji} ${statusLabel}
+            </span>
+            <span class="badge" style="background:${paymentBg};color:${paymentColor};">
+                ${isPaid ? '💰' : '⏳'} ${paymentLabel}
+            </span>
+        </div>
+
+        <div class="body">
+            <div class="info-grid">
+                <div class="info-item">
+                    <label>No. Order</label>
+                    <span>#${(order.id || '').slice(-6)}</span>
+                </div>
+                <div class="info-item">
+                    <label>Tanggal</label>
+                    <span>${orderDate}</span>
+                </div>
+                <div class="info-item">
+                    <label>Pelanggan</label>
+                    <span>${order.customerName || 'Pelanggan'}</span>
+                </div>
+                <div class="info-item">
+                    <label>Waktu</label>
+                    <span>${orderTime}</span>
+                </div>
+                ${order.tableNumber ? `
+                <div class="info-item">
+                    <label>Meja</label>
+                    <span>${order.tableNumber}</span>
+                </div>` : ''}
+                ${order.paymentMethod && isPaid ? `
+                <div class="info-item">
+                    <label>Metode Bayar</label>
+                    <span>${order.paymentMethod.toUpperCase()}</span>
+                </div>` : ''}
+            </div>
+
+            <table>
+                <thead>
+                    <tr style="border-bottom:2px solid #e5e7eb;">
+                        <th style="text-align:left;padding:8px 0;font-size:12px;color:#6b7280;">ITEM</th>
+                        <th style="text-align:center;padding:8px;font-size:12px;color:#6b7280;">QTY</th>
+                        <th style="text-align:right;padding:8px 0;font-size:12px;color:#6b7280;">HARGA</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${itemsHTML}
+                </tbody>
+            </table>
+
+            <div class="total-section">
+                ${order.subtotal && order.subtotal !== order.total ? `
+                <div class="total-row">
+                    <span>Subtotal</span>
+                    <span>${fmt(order.subtotal)}</span>
+                </div>` : ''}
+                ${order.voucherDiscount > 0 ? `
+                <div class="total-row" style="color:#dc2626;">
+                    <span>Diskon Voucher</span>
+                    <span>-${fmt(order.voucherDiscount)}</span>
+                </div>` : ''}
+                <div class="total-row grand-total">
+                    <span>TOTAL</span>
+                    <span>${fmt(order.total)}</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>Terima kasih atas kunjungan Anda! 🙏</p>
+            <p style="margin-top:6px;">Powered by SuperKafe</p>
+        </div>
+    </div>
+</body>
+</html>
+        `.trim();
+
+        res.setHeader('Content-Type', 'text/html; charset=utf-8');
+        res.send(html);
+
+    } catch (err) {
+        console.error('Public Nota Error:', err);
+        res.status(500).send(`
+            <html><body style="font-family:sans-serif;text-align:center;padding:40px;">
+                <h2>😵 Terjadi Kesalahan</h2>
+                <p>Tidak dapat memuat nota. Silakan coba lagi.</p>
+            </body></html>
+        `);
+    }
+};
+
 module.exports = {
     checkPhone,
     createOrder,
@@ -717,5 +934,6 @@ module.exports = {
     voidOrder,
     getTodayOrders,
     getPendingCount,
-    mergeOrders
+    mergeOrders,
+    getPublicNota
 };

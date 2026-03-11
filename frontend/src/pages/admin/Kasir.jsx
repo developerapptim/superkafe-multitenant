@@ -1318,35 +1318,38 @@ function Kasir() {
             {
                 selectedOrderForPayment && (
                     <div className="modal-overlay">
-                        <div className="bg-surface border border-purple-500/30 rounded-2xl p-6 max-w-sm w-full animate-scale-up">
+                        <div className="bg-white dark:bg-surface border border-gray-200 dark:border-purple-500/30 rounded-2xl p-6 max-w-sm w-full animate-scale-up shadow-2xl">
                             <div className="text-center mb-6">
-                                <div className="w-16 h-16 rounded-full bg-purple-500/20 flex items-center justify-center mx-auto mb-4">
+                                <div className="w-16 h-16 rounded-full bg-purple-100 dark:bg-purple-500/20 flex items-center justify-center mx-auto mb-4 shadow-inner">
                                     <span className="text-3xl">💸</span>
                                 </div>
-                                <h3 className="text-xl font-bold mb-1">Konfirmasi Pembayaran</h3>
-                                <p className="text-gray-400 text-sm">Pesanan atas nama <span className="text-white font-bold">{selectedOrderForPayment.customerName}</span></p>
+                                <h3 className="text-xl font-bold mb-1 text-gray-800 dark:text-white">Konfirmasi Pembayaran</h3>
+                                <p className="text-gray-500 dark:text-gray-400 text-sm">Pesanan atas nama <span className="text-gray-900 dark:text-white font-bold">{selectedOrderForPayment.customerName}</span></p>
                             </div>
 
-                            <div className="bg-white/5 rounded-xl p-4 mb-6">
+                            <div className="bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-transparent rounded-xl p-4 mb-6 shadow-sm">
                                 <div className="flex justify-between items-center mb-2">
-                                    <span className="text-gray-400">Total Tagihan</span>
-                                    <span className="font-bold text-xl text-white">{formatCurrency(selectedOrderForPayment.total)}</span>
+                                    <span className="text-gray-600 dark:text-gray-400 font-medium">Total Tagihan</span>
+                                    <span className="font-bold text-2xl text-purple-600 dark:text-white">{formatCurrency(selectedOrderForPayment.total)}</span>
                                 </div>
 
                                 {selectedOrderForPayment.paymentMethod === 'cash' && (
-                                    <div className="mt-4 pt-4 border-t border-white/10">
-                                        <label className="block text-xs text-gray-500 mb-1">Uang Diterima (Opsional - Hitung Kembalian)</label>
-                                        <input
-                                            type="number"
-                                            value={paymentInput}
-                                            onChange={(e) => setPaymentInput(e.target.value)}
-                                            className="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-right text-white focus:border-purple-500 outline-none"
-                                            placeholder="0"
-                                        />
+                                    <div className="mt-4 pt-4 border-t border-gray-200 dark:border-white/10">
+                                        <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-2 uppercase tracking-wide">Uang Diterima (Opsional)</label>
+                                        <div className="relative">
+                                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-medium">Rp</span>
+                                            <input
+                                                type="number"
+                                                value={paymentInput}
+                                                onChange={(e) => setPaymentInput(e.target.value)}
+                                                className="w-full bg-white dark:bg-black/20 border border-gray-300 dark:border-white/10 rounded-lg pl-10 pr-3 py-3 text-right text-lg font-bold text-gray-900 dark:text-white focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 outline-none transition-all"
+                                                placeholder="0"
+                                            />
+                                        </div>
                                         {paymentInput && Number(paymentInput) >= selectedOrderForPayment.total && (
-                                            <div className="flex justify-between items-center mt-2 text-green-400">
-                                                <span className="text-xs">Kembalian</span>
-                                                <span className="font-bold">{formatCurrency(Number(paymentInput) - selectedOrderForPayment.total)}</span>
+                                            <div className="flex justify-between items-center mt-3 bg-green-50 dark:bg-green-500/10 p-3 rounded-lg border border-green-100 dark:border-green-500/20">
+                                                <span className="text-sm font-semibold text-green-600 dark:text-green-400">Kembalian</span>
+                                                <span className="font-bold text-lg text-green-700 dark:text-green-300">{formatCurrency(Number(paymentInput) - selectedOrderForPayment.total)}</span>
                                             </div>
                                         )}
                                     </div>
@@ -1356,13 +1359,13 @@ function Kasir() {
                             <div className="grid grid-cols-2 gap-3">
                                 <button
                                     onClick={() => setSelectedOrderForPayment(null)}
-                                    className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-gray-400 font-medium"
+                                    className="px-4 py-3 rounded-xl bg-gray-100 dark:bg-white/5 hover:bg-gray-200 dark:hover:bg-white/10 text-gray-700 dark:text-gray-300 font-bold transition-all"
                                 >
                                     Batal
                                 </button>
                                 <button
                                     onClick={handleConfirmPayment}
-                                    className="px-4 py-2 rounded-xl bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white font-bold shadow-lg shadow-purple-500/20"
+                                    className="px-4 py-3 rounded-xl bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white font-bold shadow-lg shadow-purple-500/30 transition-all transform hover:-translate-y-0.5"
                                 >
                                     Konfirmasi Lunas
                                 </button>
