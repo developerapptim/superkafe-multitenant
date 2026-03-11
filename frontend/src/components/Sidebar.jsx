@@ -6,6 +6,7 @@ import api from '../services/api';
 import toast from 'react-hot-toast';
 import { usePendingOrdersCount } from '../hooks/usePendingOrdersCount';
 import { useTenant } from './TenantRouter';
+import { useTheme } from '../context/ThemeContext';
 
 // Import admin theme generated CSS classes
 import '../styles/admin-theme.css';
@@ -275,33 +276,33 @@ function Sidebar({ onLogout, isCollapsed, toggleSidebar }) {
   const { data: pendingReservations } = useSWR('/reservations?status=pending', fetcher, { refreshInterval: 15000 });
   const pendingReservationsCount = Array.isArray(pendingReservations) ? pendingReservations.length : 0;
 
-  const [isLight] = useState(() => {
+  let isLight = false;
+  try {
+    const { currentTheme } = useTheme();
+    isLight = currentTheme === 'light-coffee';
+  } catch (err) {
+    // Fallback if Sidebar is rendered outside ThemeProvider (e.g. lock screen)
     try {
       if (typeof window !== 'undefined') {
         const path = window.location.pathname;
-
-        // If it's an admin route, check tenant theme
         if (path.includes('/admin')) {
           const tenantData = localStorage.getItem('tenant');
           if (tenantData) {
             const tenant = JSON.parse(tenantData);
-            return tenant.selectedTheme === 'light-coffee';
+            isLight = tenant.selectedTheme === 'light-coffee';
           }
-        }
-        // If it's a customer route or other, check appSettings customerTheme
-        else {
+        } else {
           const appSettingsData = localStorage.getItem('appSettings');
           if (appSettingsData) {
             const appSettings = JSON.parse(appSettingsData);
-            return appSettings.customerTheme === 'light-coffee';
+            isLight = appSettings.customerTheme === 'light-coffee';
           }
         }
       }
     } catch (error) {
-      console.error('Error reading theme in Sidebar:', error);
+      console.error('Error reading fallback theme in Sidebar:', error);
     }
-    return false;
-  });
+  }
 
   return (
     <aside

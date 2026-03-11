@@ -628,3 +628,71 @@
     color: #FFFFFF !important;
     box-shadow: 0 2px 8px rgba(211, 47, 47, 0.3) !important;
 }
+
+/* =========================================================================
+   9. GLOBAL PORTAL OVERRIDES (CUSTOM SELECT DROPDOWN)
+   ========================================================================= */
+/* LIGHT COFFEE */
+[data-customer-theme="light-coffee"] .custom-select-dropdown {
+    background: var(--customer-bg-card) !important;
+    border-color: var(--customer-border) !important;
+    box-shadow: 0 8px 32px rgba(62, 39, 35, 0.1) !important;
+}
+[data-customer-theme="light-coffee"] .custom-select-dropdown input {
+    background: var(--customer-accent-cream) !important;
+    color: var(--customer-text-dark) !important;
+    border-color: var(--customer-border) !important;
+}
+[data-customer-theme="light-coffee"] .custom-select-dropdown button.text-gray-300 {
+    color: var(--customer-text-dark) !important;
+}
+[data-customer-theme="light-coffee"] .custom-select-dropdown button:hover {
+    background: var(--customer-accent-cream) !important;
+    color: var(--customer-text-dark) !important;
+}
+[data-customer-theme="light-coffee"] .custom-select-dropdown button.bg-purple-500\/20 {
+    background: var(--customer-accent-dark) !important;
+    color: #FFFFFF !important;
+}
+[data-customer-theme="light-coffee"] .custom-select-dropdown .text-gray-500 {
+    color: var(--customer-text-muted) !important;
+}
+[data-customer-theme="light-coffee"] .custom-select-dropdown .bg-white\/5 {
+    background: var(--customer-accent-cream) !important;
+}
+
+/* MERAH PUTIH / MERAH KUNING PUTIH */
+[data-customer-theme="merah-putih"] .custom-select-dropdown,
+[data-customer-theme="merah-kuning-putih"] .custom-select-dropdown {
+    background: var(--mkp-bg-card) !important;
+    border-color: var(--mkp-border) !important;
+    box-shadow: 0 8px 32px rgba(211, 47, 47, 0.1) !important;
+}
+[data-customer-theme="merah-putih"] .custom-select-dropdown input,
+[data-customer-theme="merah-kuning-putih"] .custom-select-dropdown input {
+    background: var(--mkp-accent-yellow-light) !important;
+    color: var(--mkp-text-dark) !important;
+    border-color: var(--mkp-border) !important;
+}
+[data-customer-theme="merah-putih"] .custom-select-dropdown button.text-gray-300,
+[data-customer-theme="merah-kuning-putih"] .custom-select-dropdown button.text-gray-300 {
+    color: var(--mkp-text-dark) !important;
+}
+[data-customer-theme="merah-putih"] .custom-select-dropdown button:hover,
+[data-customer-theme="merah-kuning-putih"] .custom-select-dropdown button:hover {
+    background: var(--mkp-accent-yellow-light) !important;
+    color: var(--mkp-text-dark) !important;
+}
+[data-customer-theme="merah-putih"] .custom-select-dropdown button.bg-purple-500\/20,
+[data-customer-theme="merah-kuning-putih"] .custom-select-dropdown button.bg-purple-500\/20 {
+    background: var(--mkp-accent-red) !important;
+    color: #FFFFFF !important;
+}
+[data-customer-theme="merah-putih"] .custom-select-dropdown .text-gray-500,
+[data-customer-theme="merah-kuning-putih"] .custom-select-dropdown .text-gray-500 {
+    color: var(--mkp-text-muted) !important;
+}
+[data-customer-theme="merah-putih"] .custom-select-dropdown .bg-white\/5,
+[data-customer-theme="merah-kuning-putih"] .custom-select-dropdown .bg-white\/5 {
+    background: var(--mkp-accent-yellow-light) !important;
+}

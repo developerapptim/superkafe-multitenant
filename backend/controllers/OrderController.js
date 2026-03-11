@@ -695,11 +695,12 @@ const getPublicNota = async (req, res) => {
         }).format(val || 0);
 
         // Format date
-        const orderDate = order.createdAt
-            ? new Date(order.createdAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
-            : (order.date || '-');
-        const orderTime = order.time || (order.createdAt
-            ? new Date(order.createdAt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
+        const validDateVal = order.timestamp || order.date || order.createdAt;
+        const orderDate = validDateVal
+            ? new Date(validDateVal).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
+            : '-';
+        const orderTime = order.time || (validDateVal
+            ? new Date(validDateVal).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
             : '-');
 
         // Build items HTML
@@ -720,190 +721,177 @@ const getPublicNota = async (req, res) => {
             `;
         }).join('');
 
+        // Fetch Settings for this tenant to get correct business name and address
+        const Settings = require('../models/Settings');
+        const settings = await Settings.findOne({ tenantId: order.tenantId }) || {};
+
+        const businessName = settings.name || settings.businessName || 'SuperKafe';
+        const address = settings.address || '';
+        const phone = settings.phone ? `Telp: ${settings.phone}` : '';
+
         const html = `
 <!DOCTYPE html>
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Nota Pesanan #${(order.id || '').slice(-6)}</title>
+    <meta name="viewport" content="width=80mm, initial-scale=1.0">
+    <title>Struk #${(order.id || '').slice(-6)}</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: #f9fafb;
-            color: #1f2937;
-            min-height: 100vh;
-            display: flex;
-            justify-content: center;
-            padding: 16px;
-        }
-        .receipt {
-            background: white;
-            max-width: 420px;
+            font-family: 'Courier New', 'Lucida Console', monospace;
+            font-size: 12px;
             width: 100%;
-            border-radius: 16px;
-            box-shadow: 0 4px 24px rgba(0,0,0,0.08);
-            overflow: hidden;
-            height: fit-content;
+            max-width: 80mm;
+            margin: 0 auto;
+            padding: 2mm;
+            background: white;
+            color: black;
+            line-height: 1.4;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
         }
-        .header {
-            background: linear-gradient(135deg, #1e1b4b, #312e81);
-            color: white;
-            padding: 24px;
-            text-align: center;
-        }
-        .header h1 { font-size: 20px; margin-bottom: 4px; }
-        .header p { font-size: 13px; opacity: 0.8; }
-        .status-bar {
+        .center { text-align: center; }
+        .right { text-align: right; }
+        .bold { font-weight: bold; }
+        .small { font-size: 10px; }
+        .tiny { font-size: 8px; color: #666; }
+        
+        .divider { border-bottom: 1px dashed #000; margin: 8px 0; }
+        
+        .header { text-align: center; margin-bottom: 10px; }
+        .header img { max-height: 40px; margin-bottom: 5px; filter: grayscale(100%); }
+        .header h1 { font-size: 16px; text-transform: uppercase; margin: 5px 0; }
+        
+        .info-row { display: flex; justify-content: space-between; margin: 2px 0; }
+        
+        .item { margin: 5px 0; }
+        .item-name { font-weight: bold; }
+        .item-detail { display: flex; justify-content: space-between; padding-left: 10px; }
+        .item-note { font-size: 10px; font-style: italic; color: #555; padding-left: 10px; }
+        
+        .total-row { display: flex; justify-content: space-between; margin: 3px 0; }
+        .grand-total { font-size: 14px; font-weight: bold; border-top: 1px dashed #000; padding-top: 5px; margin-top: 5px; }
+        
+        .status-badge { display: inline-block; padding: 2px 8px; border-radius: 3px; font-weight: bold; font-size: 11px; margin-top: 5px;}
+        .status-paid { background: #d4edda; color: #155724; }
+        .status-unpaid { background: #f8d7da; color: #721c24; }
+        
+        .footer { text-align: center; margin-top: 15px; margin-bottom: 20px;}
+        
+        /* Action buttons hidden when printing */
+        .actions {
+            margin-top: auto;
             display: flex;
             justify-content: center;
-            gap: 10px;
-            padding: 12px 16px;
-            background: #f8fafc;
-            border-bottom: 1px solid #e5e7eb;
-            flex-wrap: wrap;
+            padding: 10px 0;
+            background: white;
+            position: sticky;
+            bottom: 0;
+            border-top: 1px dashed #eee;
         }
-        .badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-            padding: 5px 12px;
-            border-radius: 20px;
+        .btn-print {
+            background: #e11d48;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            font-family: inherit;
+            font-weight: bold;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
             font-size: 12px;
-            font-weight: 700;
-            letter-spacing: 0.3px;
+            box-shadow: 0 4px 6px rgba(225, 29, 72, 0.2);
         }
-        .body { padding: 20px; }
-        .info-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-            margin-bottom: 16px;
-        }
-        .info-item label {
-            font-size: 11px;
-            color: #9ca3af;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-        .info-item span {
-            display: block;
-            font-size: 14px;
-            font-weight: 600;
-            margin-top: 2px;
-        }
-        table { width: 100%; border-collapse: collapse; margin: 12px 0; }
-        .total-section {
-            border-top: 2px dashed #e5e7eb;
-            padding-top: 12px;
-            margin-top: 8px;
-        }
-        .total-row {
-            display: flex;
-            justify-content: space-between;
-            padding: 4px 0;
-            font-size: 14px;
-        }
-        .grand-total {
-            font-size: 18px;
-            font-weight: 800;
-            color: #1e1b4b;
-            padding: 8px 0;
-            border-top: 2px solid #1e1b4b;
-            margin-top: 6px;
-        }
-        .footer {
-            text-align: center;
-            padding: 16px;
-            background: #f8fafc;
-            border-top: 1px solid #e5e7eb;
-            font-size: 12px;
-            color: #9ca3af;
+        
+        @media print {
+            body { max-width: 100% !important; padding: 0 1mm !important; font-size: 11px !important; }
+            .actions { display: none !important; }
+            @page { margin: 0; }
         }
     </style>
 </head>
 <body>
-    <div class="receipt">
-        <div class="header">
-            <h1>☕ SuperKafe</h1>
-            <p>Nota Digital Pesanan</p>
+    <div class="header">
+        <h1>${businessName}</h1>
+        <p class="small">${address}</p>
+        <p class="small">${phone}</p>
+    </div>
+    
+    <div class="divider"></div>
+    
+    <div>
+        <div class="info-row">
+            <span>No. Order:</span>
+            <span class="bold" style="color:red;">#${(order.id || '').slice(-6)}</span>
         </div>
-
-        <div class="status-bar">
-            <span class="badge" style="background:${statusBg};color:${statusColor};">
-                ${statusEmoji} ${statusLabel}
-            </span>
-            <span class="badge" style="background:${paymentBg};color:${paymentColor};">
-                ${isPaid ? '💰' : '⏳'} ${paymentLabel}
-            </span>
+        <div class="info-row">
+            <span>Tgl:</span>
+            <span>${orderDate}</span>
         </div>
-
-        <div class="body">
-            <div class="info-grid">
-                <div class="info-item">
-                    <label>No. Order</label>
-                    <span>#${(order.id || '').slice(-6)}</span>
-                </div>
-                <div class="info-item">
-                    <label>Tanggal</label>
-                    <span>${orderDate}</span>
-                </div>
-                <div class="info-item">
-                    <label>Pelanggan</label>
-                    <span>${order.customerName || 'Pelanggan'}</span>
-                </div>
-                <div class="info-item">
-                    <label>Waktu</label>
-                    <span>${orderTime}</span>
-                </div>
-                ${order.tableNumber ? `
-                <div class="info-item">
-                    <label>Meja</label>
-                    <span>${order.tableNumber}</span>
-                </div>` : ''}
-                ${order.paymentMethod && isPaid ? `
-                <div class="info-item">
-                    <label>Metode Bayar</label>
-                    <span>${order.paymentMethod.toUpperCase()}</span>
-                </div>` : ''}
-            </div>
-
-            <table>
-                <thead>
-                    <tr style="border-bottom:2px solid #e5e7eb;">
-                        <th style="text-align:left;padding:8px 0;font-size:12px;color:#6b7280;">ITEM</th>
-                        <th style="text-align:center;padding:8px;font-size:12px;color:#6b7280;">QTY</th>
-                        <th style="text-align:right;padding:8px 0;font-size:12px;color:#6b7280;">HARGA</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${itemsHTML}
-                </tbody>
-            </table>
-
-            <div class="total-section">
-                ${order.subtotal && order.subtotal !== order.total ? `
-                <div class="total-row">
-                    <span>Subtotal</span>
-                    <span>${fmt(order.subtotal)}</span>
-                </div>` : ''}
-                ${order.voucherDiscount > 0 ? `
-                <div class="total-row" style="color:#dc2626;">
-                    <span>Diskon Voucher</span>
-                    <span>-${fmt(order.voucherDiscount)}</span>
-                </div>` : ''}
-                <div class="total-row grand-total">
-                    <span>TOTAL</span>
-                    <span>${fmt(order.total)}</span>
-                </div>
-            </div>
+        <div class="info-row">
+            <span>Waktu:</span>
+            <span>${orderTime}</span>
         </div>
-
-        <div class="footer">
-            <p>Terima kasih atas kunjungan Anda! 🙏</p>
-            <p style="margin-top:6px;">Powered by SuperKafe</p>
+        <div class="info-row">
+            <span>Pelanggan:</span>
+            <span>${order.customerName || 'Pelanggan'}</span>
         </div>
+        ${order.tableNumber ? `<div class="info-row">
+            <span>Meja:</span>
+            <span class="bold" style="color:red;">${order.tableNumber}</span>
+        </div>` : ''}
+    </div>
+    
+    <div class="divider"></div>
+    
+    <div style="width: 100%;">
+        <table style="width: 100%; border-collapse: collapse;">
+            <tbody>
+                ${itemsHTML}
+            </tbody>
+        </table>
+    </div>
+    
+    <div class="divider"></div>
+    
+    <div>
+        ${order.subtotal && order.subtotal !== order.total ? `
+        <div class="total-row">
+            <span>Subtotal</span>
+            <span>${fmt(order.subtotal)}</span>
+        </div>` : ''}
+        ${order.voucherDiscount > 0 ? `
+        <div class="total-row small">
+            <span>Diskon Voucher</span>
+            <span>-${fmt(order.voucherDiscount)}</span>
+        </div>` : ''}
+        <div class="total-row grand-total">
+            <span>TOTAL</span>
+            <span>${fmt(order.total)}</span>
+        </div>
+    </div>
+    
+    <div class="divider" style="margin-top:20px;"></div>
+    
+    <div class="center">
+        <span class="small">Status Bayar:</span><br>
+        <div class="status-badge ${isPaid ? 'status-paid' : 'status-unpaid'}">
+            ${isPaid ? 'LUNAS' : 'BELUM BAYAR'}
+        </div>
+    </div>
+    
+    <div class="divider"></div>
+    
+    <div class="footer">
+        <p class="small">Terima kasih atas kunjungan Anda!</p>
+        <p class="tiny" style="margin-top:5px;">Powered by SuperKafe</p>
+    </div>
+    
+    <div class="actions">
+        <button class="btn-print" onclick="window.print()">📥 Download PDF</button>
     </div>
 </body>
 </html>

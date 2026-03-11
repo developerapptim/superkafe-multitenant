@@ -41,21 +41,23 @@ export const generateReceiptHTML = (order, settings = {}) => {
     if (!order) return '';
 
     const items = order.items || [];
-    const orderTime = order.time || new Date(order.createdAt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+    const validDateString = order.timestamp || order.date || order.createdAt;
+    const orderTime = order.time || (validDateString ? new Date(validDateString).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : '-');
+
+    const businessName = settings.name || settings.businessName || 'SuperKafe';
+    const address = settings.address || '';
+    const phoneInfo = settings.phone ? `Telp: ${settings.phone}` : '';
+    const isPaid = order.paymentStatus === 'paid';
 
     return `
 <!DOCTYPE html>
-<html>
+<html lang="id">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=80mm, initial-scale=1.0">
-    <title>Struk #${order.id?.slice(-6)}</title>
+    <title>Struk #${(order.id || '').slice(-6)}</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             font-family: 'Courier New', 'Lucida Console', monospace;
             font-size: 12px;
@@ -66,6 +68,9 @@ export const generateReceiptHTML = (order, settings = {}) => {
             background: white;
             color: black;
             line-height: 1.4;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
         }
         .center { text-align: center; }
         .right { text-align: right; }
@@ -73,208 +78,119 @@ export const generateReceiptHTML = (order, settings = {}) => {
         .small { font-size: 10px; }
         .tiny { font-size: 8px; color: #666; }
         
-        .divider {
-            border-bottom: 1px dashed #000;
-            margin: 8px 0;
-        }
+        .divider { border-bottom: 1px dashed #000; margin: 8px 0; }
         
-        .header {
-            text-align: center;
-            margin-bottom: 10px;
-        }
-        .header img {
-            max-height: 40px;
-            margin-bottom: 5px;
-            filter: grayscale(100%);
-        }
-        .header h1 {
-            font-size: 16px;
-            text-transform: uppercase;
-            margin: 5px 0;
-        }
+        .header { text-align: center; margin-bottom: 10px; }
+        .header img { max-height: 40px; margin-bottom: 5px; filter: grayscale(100%); }
+        .header h1 { font-size: 16px; text-transform: uppercase; margin: 5px 0; }
         
-        .info-row {
-            display: flex;
-            justify-content: space-between;
-            margin: 2px 0;
-        }
+        .info-row { display: flex; justify-content: space-between; margin: 2px 0; }
         
-        .item {
-            margin: 5px 0;
-        }
-        .item-name {
-            font-weight: bold;
-        }
-        .item-detail {
-            display: flex;
-            justify-content: space-between;
-            padding-left: 10px;
-        }
-        .item-note {
-            font-size: 10px;
-            font-style: italic;
-            color: #555;
-            padding-left: 10px;
-        }
+        .item { margin: 5px 0; }
+        .item-name { font-weight: bold; }
+        .item-detail { display: flex; justify-content: space-between; padding-left: 10px; }
+        .item-note { font-size: 10px; font-style: italic; color: #555; padding-left: 10px; }
         
-        .total-row {
-            display: flex;
-            justify-content: space-between;
-            margin: 3px 0;
-        }
-        .grand-total {
-            font-size: 14px;
-            font-weight: bold;
-            border-top: 1px dashed #000;
-            padding-top: 5px;
-            margin-top: 5px;
-        }
+        .total-row { display: flex; justify-content: space-between; margin: 3px 0; }
+        .grand-total { font-size: 14px; font-weight: bold; border-top: 1px dashed #000; padding-top: 5px; margin-top: 5px; }
         
-        .status-badge {
-            display: inline-block;
-            padding: 2px 8px;
-            border-radius: 3px;
-            font-weight: bold;
-            font-size: 11px;
-        }
-        .status-paid {
-            background: #d4edda;
-            color: #155724;
-        }
-        .status-unpaid {
-            background: #f8d7da;
-            color: #721c24;
-        }
+        .status-badge { display: inline-block; padding: 2px 8px; border-radius: 3px; font-weight: bold; font-size: 11px; margin-top: 5px;}
+        .status-paid { background: #d4edda; color: #155724; }
+        .status-unpaid { background: #f8d7da; color: #721c24; }
         
-        .wifi-box {
-            background: #f5f5f5;
-            padding: 8px;
-            border-radius: 4px;
-            margin: 10px 0;
-            text-align: center;
-        }
-        
-        .footer {
-            text-align: center;
-            margin-top: 15px;
-        }
+        .footer { text-align: center; margin-top: 15px; margin-bottom: 20px;}
         
         @media print {
-            body {
-                width: 100% !important;
-                max-width: 100% !important; /* Allow the print driver to dictate max width (58mm or 80mm) */
-                margin: 0 !important;
-                padding: 0 1mm !important;
-                font-size: 11px !important; /* Slightly smaller to fit 58mm nicely */
-            }
-            @page {
-                margin: 0;
-            }
+            body { max-width: 100% !important; padding: 0 1mm !important; font-size: 11px !important; }
+            @page { margin: 0; }
         }
     </style>
 </head>
 <body>
-    <!-- Header -->
     <div class="header">
         ${settings.logo && settings.showLogoInReceipt !== false ? `<img src="${settings.logo}" alt="Logo" />` : ''}
-        <h1>${settings.businessName || 'WARKOP SANTAI'}</h1>
-        <p class="small">${settings.address || ''}</p>
-        ${settings.phone ? `<p class="small">Telp: ${settings.phone}</p>` : ''}
-        ${settings.receiptHeader ? `<p class="small">${settings.receiptHeader}</p>` : ''}
+        <h1>${businessName}</h1>
+        <p class="small">${address}</p>
+        <p class="small">${phoneInfo}</p>
     </div>
     
     <div class="divider"></div>
     
-    <!-- Order Info -->
     <div>
         <div class="info-row">
             <span>No. Order:</span>
-            <span class="bold">#${order.id?.slice(-6) || '-'}</span>
+            <span class="bold" style="color:red;">#${(order.id || '').slice(-6)}</span>
         </div>
         <div class="info-row">
             <span>Tgl:</span>
-            <span>${formatDate(order.createdAt || order.date)} ${orderTime}</span>
+            <span>${formatDate(validDateString)}</span>
+        </div>
+        <div class="info-row">
+            <span>Waktu:</span>
+            <span>${orderTime}</span>
         </div>
         <div class="info-row">
             <span>Pelanggan:</span>
             <span>${order.customerName || 'Pelanggan'}</span>
         </div>
-        ${order.tableNumber ? `
-        <div class="info-row">
+        ${order.tableNumber ? `<div class="info-row">
             <span>Meja:</span>
-            <span class="bold">${order.tableNumber}</span>
-        </div>
-        ` : ''}
-        ${order.source ? `
-        <div class="info-row">
-            <span>Via:</span>
-            <span>${order.source === 'customer-app' ? 'App' : 'Kasir'}</span>
-        </div>
-        ` : ''}
+            <span class="bold" style="color:red;">${order.tableNumber}</span>
+        </div>` : ''}
     </div>
     
     <div class="divider"></div>
     
-    <!-- Items -->
     <div>
-        ${items.map(item => `
+        ${items.map(item => {
+            const qty = item.qty || item.quantity || 1;
+            const price = item.price || 0;
+            return `
             <div class="item">
                 <div class="item-name">${item.name || item.menuName}</div>
                 <div class="item-detail">
-                    <span>${item.qty || item.quantity}x @${formatCurrency(item.price)}</span>
-                    <span>${formatCurrency((item.price || 0) * (item.qty || item.quantity || 1))}</span>
+                    <span>${qty}x @${formatCurrency(price)}</span>
+                    <span>${formatCurrency(qty * price)}</span>
                 </div>
-                ${item.note ? `<div class="item-note">└ 📝 ${item.note}</div>` : ''}
+                ${item.note ? `<div class="item-note">Catatan: ${item.note}</div>` : ''}
             </div>
-        `).join('')}
+            `;
+        }).join('')}
     </div>
     
     <div class="divider"></div>
     
-    <!-- Totals -->
     <div>
+        ${order.subtotal && order.subtotal !== order.total ? `
         <div class="total-row">
             <span>Subtotal</span>
-            <span>${formatCurrency(order.subtotal || order.total)}</span>
-        </div>
-        ${order.tax > 0 ? `
+            <span>${formatCurrency(order.subtotal)}</span>
+        </div>` : ''}
+        ${order.voucherDiscount > 0 ? `
         <div class="total-row small">
-            <span>Pajak</span>
-            <span>${formatCurrency(order.tax)}</span>
-        </div>
-        ` : ''}
-        ${order.discount > 0 ? `
-        <div class="total-row small">
-            <span>Diskon</span>
-            <span>-${formatCurrency(order.discount)}</span>
-        </div>
-        ` : ''}
+            <span>Diskon Voucher</span>
+            <span>-${formatCurrency(order.voucherDiscount)}</span>
+        </div>` : ''}
         <div class="total-row grand-total">
             <span>TOTAL</span>
             <span>${formatCurrency(order.total)}</span>
         </div>
-        <div class="total-row" style="margin-top: 8px;">
-            <span>Status Bayar:</span>
-            <span class="status-badge ${order.paymentStatus === 'paid' ? 'status-paid' : 'status-unpaid'}">
-                ${order.paymentStatus === 'paid' ? 'LUNAS' : 'BELUM BAYAR'}
-            </span>
+    </div>
+    
+    <div class="divider" style="margin-top:20px;"></div>
+    
+    <div class="center">
+        <span class="small">Status Bayar:</span><br>
+        <div class="status-badge ${isPaid ? 'status-paid' : 'status-unpaid'}">
+            ${isPaid ? 'LUNAS' : 'BELUM BAYAR'}
         </div>
     </div>
     
-    ${settings.wifiName ? `
-    <div class="wifi-box">
-        <div class="bold">📶 Free Wi-Fi</div>
-        <div>SSID: ${settings.wifiName}</div>
-        ${settings.wifiPassword ? `<div>Pass: ${settings.wifiPassword}</div>` : ''}
-    </div>
-    ` : ''}
-    
     <div class="divider"></div>
     
-    <!-- Footer -->
     <div class="footer">
-        <p>${settings.tagline || settings.receiptFooter || 'Terima kasih atas kunjungan Anda'}</p>
-        <p class="tiny" style="margin-top: 8px;">Powered by MarosTech</p>
+        <p class="small">Terima kasih atas kunjungan Anda!</p>
+        <p class="tiny" style="margin-top:5px;">Powered by SuperKafe</p>
     </div>
 </body>
 </html>

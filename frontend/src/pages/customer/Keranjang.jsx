@@ -146,7 +146,7 @@ function Keranjang() {
         }
 
         // Validate Identity
-        if (!customerName.trim()) {
+        if (!(customerName || '').trim()) {
             toast.error('Mohon lengkapi Nama Pemesan!');
             return;
         }
@@ -158,7 +158,7 @@ function Keranjang() {
             return;
         }
         // Validate Table Number for Dine In
-        if (orderType === 'dine_in' && !tableNumber.trim()) {
+        if (orderType === 'dine_in' && !(tableNumber || '').trim()) {
             toast.error('Mohon masukkan Nomor Meja untuk Makan di Tempat!');
             return;
         }
@@ -167,7 +167,7 @@ function Keranjang() {
             setLoading(true);
 
             // Smart Phone Matching: Check for existing orders with this phone
-            const formattedPhone = formatPhoneNumber(phone.trim());
+            const formattedPhone = formatPhoneNumber((phone || '').trim());
             if (formattedPhone) {
                 try {
                     const checkRes = await ordersAPI.checkPhone(formattedPhone);
@@ -370,49 +370,40 @@ function Keranjang() {
                 {/* Points Earned Banner - Only shows if loyalty enabled */}
                 <PointsEarnedBanner order={submittedOrder} settings={settings} />
 
-                {/* Receipt Preview */}
-                <div className="flex justify-center">
-                    <div
-                        id="printable-receipt"
-                        className="bg-white rounded-lg overflow-hidden shadow-2xl transform scale-95 origin-top"
+                {/* Digital Receipt Link */}
+                <div className="flex justify-center my-6">
+                    <a
+                        href={`${import.meta.env.VITE_API_URL}/orders/nota/${submittedOrder.id}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="w-full max-w-sm py-4 rounded-xl bg-gradient-to-r from-purple-600 to-blue-600 font-bold flex items-center justify-center gap-2 hover:from-purple-500 hover:to-blue-500 transition-all shadow-lg shadow-purple-600/30 text-white"
                     >
-                        <Struk order={submittedOrder} settings={settings} />
-                    </div>
+                        📄 Lihat Nota Digital
+                    </a>
                 </div>
 
                 {/* Actions */}
-                <div className="space-y-3 no-print">
+                <div className="space-y-3 no-print max-w-sm mx-auto">
                     <button
-                        onClick={handleDownloadPDF}
-                        disabled={isDownloading}
-                        className="w-full py-3 rounded-xl bg-purple-600 font-bold flex items-center justify-center gap-2 hover:bg-purple-700 transition-colors shadow-lg shadow-purple-600/30 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                        {isDownloading ? '⏳ Memproses...' : '📥 Simpan Struk (PDF)'}
-                    </button>
-
-                    <button
-                        onClick={() => navigate(`/${tenantSlug}${tableId ? `?meja=${tableId}` : ''}`)}
+                        onClick={() => {
+                            const safeTenantSlug = tenantSlug || localStorage.getItem('tenant_slug') || 'default';
+                            navigate(`/${safeTenantSlug}${tableId ? `?meja=${tableId}` : ''}`);
+                        }}
                         className="w-full py-3 rounded-xl bg-white/10 font-bold hover:bg-white/20 transition-colors"
                     >
                         🏠 Menu Utama
                     </button>
 
                     <button
-                        onClick={() => navigate(`/${tenantSlug}/pesanan`)}
+                        onClick={() => {
+                            const safeTenantSlug = tenantSlug || localStorage.getItem('tenant_slug') || 'default';
+                            navigate(`/${safeTenantSlug}/pesanan`);
+                        }}
                         className="w-full py-3 rounded-xl border border-blue-500/30 text-blue-400 font-bold hover:bg-blue-500/10 transition-colors"
                     >
                         📋 Lihat Status Pesanan
                     </button>
                 </div>
-
-                {/* Hide non-printable elements in print mode via CSS */}
-                <style>{`
-                    @media print {
-                        .no-print, nav, header {
-                            display: none !important;
-                        }
-                    }
-                `}</style>
             </div>
         );
     }
@@ -827,7 +818,7 @@ function Keranjang() {
             {/* Checkout Button */}
             <button
                 onClick={handleCheckout}
-                disabled={loading || !customerName.trim() || !phone.trim() || (paymentMethod !== 'cash' && !paymentProof)}
+                disabled={loading || !(customerName || '').trim() || (paymentMethod !== 'cash' && !paymentProof)}
                 className="w-full py-4 rounded-xl bg-gradient-to-r from-purple-600 to-blue-600 font-bold text-lg disabled:opacity-50 disabled:grayscale flex items-center justify-center gap-2 transition-all"
             >
                 {loading ? (

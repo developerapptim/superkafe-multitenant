@@ -988,10 +988,12 @@ function Kasir() {
                                 <div
                                     key={order.id}
                                     className={`glass rounded-xl p-3 md:p-4 border-2 transition-all duration-300 hover:scale-[1.02] ${order.status === 'new'
-                                        ? 'border-yellow-400 bg-yellow-900/20 shadow-[0_0_20px_-3px_rgba(250,204,21,0.5)] animate-pulse-slow ring-2 ring-yellow-400/30'
+                                        ? 'border-yellow-400 bg-yellow-900/20 shadow-[0_4px_20px_rgba(0,0,0,0.4)] animate-pulse-slow ring-2 ring-yellow-400/30'
                                         : selectedForMerge.includes(order.id)
                                             ? 'border-purple-500 bg-purple-900/20 ring-2 ring-purple-500/50'
-                                            : `border-transparent ${getStatusStyle(order.status)}`
+                                            : order.status === 'done'
+                                                ? `border-transparent opacity-60 saturate-50 hover:opacity-100 hover:saturate-100 ${getStatusStyle(order.status)}`
+                                                : `border-transparent ${getStatusStyle(order.status)}`
                                         }`}
                                 >
                                     {/* Order Header */}
@@ -1023,7 +1025,11 @@ function Kasir() {
                                                             🍽️ Meja {order.tableNumber || '-'}
                                                         </span>
                                                     )}
-                                                    <span className="text-xs text-gray-500">• {order.time}</span>
+                                                    {order.timestamp && (
+                                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-white/10 text-gray-300 border border-white/10 font-medium">
+                                                            ⏱️ {new Date(order.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                        </span>
+                                                    )}
                                                 </div>
 
                                                 {/* Payment Method Badge */}
@@ -1042,7 +1048,7 @@ function Kasir() {
                                             </div>
                                         </div>
                                         <div className="flex flex-col items-end gap-2">
-                                            <span className={`px-2 py-1 rounded-full text-xs ${getStatusStyle(order.status)}`}>
+                                            <span className={`px-3 py-1.5 rounded-full text-sm font-bold shadow-sm ${getStatusStyle(order.status)}`}>
                                                 {getStatusLabel(order.status)}
                                             </span>
                                             <button
@@ -1318,38 +1324,38 @@ function Kasir() {
             {
                 selectedOrderForPayment && (
                     <div className="modal-overlay">
-                        <div className="bg-white dark:bg-surface border border-gray-200 dark:border-purple-500/30 rounded-2xl p-6 max-w-sm w-full animate-scale-up shadow-2xl">
+                        <div className="bg-white text-gray-900 border border-purple-500/30 rounded-2xl p-6 max-w-sm w-full animate-scale-up shadow-2xl">
                             <div className="text-center mb-6">
-                                <div className="w-16 h-16 rounded-full bg-purple-100 dark:bg-purple-500/20 flex items-center justify-center mx-auto mb-4 shadow-inner">
+                                <div className="w-16 h-16 rounded-full bg-purple-100 flex items-center justify-center mx-auto mb-4 shadow-inner">
                                     <span className="text-3xl">💸</span>
                                 </div>
-                                <h3 className="text-xl font-bold mb-1 text-gray-800 dark:text-white">Konfirmasi Pembayaran</h3>
-                                <p className="text-gray-500 dark:text-gray-400 text-sm">Pesanan atas nama <span className="text-gray-900 dark:text-white font-bold">{selectedOrderForPayment.customerName}</span></p>
+                                <h3 className="text-xl font-bold mb-1 text-gray-900">Konfirmasi Pembayaran</h3>
+                                <p className="text-gray-500 text-sm">Pesanan atas nama <span className="font-bold text-gray-900">{selectedOrderForPayment.customerName}</span></p>
                             </div>
 
-                            <div className="bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-transparent rounded-xl p-4 mb-6 shadow-sm">
+                            <div className="bg-gray-50 border border-gray-100 rounded-xl p-4 mb-6 shadow-sm">
                                 <div className="flex justify-between items-center mb-2">
-                                    <span className="text-gray-600 dark:text-gray-400 font-medium">Total Tagihan</span>
-                                    <span className="font-bold text-2xl text-purple-600 dark:text-white">{formatCurrency(selectedOrderForPayment.total)}</span>
+                                    <span className="text-gray-600 font-medium">Total Tagihan</span>
+                                    <span className="font-bold text-2xl text-purple-600">{formatCurrency(selectedOrderForPayment.total)}</span>
                                 </div>
 
                                 {selectedOrderForPayment.paymentMethod === 'cash' && (
-                                    <div className="mt-4 pt-4 border-t border-gray-200 dark:border-white/10">
-                                        <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-2 uppercase tracking-wide">Uang Diterima (Opsional)</label>
+                                    <div className="mt-4 pt-4 border-t border-gray-200">
+                                        <label className="block text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">Uang Diterima (Opsional)</label>
                                         <div className="relative">
                                             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-medium">Rp</span>
                                             <input
                                                 type="number"
                                                 value={paymentInput}
                                                 onChange={(e) => setPaymentInput(e.target.value)}
-                                                className="w-full bg-white dark:bg-black/20 border border-gray-300 dark:border-white/10 rounded-lg pl-10 pr-3 py-3 text-right text-lg font-bold text-gray-900 dark:text-white focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 outline-none transition-all"
+                                                className="w-full bg-white border border-gray-300 rounded-lg pl-10 pr-3 py-3 text-right text-lg font-bold text-gray-900 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 outline-none transition-all"
                                                 placeholder="0"
                                             />
                                         </div>
                                         {paymentInput && Number(paymentInput) >= selectedOrderForPayment.total && (
-                                            <div className="flex justify-between items-center mt-3 bg-green-50 dark:bg-green-500/10 p-3 rounded-lg border border-green-100 dark:border-green-500/20">
-                                                <span className="text-sm font-semibold text-green-600 dark:text-green-400">Kembalian</span>
-                                                <span className="font-bold text-lg text-green-700 dark:text-green-300">{formatCurrency(Number(paymentInput) - selectedOrderForPayment.total)}</span>
+                                            <div className="flex justify-between items-center mt-3 bg-green-50 p-3 rounded-lg border border-green-200">
+                                                <span className="text-sm font-semibold text-green-700">Kembalian</span>
+                                                <span className="font-bold text-lg text-green-700">{formatCurrency(Number(paymentInput) - selectedOrderForPayment.total)}</span>
                                             </div>
                                         )}
                                     </div>
@@ -1359,7 +1365,7 @@ function Kasir() {
                             <div className="grid grid-cols-2 gap-3">
                                 <button
                                     onClick={() => setSelectedOrderForPayment(null)}
-                                    className="px-4 py-3 rounded-xl bg-gray-100 dark:bg-white/5 hover:bg-gray-200 dark:hover:bg-white/10 text-gray-700 dark:text-gray-300 font-bold transition-all"
+                                    className="px-4 py-3 rounded-xl bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold transition-all"
                                 >
                                     Batal
                                 </button>
@@ -1378,19 +1384,19 @@ function Kasir() {
             {/* ORDER DETAIL MODAL (NEW) */}
             {selectedOrderForDetail && (
                 <div className="modal-overlay" onClick={() => setSelectedOrderForDetail(null)}>
-                    <div className="bg-surface border border-purple-500/30 rounded-2xl w-full max-w-md max-h-[85vh] flex flex-col animate-scale-up shadow-2xl" onClick={e => e.stopPropagation()}>
+                    <div className="bg-white text-gray-900 border border-gray-200 rounded-2xl w-full max-w-md max-h-[85vh] flex flex-col animate-scale-up shadow-2xl" onClick={e => e.stopPropagation()}>
                         {/* Header */}
-                        <div className="p-4 border-b border-white/10 flex justify-between items-center bg-[#1A1A2E]/95 backdrop-blur">
+                        <div className="p-4 border-b border-gray-200 flex justify-between items-center bg-gray-50 rounded-t-2xl">
                             <div>
-                                <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                                <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
                                     📋 Detail Pesanan
                                     <span className={`text-xs px-2 py-0.5 rounded-full border ${getStatusStyle(selectedOrderForDetail.status)}`}>
                                         {getStatusLabel(selectedOrderForDetail.status)}
                                     </span>
                                 </h3>
-                                <p className="text-xs text-gray-400">Order ID: #{selectedOrderForDetail.id}</p>
+                                <p className="text-xs text-gray-500 mt-1">Order ID: #{selectedOrderForDetail.id}</p>
                             </div>
-                            <button onClick={() => setSelectedOrderForDetail(null)} className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-gray-400 hover:text-white transition-colors">
+                            <button onClick={() => setSelectedOrderForDetail(null)} className="w-8 h-8 rounded-full bg-gray-200 hover:bg-gray-300 flex items-center justify-center text-gray-600 hover:text-gray-900 transition-colors">
                                 ✕
                             </button>
                         </div>
@@ -1398,54 +1404,54 @@ function Kasir() {
                         {/* Body */}
                         <div className="p-4 overflow-y-auto flex-1 custom-scrollbar space-y-4">
                             {/* Customer Info */}
-                            <div className="bg-white/5 rounded-xl p-3 border border-white/5">
-                                <p className="text-sm font-bold text-purple-300 mb-2">👤 Pelanggan</p>
+                            <div className="bg-gray-50 rounded-xl p-3 border border-gray-100 shadow-sm">
+                                <p className="text-sm font-bold text-purple-600 mb-2">👤 Pelanggan</p>
                                 <div className="grid grid-cols-2 gap-2 text-sm">
                                     <div>
                                         <p className="text-xs text-gray-500">Nama</p>
-                                        <p className="font-medium text-white">{selectedOrderForDetail.customerName || '-'}</p>
+                                        <p className="font-medium text-gray-900">{selectedOrderForDetail.customerName || '-'}</p>
                                     </div>
                                     <div>
                                         <p className="text-xs text-gray-500">Meja / Tipe</p>
-                                        <p className="font-medium text-white">{selectedOrderForDetail.tableNumber ? `Meja ${selectedOrderForDetail.tableNumber}` : selectedOrderForDetail.orderType === 'take_away' ? 'Bungkus' : '-'}</p>
+                                        <p className="font-medium text-gray-900">{selectedOrderForDetail.tableNumber ? `Meja ${selectedOrderForDetail.tableNumber}` : selectedOrderForDetail.orderType === 'take_away' ? 'Bungkus' : '-'}</p>
                                     </div>
                                 </div>
                             </div>
 
                             {/* Items */}
                             <div>
-                                <p className="text-sm font-bold text-gray-300 mb-2">📦 Item Pesanan</p>
+                                <p className="text-sm font-bold text-gray-700 mb-2">📦 Item Pesanan</p>
                                 <div className="space-y-2">
                                     {selectedOrderForDetail.items?.map((item, idx) => (
-                                        <div key={idx} className="flex justify-between items-start bg-black/20 p-2 rounded-lg">
+                                        <div key={idx} className="flex justify-between items-start bg-gray-50 p-3 rounded-lg border border-gray-100">
                                             <div>
-                                                <p className="text-sm font-medium text-white">{item.name}</p>
+                                                <p className="text-sm font-medium text-gray-900">{item.name}</p>
                                                 <p className="text-xs text-gray-500">{item.qty} x {formatCurrency(item.price)}</p>
-                                                {item.note && <p className="text-xs text-yellow-500/80 italic mt-0.5">📝 {item.note}</p>}
+                                                {item.note && <p className="text-xs text-yellow-600 italic mt-0.5">📝 {item.note}</p>}
                                             </div>
-                                            <p className="text-sm font-bold text-white">{formatCurrency(item.price * item.qty)}</p>
+                                            <p className="text-sm font-bold text-gray-900">{formatCurrency(item.price * item.qty)}</p>
                                         </div>
                                     ))}
                                 </div>
                             </div>
 
                             {/* Summary */}
-                            <div className="border-t border-white/10 pt-3">
+                            <div className="border-t border-gray-200 pt-3">
                                 <div className="flex justify-between items-center mb-1">
-                                    <span className="text-gray-400 text-sm">Status Bayar</span>
-                                    <span className={`text-xs font-bold px-2 py-0.5 rounded ${selectedOrderForDetail.paymentStatus === 'paid' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
+                                    <span className="text-gray-600 text-sm">Status Bayar</span>
+                                    <span className={`text-xs font-bold px-2 py-0.5 rounded ${selectedOrderForDetail.paymentStatus === 'paid' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
                                         {selectedOrderForDetail.paymentStatus === 'paid' ? 'LUNAS' : selectedOrderForDetail.paymentStatus === 'refunded' ? 'DIKEMBALIKAN' : 'BELUM BAYAR'}
                                     </span>
                                 </div>
                                 <div className="flex justify-between items-center">
-                                    <span className="text-white font-bold">Total Akumulasi</span>
-                                    <span className="text-xl font-bold text-purple-400">{formatCurrency(selectedOrderForDetail.total)}</span>
+                                    <span className="font-bold text-gray-900">Total Akumulasi</span>
+                                    <span className="text-xl font-bold text-purple-600">{formatCurrency(selectedOrderForDetail.total)}</span>
                                 </div>
                             </div>
                         </div>
 
                         {/* Footer Actions */}
-                        <div className="p-4 border-t border-white/10 bg-[#1A1A2E]/95 backdrop-blur space-y-3">
+                        <div className="p-4 border-t border-gray-200 bg-gray-50 rounded-b-2xl space-y-3">
                             {/* Print Receipt Button */}
                             <PrintButton order={selectedOrderForDetail} settings={settings} variant="primary" />
 
@@ -1454,7 +1460,7 @@ function Kasir() {
                                 <button
                                     onClick={() => setShowCancelModal(true)}
                                     disabled={isAdmin}
-                                    className={`w-full py-2.5 rounded-xl border font-bold transition-all flex items-center justify-center gap-2 ${isAdmin ? 'border-gray-500/30 text-gray-500 cursor-not-allowed' : 'border-red-500/30 text-red-500 hover:bg-red-500/10 hover:border-red-500/50'}`}
+                                    className={`w-full py-2.5 rounded-xl border font-bold transition-all flex items-center justify-center gap-2 ${isAdmin ? 'border-gray-300 text-gray-500 cursor-not-allowed' : 'border-red-500/30 text-red-500 hover:bg-red-50 hover:border-red-500'}`}
                                     title={isAdmin ? "Admin tidak dapat membatalkan pesanan" : ""}
                                 >
                                     ⛔ Batalkan Pesanan
@@ -1463,7 +1469,7 @@ function Kasir() {
 
                             <button
                                 onClick={() => setSelectedOrderForDetail(null)}
-                                className="w-full py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-gray-300 font-medium transition-all"
+                                className="w-full py-2.5 rounded-xl bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium transition-all"
                             >
                                 Tutup
                             </button>
