@@ -104,7 +104,6 @@ function Kasir() {
     const menuItems = sourceMenu.filter(m => m.is_active !== false && m.available !== false);
     const tables = tablesData || [];
 
-    // Process Active Orders
     // Use LOCAL date (not UTC) to avoid timezone mismatch (WIB = UTC+7)
     const now = new Date();
     const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
@@ -112,7 +111,19 @@ function Kasir() {
     const orders = rawOrders.filter(o => {
         if (o.is_archived_from_pos) return false;
 
-        // Strict Filter: Show ONLY orders from TODAY (Local Time) to avoid clutter
+        // Keep active/unpaid orders regardless of date so they don't disappear at midnight 
+        if (o.status === 'new' || o.status === 'process' || o.status === 'pending_payment' || o.paymentStatus !== 'paid') {
+            return true;
+        }
+
+        // Keep all orders from the active shift
+        if (shiftData?.startTime) {
+            const orderTime = new Date(o.timestamp || o.createdAt).getTime();
+            const shiftStart = new Date(shiftData.startTime).getTime();
+            if (orderTime >= shiftStart) return true;
+        }
+
+        // Strict Filter: Show completed orders ONLY from TODAY (Local Time) to avoid clutter
         // Get order's LOCAL date
         const getLocalDate = (timestamp) => {
             const d = new Date(timestamp);
@@ -140,6 +151,7 @@ function Kasir() {
     const [debouncedSearch, setDebouncedSearch] = useState('');
     const [selectedForMerge, setSelectedForMerge] = useState([]);
     const [showMergeModal, setShowMergeModal] = useState(false);
+    const [showBatchDeleteModal, setShowBatchDeleteModal] = useState(false);
 
     useEffect(() => {
         const timer = setTimeout(() => setDebouncedSearch(searchQuery), 300);
@@ -164,7 +176,6 @@ function Kasir() {
     const [showCancelModal, setShowCancelModal] = useState(false);
     const [cancellationReason, setCancellationReason] = useState('');
     const [customReason, setCustomReason] = useState('');
-    const [cancelPin, setCancelPin] = useState('');
 
     // Cancel Logic
     const handleCancelOrder = async () => {
@@ -176,18 +187,12 @@ function Kasir() {
             return;
         }
 
-        if (!isAdmin && !cancelPin) {
-            toast.error('PIN Supervisor dibutuhkan untuk membatalkan pesanan');
-            return;
-        }
-
         const toastId = toast.loading('Membatalkan pesanan...');
         try {
             await ordersAPI.void(selectedOrderForDetail.id, {
                 reason: reason,
                 employeeName: user?.name,
-                employeeRole: user?.role,
-                pin: cancelPin
+                employeeRole: user?.role
             });
 
             // Refresh data
@@ -201,7 +206,6 @@ function Kasir() {
             setSelectedOrderForDetail(null);
             setCancellationReason('');
             setCustomReason('');
-            setCancelPin('');
         } catch (err) {
             console.error('Cancel error:', err);
             toast.error('Gagal membatalkan: ' + (err.response?.data?.error || err.message), { id: toastId });
@@ -662,6 +666,41 @@ function Kasir() {
         } catch (err) {
             console.error('Error merging orders:', err);
             toast.error(err.response?.data?.message || 'Gagal menggabungkan tagihan', { id: toastId });
+        }
+    };
+
+    // Open batch delete confirmation modal
+    const handleBatchDelete = () => {
+        if (selectedForMerge.length === 0) return;
+        setShowBatchDeleteModal(true);
+    };
+
+    // Execute batch delete orders
+    const confirmBatchDelete = async () => {
+        const toastId = toast.loading(`Menghapus ${selectedForMerge.length} pesanan...`);
+        try {
+            // Check if any of the selected orders are paid/done, we shouldn't delete them according to backend rules
+            const ordersToDelete = orders.filter(o => selectedForMerge.includes(o.id));
+            const invalidOrders = ordersToDelete.filter(o => o.paymentStatus === 'paid' || o.status === 'done');
+            
+            if (invalidOrders.length > 0) {
+                toast.error(`Dibatalkan: Terdapat ${invalidOrders.length} pesanan Lunas/Selesai yang tidak boleh dihapus.`, { id: toastId });
+                return;
+            }
+
+            // Excecute delete concurrently
+            await Promise.all(
+                selectedForMerge.map(orderId => ordersAPI.delete(orderId))
+            );
+
+            mutate('/orders?limit=200');
+            setSelectedForMerge([]);
+            setShowBatchDeleteModal(false);
+            toast.success(`Berhasil menghapus ${selectedForMerge.length} pesanan.`, { id: toastId });
+        } catch (err) {
+            console.error('Error batch deleting orders:', err);
+            toast.error(err.response?.data?.error || 'Gagal menghapus beberapa pesanan', { id: toastId });
+            setShowBatchDeleteModal(false);
         }
     };
 
@@ -1229,7 +1268,7 @@ function Kasir() {
                                 {isMuted ? '🔇' : '🔊'}
                             </button>
                             <div className="bg-white/5 rounded-lg border border-purple-500/20 px-3 py-1 text-right flex-1">
-                                <p className="text-xs text-gray-400">Kasir:</p>
+                                <p className="text-xs text-gray-400">{isAdmin ? 'Administrator:' : 'Kasir / Staff:'}</p>
                                 {cashDrawer.kasirName ? (
                                     <p className="font-bold text-sm truncate">{cashDrawer.kasirName}</p>
                                 ) : (
@@ -1529,29 +1568,11 @@ function Kasir() {
                                     className="w-full bg-white border border-gray-300 rounded-lg p-3 text-sm text-gray-900 focus:border-red-500 focus:ring-1 focus:ring-red-500 outline-none h-20 resize-none"
                                 />
                             )}
-
-                            {!isAdmin && (
-                                <div className="mt-4 pt-4 border-t border-gray-200">
-                                    <label className="block text-xs font-medium text-gray-700 mb-1.5 ml-1">
-                                        PIN Supervisor <span className="text-red-500">*</span>
-                                    </label>
-                                    <input
-                                        type="password"
-                                        value={cancelPin}
-                                        onChange={(e) => setCancelPin(e.target.value)}
-                                        className="w-full bg-white border border-gray-300 rounded-lg px-3 py-2.5 text-center tracking-widest text-gray-900 focus:border-red-500 focus:ring-1 focus:ring-red-500 outline-none"
-                                        placeholder="••••••"
-                                        maxLength={6}
-                                        autoComplete="new-password"
-                                    />
-                                    <p className="text-[10px] text-gray-500 mt-1 text-center">Izin khusus diperlukan untuk Void</p>
-                                </div>
-                            )}
                         </div>
 
                         <div className="grid grid-cols-2 gap-3">
                             <button
-                                onClick={() => { setShowCancelModal(false); setCancellationReason(''); setCustomReason(''); setCancelPin(''); }}
+                                onClick={() => { setShowCancelModal(false); setCancellationReason(''); setCustomReason(''); }}
                                 className="px-4 py-3 rounded-xl bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold transition-all"
                             >
                                 Kembali
@@ -1915,16 +1936,25 @@ function Kasir() {
                 )
             }
 
-            {/* Floating Merge Button */}
+            {/* Floating Batch Actions */}
             {
-                selectedForMerge.length >= 2 && (
-                    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 animate-bounce">
+                selectedForMerge.length >= 1 && (
+                    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 animate-bounce flex items-center gap-3">
                         <button
-                            onClick={() => setShowMergeModal(true)}
-                            className="px-6 py-3 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 text-white font-bold shadow-2xl hover:from-purple-600 hover:to-pink-600 flex items-center gap-2"
+                            onClick={handleBatchDelete}
+                            className="px-6 py-3 rounded-full bg-gradient-to-r from-red-500 to-rose-600 text-white font-bold shadow-2xl hover:from-red-600 hover:to-rose-700 flex items-center gap-2"
                         >
-                            🔗 GABUNG ({selectedForMerge.length}) TAGIHAN
+                            🗑️ HAPUS ({selectedForMerge.length})
                         </button>
+
+                        {selectedForMerge.length >= 2 && (
+                            <button
+                                onClick={() => setShowMergeModal(true)}
+                                className="px-6 py-3 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 text-white font-bold shadow-2xl hover:from-purple-600 hover:to-pink-600 flex items-center gap-2"
+                            >
+                                🔗 GABUNG ({selectedForMerge.length}) TAGIHAN
+                            </button>
+                        )}
                     </div>
                 )
             }
@@ -1989,6 +2019,44 @@ function Kasir() {
                                     className="py-3 rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 font-bold hover:from-purple-600 hover:to-pink-600"
                                 >
                                     ✅ Konfirmasi Gabung
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )
+            }
+
+            {/* Batch Delete Modal */}
+            {
+                showBatchDeleteModal && (
+                    <div className="modal-overlay">
+                        <div className="glass rounded-2xl p-6 w-full max-w-md animate-scale-up border border-red-500/30">
+                            <div className="flex items-center gap-3 mb-4">
+                                <div className="w-10 h-10 rounded-full bg-red-500/20 text-red-400 flex items-center justify-center text-xl">
+                                    ⚠️
+                                </div>
+                                <div>
+                                    <h3 className="text-xl font-bold text-white">Konfirmasi Hapus</h3>
+                                    <p className="text-xs text-red-400">Tindakan ini tidak dapat dibatalkan</p>
+                                </div>
+                            </div>
+
+                            <p className="text-gray-300 text-sm mb-6">
+                                Apakah Anda yakin ingin menghapus <span className="font-bold text-white">{selectedForMerge.length} pesanan</span> yang dipilih secara permanen?
+                            </p>
+
+                            <div className="grid grid-cols-2 gap-3">
+                                <button
+                                    onClick={() => setShowBatchDeleteModal(false)}
+                                    className="py-3 rounded-xl bg-gray-500/20 text-gray-300 font-medium hover:bg-gray-500/30 transition-colors"
+                                >
+                                    Batal
+                                </button>
+                                <button
+                                    onClick={confirmBatchDelete}
+                                    className="py-3 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 font-bold text-white shadow-lg shadow-red-500/25 hover:from-red-500 hover:to-rose-500 transition-all flex items-center justify-center gap-2"
+                                >
+                                    🗑️ Ya, Hapus
                                 </button>
                             </div>
                         </div>

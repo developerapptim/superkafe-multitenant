@@ -436,51 +436,11 @@ const payOrder = async (req, res) => {
 
 const voidOrder = async (req, res) => {
     try {
-        const { pin, reason, employeeName, employeeRole } = req.body;
-        const Employee = require('../models/Employee');
+        const { reason, employeeName, employeeRole } = req.body;
 
-        // 1. PIN Check for non-managers
-        if (employeeRole !== 'admin' && employeeRole !== 'owner' && employeeRole !== 'manager') {
-            if (!pin) {
-                return res.status(401).json({ error: 'PIN Supervisor dibutuhkan untuk membatalkan pesanan.' });
-            }
-
-            const bcrypt = require('bcryptjs');
-
-            // Fetch all potential supervisors (we compare PIN manually to support both hash + plaintext)
-            const supervisors = await Employee.find({
-                role: { $in: ['admin', 'owner', 'manager'] },
-                status: 'active'
-            }).select('pin pin_code role').lean();
-
-            let verified = false;
-            let hasAnyPin = false;
-            for (const sup of supervisors) {
-                if (sup.pin || sup.pin_code) hasAnyPin = true;
-
-                // Check bcrypt-hashed PIN first (new format)
-                if (sup.pin) {
-                    try {
-                        const match = await bcrypt.compare(pin, sup.pin);
-                        if (match) { verified = true; break; }
-                    } catch (_) { /* skip */ }
-                }
-                // Fallback: legacy plaintext pin_code
-                if (!verified && sup.pin_code && sup.pin_code === pin) {
-                    verified = true;
-                    break;
-                }
-            }
-
-            if (!hasAnyPin) {
-                return res.status(401).json({ error: 'Belum ada Supervisor yang mengatur PIN. Silakan buat PIN di menu Pegawai.' });
-            }
-
-            if (!verified) {
-                return res.status(401).json({ error: 'PIN Supervisor tidak valid atau tidak memiliki akses.' });
-            }
-        }
-
+        // 1. Bypass PIN Check for usability improvement
+        // Users requested removing the supervisor PIN for Order Cancellation.
+        
         // 2. Fetch Order
         const order = await Order.findOne({ id: req.params.id });
         if (!order) return res.status(404).json({ error: 'Order not found' });
@@ -556,26 +516,15 @@ const getTodayOrders = async (req, res) => {
 const getPendingCount = async (req, res) => {
     try {
         // Tenant scoping is automatic via plugin
-        // Exact same logic as Frontend Kasir.jsx
-        const todayStr = new Date().toISOString().split('T')[0];
-
-        const startOfDay = new Date();
-        startOfDay.setHours(0, 0, 0, 0);
-
-        const endOfDay = new Date();
-        endOfDay.setHours(23, 59, 59, 999);
-
-        // Use MongoDB countDocuments instead of loading all orders into memory
+        // Simply count ALL active 'new' orders that aren't archived. 
+        // We drop the strict 'today' filter so that orders placed before midnight 
+        // don't leave lingering unhandled counts if the shift extends past midnight.
         const count = await Order.countDocuments({
             status: 'new',
-            is_archived_from_pos: { $ne: true },
-            $or: [
-                { date: todayStr },
-                { timestamp: { $gte: startOfDay.getTime(), $lte: endOfDay.getTime() } }
-            ]
+            is_archived_from_pos: { $ne: true }
         });
 
-        console.log(`[getPendingCount] Today: ${todayStr}, Count: ${count}`);
+        console.log(`[getPendingCount] Total Active Unarchived New Orders: ${count}`);
 
         res.json({ count });
     } catch (error) {
