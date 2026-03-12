@@ -49,7 +49,7 @@ function Dashboard() {
             id: o.id,
             time: o.time || new Date(o.timestamp).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
             customer: o.customerName || 'Pelanggan',
-            type: o.orderType === 'dine-in' ? 'Dine In' : 'Take Away',
+            type: o.orderType === 'dine_in' ? 'Dine In' : 'Take Away',
             table: o.tableNumber,
             menu: o.items?.map(i => `${i.name || i.menuName} x${i.qty || i.quantity}`).join(', ') || '-',
             total: o.total || 0,

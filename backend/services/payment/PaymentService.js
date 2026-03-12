@@ -1,6 +1,7 @@
 const PaymentGateway = require('./PaymentGateway');
 const DuitkuProvider = require('./providers/DuitkuProvider');
 const Tenant = require('../../models/Tenant');
+const Order = require('../../models/Order');
 
 /**
  * Payment Service
@@ -127,42 +128,59 @@ class PaymentService {
         return { success: true, message: 'Payment not successful', paymentSuccess: false };
       }
 
-      // Extract tenant slug and plan from merchantOrderId
-      // Format: SUB-TENANTSLUG-PLANTYPE-TIMESTAMP
       const parts = verification.merchantOrderId.split('-');
-      if (parts.length < 4 || parts[0] !== 'SUB') {
-        // Legacy format: SUB-TENANTSLUG-TIMESTAMP (3 parts)
-        if (parts.length >= 3 && parts[0] === 'SUB') {
-          const tenantSlug = parts[1].toLowerCase();
-          const result = await this.upgradeTenant(tenantSlug, 'starter', verification.merchantOrderId, io);
-          return {
-            success: true,
-            message: 'Payment processed successfully (legacy format)',
-            paymentSuccess: true,
-            tenantSlug,
-            upgradedTo: result.status
-          };
+      const tenantSlug = parts[1].toLowerCase();
+
+      // Handle Subscription (SUB-) or Order (ORD-)
+      if (parts[0] === 'SUB') {
+        const planType = parts[2].toLowerCase();
+        const result = await this.upgradeTenant(tenantSlug, planType, verification.merchantOrderId, io);
+        
+        console.log('[PAYMENT] Subscription callback processed successfully', {
+          tenantSlug, plan: planType, merchantOrderId: verification.merchantOrderId
+        });
+
+        return {
+          success: true,
+          message: 'Subscription processed successfully',
+          paymentSuccess: true,
+          tenantSlug,
+          plan: planType,
+          upgradedTo: result.status
+        };
+      } else if (parts[0] === 'ORD') {
+        // Format: ORD-TENANTSLUG-TIMESTAMP
+        // Update Order status
+        const orderId = verification.merchantOrderId;
+        const order = await Order.findOne({ id: orderId });
+        
+        if (!order) {
+          throw new Error(`Order ${orderId} tidak ditemukan`);
         }
-        throw new Error('Invalid merchant order ID format');
+
+        order.paymentStatus = 'paid';
+        await order.save();
+
+        // Emit real-time notification to Kasir POS (triggers sound & toast)
+        if (io) {
+          io.to(tenantSlug).emit('orders:update', { action: 'create', order });
+          console.log(`[SOCKET] Emitted orders:update (paid) to room ${tenantSlug}`);
+        }
+
+        console.log('[PAYMENT] Order payment callback processed successfully', {
+          tenantSlug, orderId: verification.merchantOrderId
+        });
+
+        return {
+          success: true,
+          message: 'Order payment processed successfully',
+          paymentSuccess: true,
+          tenantSlug,
+          orderId
+        };
       }
 
-      const tenantSlug = parts[1].toLowerCase();
-      const planType = parts[2].toLowerCase();
-
-      const result = await this.upgradeTenant(tenantSlug, planType, verification.merchantOrderId, io);
-
-      console.log('[PAYMENT] Callback processed successfully', {
-        tenantSlug, planType, merchantOrderId: verification.merchantOrderId
-      });
-
-      return {
-        success: true,
-        message: 'Payment processed successfully',
-        paymentSuccess: true,
-        tenantSlug,
-        plan: planType,
-        upgradedTo: result.status
-      };
+      throw new Error('Unsupported merchant order ID type');
     } catch (error) {
       console.error('[PAYMENT ERROR] Process callback failed', {
         error: error.message, stack: error.stack

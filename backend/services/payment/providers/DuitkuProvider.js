@@ -16,9 +16,13 @@ class DuitkuProvider {
 
     // Set base URL berdasarkan mode.
     // Duitku Passport API (Hosted Payment Page)
-    this.baseURL = this.mode === 'production'
-      ? 'https://api-prod.duitku.com/api/merchant'
-      : 'https://api-sandbox.duitku.com/api/merchant';
+    if (process.env.DUITKU_URL && this.mode === 'production') {
+      this.baseURL = process.env.DUITKU_URL.replace('/v2/inquiry', '');
+    } else {
+      this.baseURL = this.mode === 'production'
+        ? 'https://passport.duitku.com/webapi/api/merchant'
+        : 'https://api-sandbox.duitku.com/api/merchant';
+    }
 
     console.log(`[DUITKU] Initialized in ${this.mode} mode. BaseURL: ${this.baseURL}`);
   }
@@ -110,7 +114,9 @@ class DuitkuProvider {
 
       console.log('[DUITKU] Creating Generic Payment Link via Passport API');
 
-      const endpoint = `${this.baseURL}/createInvoice`;
+      // Production uses Passport v2 (/v2/inquiry), Sandbox uses (/createInvoice)
+      const invoicePath = this.mode === 'production' ? '/v2/inquiry' : '/createInvoice';
+      const endpoint = `${this.baseURL}${invoicePath}`;
       console.log('[DUITKU] Endpoint:', endpoint);
 
       // Call Duitku Passport API

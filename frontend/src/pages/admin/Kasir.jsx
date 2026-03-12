@@ -166,7 +166,7 @@ function Kasir() {
     const [customerName, setCustomerName] = useState('');
     const [customerPhone, setCustomerPhone] = useState('');
     const [selectedTable, setSelectedTable] = useState('');
-    const [orderType, setOrderType] = useState('dine-in');
+    const [orderType, setOrderType] = useState('dine_in');
     const [paymentMethod, setPaymentMethod] = useState('cash');
     const [note, setNote] = useState('');
     const [cart, setCart] = useState([]);
@@ -415,7 +415,7 @@ function Kasir() {
             toast.error('Masukkan nama pelanggan!');
             return;
         }
-        if (orderType === 'dine-in' && !selectedTable) {
+        if (orderType === 'dine_in' && !selectedTable) {
             toast.error('Pilih nomor meja!');
             return;
         }
@@ -429,7 +429,7 @@ function Kasir() {
                 id: `ORD-${Date.now()}`,
                 customerName: customerName,
                 customerPhone: formatPhoneNumber(customerPhone) || null,
-                tableNumber: orderType === 'dine-in' ? selectedTable : null,
+                tableNumber: orderType === 'dine_in' ? selectedTable : null,
                 orderType: orderType,
                 status: 'new',
                 items: cart.map(item => ({
@@ -452,7 +452,7 @@ function Kasir() {
 
                 // Mutate SWR cache to update UI
                 mutate('/orders?limit=200');
-                if (orderType === 'dine-in' && selectedTable) {
+                if (orderType === 'dine_in' && selectedTable) {
                     await tablesAPI.updateStatus(selectedTable, 'occupied');
                     mutate('/tables');
                 }
@@ -527,7 +527,7 @@ function Kasir() {
         setCustomerName('');
         setCustomerPhone('');
         setSelectedTable('');
-        setOrderType('dine-in');
+        setOrderType('dine_in');
         setPaymentMethod('cash');
         setNote('');
         setCart([]);
@@ -1688,7 +1688,7 @@ function Kasir() {
                                                     value={selectedTable}
                                                     onChange={setSelectedTable}
                                                     placeholder="Pilih Meja"
-                                                    disabled={orderType === 'take-away'}
+                                                    disabled={orderType === 'take_away'}
                                                     options={availableTables.map(t => ({ value: t.number || t.id, label: `Meja ${t.number || t.id}`, icon: '🪑' }))}
                                                     className="h-[46px]"
                                                 />
@@ -1697,14 +1697,14 @@ function Kasir() {
                                                 <label className="block text-xs font-medium text-gray-400 mb-1.5 ml-1">Tipe Pesanan</label>
                                                 <div className="grid grid-cols-2 gap-2 bg-black/20 p-1 rounded-xl h-[46px]">
                                                     <button
-                                                        onClick={() => setOrderType('dine-in')}
-                                                        className={`rounded-lg text-sm font-medium flex items-center justify-center gap-2 transition-all ${orderType === 'dine-in' ? 'bg-purple-600 text-white shadow-lg' : 'text-gray-400 hover:text-white'}`}
+                                                        onClick={() => setOrderType('dine_in')}
+                                                        className={`rounded-lg text-sm font-medium flex items-center justify-center gap-2 transition-all ${orderType === 'dine_in' ? 'bg-purple-600 text-white shadow-lg' : 'text-gray-400 hover:text-white'}`}
                                                     >
                                                         🍽️ Dine In
                                                     </button>
                                                     <button
-                                                        onClick={() => setOrderType('take-away')}
-                                                        className={`rounded-lg text-sm font-medium flex items-center justify-center gap-2 transition-all ${orderType === 'take-away' ? 'bg-blue-600 text-white shadow-lg' : 'text-gray-400 hover:text-white'}`}
+                                                        onClick={() => setOrderType('take_away')}
+                                                        className={`rounded-lg text-sm font-medium flex items-center justify-center gap-2 transition-all ${orderType === 'take_away' ? 'bg-blue-600 text-white shadow-lg' : 'text-gray-400 hover:text-white'}`}
                                                     >
                                                         🛍️ Take Away
                                                     </button>
