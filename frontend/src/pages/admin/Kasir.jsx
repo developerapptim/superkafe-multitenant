@@ -769,58 +769,19 @@ function Kasir() {
             {/* Header Bar */}
             <div className="flex flex-col p-3 md:p-4 border-b border-purple-500/20 bg-surface/50 gap-3">
                 {/* Desktop Header */}
-                <div className="hidden md:flex flex-col gap-3">
-                    {/* Top Row: Title & Actions */}
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                            {/* Online/Offline Badge */}
-                            {!isOnline && (
-                                <div className="px-3 py-1 bg-red-500/20 text-red-400 border border-red-500/30 rounded-lg flex items-center gap-2 animate-pulse">
-                                    <span className="w-2 h-2 bg-red-500 rounded-full"></span>
-                                    <span className="text-sm font-bold">OFFLINE MODE</span>
-                                </div>
-                            )}
-                        </div>
-
-                        {/* Actions Group */}
-                        <div className="flex items-center gap-2">
-                            {/* Refresh Button */}
-                            <button
-                                onClick={handleManualRefresh}
-                                disabled={isRefreshing}
-                                className={`w-11 h-11 flex items-center justify-center rounded-xl bg-surface border border-purple-500/30 hover:bg-surface/80 text-gray-300 hover:text-white transition-all ${isRefreshing ? 'opacity-50' : ''}`}
-                                title="Refresh Data"
-                            >
-                                <span className={`text-xl ${isRefreshing ? 'animate-spin' : ''}`}>🔄</span>
-                            </button>
-
-                            {/* Notification Button */}
-                            <button
-                                onClick={toggleMute}
-                                className={`w-11 h-11 flex items-center justify-center rounded-xl border border-purple-500/30 transition-all ${!isMuted
-                                    ? 'bg-purple-500/20 text-purple-400 hover:bg-purple-500/30 border-purple-500/50'
-                                    : 'bg-surface text-gray-400 hover:text-white hover:bg-surface/80'
-                                    }`}
-                                title={!isMuted ? 'Matikan Suara' : 'Hidupkan Suara'}
-                            >
-                                <span className="text-2xl">{!isMuted ? '🔊' : '🔇'}</span>
-                            </button>
-
-                            {!isAdmin && (
-                                <button
-                                    onClick={() => setShowModal(true)}
-                                    className="h-11 bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 text-white px-4 rounded-xl font-bold flex items-center gap-2 shadow-lg shadow-purple-500/40 whitespace-nowrap transition-all"
-                                >
-                                    <span className="text-xl">➕</span> <span className="text-base">Pesanan Baru</span>
-                                </button>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* Second Row: Search & Filters */}
-                    <div className="flex flex-row gap-3 items-center justify-between">
-                        {/* Search Bar */}
-                        <div className="relative flex-1 max-w-md">
+                <div className="hidden md:flex flex-row items-center justify-between gap-4 w-full">
+                    
+                    {/* Left: Offline Badge & Search */}
+                    <div className="flex items-center gap-3 flex-1 max-w-xs xl:max-w-md">
+                        {!isOnline && (
+                            <div className="px-3 py-1.5 bg-red-500/20 text-red-400 border border-red-500/30 rounded-lg flex items-center gap-2 animate-pulse shrink-0">
+                                <span className="w-2 h-2 bg-red-500 rounded-full"></span>
+                                <span className="text-sm font-bold truncate">OFFLINE</span>
+                            </div>
+                        )}
+                        
+                        {/* Search Bar - Responsive */}
+                        <div className="relative flex-1 min-w-[150px]">
                             <input
                                 type="text"
                                 placeholder="🔍 Cari nama..."
@@ -837,66 +798,88 @@ function Kasir() {
                                 </button>
                             )}
                         </div>
+                    </div>
 
-                        {/* Category Filter */}
-                        <div className="overflow-x-auto pb-1 -mb-1 flex-1 hide-scrollbar">
-                            <div className="flex gap-2 min-w-max md:justify-end">
-                                <button
-                                    onClick={() => setFilter('all')}
-                                    className={`px-3 py-1.5 rounded-lg text-sm transition-all whitespace-nowrap ${filter === 'all'
-                                        ? 'bg-purple-600 text-white'
-                                        : 'bg-white/5 text-gray-400 hover:bg-white/10'
-                                        }`}
-                                >
-                                    Semua
-                                </button>
-                                <button
-                                    onClick={() => setFilter('new')}
-                                    className={`px-3 py-1.5 rounded-lg text-sm transition-all whitespace-nowrap flex items-center gap-1 ${filter === 'new'
-                                        ? 'bg-yellow-500 text-white'
-                                        : 'bg-white/5 text-gray-400 hover:bg-white/10'
-                                        }`}
-                                >
-                                    {isOrdersValidating ? <span className="animate-spin text-xs">⏳</span> : '🪙'} Baru <span className="bg-white/20 px-1.5 rounded text-xs ml-1">{orderCounts.new}</span>
-                                </button>
-                                <button
-                                    onClick={() => setFilter('pending_payment')}
-                                    className={`px-3 py-1.5 rounded-lg text-sm transition-all whitespace-nowrap flex items-center gap-1 ${filter === 'pending_payment'
-                                        ? 'bg-orange-500 text-white'
-                                        : 'bg-white/5 text-gray-400 hover:bg-white/10'
-                                        }`}
-                                >
-                                    🟠 Bayar
-                                </button>
-                                <button
-                                    onClick={() => setFilter('process')}
-                                    className={`px-3 py-1.5 rounded-lg text-sm transition-all whitespace-nowrap flex items-center gap-1 ${filter === 'process'
-                                        ? 'bg-blue-500 text-white'
-                                        : 'bg-white/5 text-gray-400 hover:bg-white/10'
-                                        }`}
-                                >
-                                    🔵 Diproses
-                                </button>
-                                <button
-                                    onClick={() => setFilter('ready')}
-                                    className={`px-3 py-1.5 rounded-lg text-sm transition-all whitespace-nowrap flex items-center gap-1 ${filter === 'ready'
-                                        ? 'bg-teal-500 text-white'
-                                        : 'bg-white/5 text-gray-400 hover:bg-white/10'
-                                        }`}
-                                >
-                                    ✅ Siap
-                                </button>
-                                <button
-                                    onClick={() => setFilter('done')}
-                                    className={`px-3 py-1.5 rounded-lg text-sm transition-all whitespace-nowrap flex items-center gap-1 ${filter === 'done'
-                                        ? 'bg-green-500 text-white'
-                                        : 'bg-white/5 text-gray-400 hover:bg-white/10'
-                                        }`}
-                                >
-                                    🟢 Selesai
-                                </button>
-                            </div>
+                    {/* Center: Category Filter */}
+                    <div className="overflow-x-auto pb-1 -mb-1 flex-1 hide-scrollbar">
+                        <div className="flex gap-2 min-w-max items-center justify-center">
+                            <button
+                                onClick={() => setFilter('all')}
+                                className={`px-3 py-1.5 rounded-lg text-sm transition-all whitespace-nowrap ${filter === 'all'
+                                    ? 'bg-purple-600 text-white'
+                                    : 'bg-white/5 text-gray-400 hover:bg-white/10'
+                                    }`}
+                            >
+                                Semua
+                            </button>
+                            <button
+                                onClick={() => setFilter('new')}
+                                className={`px-3 py-1.5 rounded-lg text-sm transition-all whitespace-nowrap flex items-center gap-1 ${filter === 'new'
+                                    ? 'bg-yellow-500 text-white'
+                                    : 'bg-white/5 text-gray-400 hover:bg-white/10'
+                                    }`}
+                            >
+                                {isOrdersValidating ? <span className="animate-spin text-xs">⏳</span> : '🪙'} Baru <span className="bg-white/20 px-1.5 rounded text-xs ml-1">{orderCounts.new}</span>
+                            </button>
+                            <button
+                                onClick={() => setFilter('pending_payment')}
+                                className={`px-3 py-1.5 rounded-lg text-sm transition-all whitespace-nowrap flex items-center gap-1 ${filter === 'pending_payment'
+                                    ? 'bg-orange-500 text-white'
+                                    : 'bg-white/5 text-gray-400 hover:bg-white/10'
+                                    }`}
+                            >
+                                🟠 Bayar
+                            </button>
+                            <button
+                                onClick={() => setFilter('process')}
+                                className={`px-3 py-1.5 rounded-lg text-sm transition-all whitespace-nowrap flex items-center gap-1 ${filter === 'process'
+                                    ? 'bg-blue-500 text-white'
+                                    : 'bg-white/5 text-gray-400 hover:bg-white/10'
+                                    }`}
+                            >
+                                🔵 Diproses
+                            </button>
+                            <button
+                                onClick={() => setFilter('ready')}
+                                className={`px-3 py-1.5 rounded-lg text-sm transition-all whitespace-nowrap flex items-center gap-1 ${filter === 'ready'
+                                    ? 'bg-teal-500 text-white'
+                                    : 'bg-white/5 text-gray-400 hover:bg-white/10'
+                                    }`}
+                            >
+                                ✅ Siap
+                            </button>
+                            <button
+                                onClick={() => setFilter('done')}
+                                className={`px-3 py-1.5 rounded-lg text-sm transition-all whitespace-nowrap flex items-center gap-1 ${filter === 'done'
+                                    ? 'bg-green-500 text-white'
+                                    : 'bg-white/5 text-gray-400 hover:bg-white/10'
+                                    }`}
+                            >
+                                🟢 Selesai
+                            </button>
                         </div>
+                    </div>
+
+                    {/* Right: Actions Group */}
+                    <div className="flex items-center gap-2 shrink-0">
+                        {/* Notification Button */}
+                        <button
+                            onClick={toggleMute}
+                            className={`w-11 h-11 flex items-center justify-center rounded-xl border border-purple-500/30 transition-all ${!isMuted
+                                ? 'bg-purple-500/20 text-purple-400 hover:bg-purple-500/30 border-purple-500/50'
+                                : 'bg-surface text-gray-400 hover:text-white hover:bg-surface/80'
+                                }`}
+                            title={!isMuted ? 'Matikan Suara' : 'Hidupkan Suara'}
+                        >
+                            <span className="text-xl">{!isMuted ? '🔊' : '🔇'}</span>
+                        </button>
+
+                        <button
+                            onClick={() => setShowModal(true)}
+                            className="h-11 bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 text-white px-4 rounded-xl font-bold flex items-center gap-2 shadow-lg shadow-purple-500/40 whitespace-nowrap transition-all"
+                        >
+                            <span className="text-xl">➕</span> <span className="text-base truncate hidden xl:inline">Pesanan Baru</span><span className="text-base xl:hidden">Baru</span>
+                        </button>
                     </div>
                 </div>
 
@@ -923,14 +906,6 @@ function Kasir() {
                             )}
                         </div>
 
-                        {/* Refresh Button */}
-                        <button
-                            onClick={handleManualRefresh}
-                            disabled={isRefreshing}
-                            className={`w-11 h-11 flex items-center justify-center rounded-xl bg-surface border border-purple-500/30 hover:bg-surface/80 text-gray-300 hover:text-white transition-all shrink-0 ${isRefreshing ? 'opacity-50' : ''}`}
-                        >
-                            <span className={`text-lg ${isRefreshing ? 'animate-spin' : ''}`}>🔄</span>
-                        </button>
 
                         {/* Sound Button */}
                         <button
@@ -946,14 +921,12 @@ function Kasir() {
 
                     {/* Row 2: Filters + New Order (Scrollable) */}
                     <div className="flex gap-2 overflow-x-auto pb-1 -mb-1 hide-scrollbar">
-                        {!isAdmin && (
-                            <button
-                                onClick={() => setShowModal(true)}
-                                className="h-9 px-3 bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white rounded-lg font-bold flex items-center gap-1 shadow-lg shadow-purple-500/40 whitespace-nowrap shrink-0 text-sm"
-                            >
-                                <span>➕</span> Baru
-                            </button>
-                        )}
+                        <button
+                            onClick={() => setShowModal(true)}
+                            className="h-9 px-3 bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white rounded-lg font-bold flex items-center gap-1 shadow-lg shadow-purple-500/40 whitespace-nowrap shrink-0 text-sm"
+                        >
+                            <span>➕</span> Baru
+                        </button>
                         <button
                             onClick={() => setFilter('all')}
                             className={`px-3 py-1.5 rounded-lg text-sm transition-all whitespace-nowrap ${filter === 'all'
@@ -1031,7 +1004,7 @@ function Kasir() {
                                         ? 'border-yellow-400 bg-yellow-900/20 shadow-[0_4px_20px_rgba(0,0,0,0.4)] animate-pulse-slow ring-2 ring-yellow-400/30'
                                         : selectedForMerge.includes(order.id)
                                             ? 'border-purple-500 bg-purple-900/20 ring-2 ring-purple-500/50'
-                                            : order.status === 'done'
+                                            : (order.status === 'done' || order.status === 'cancel')
                                                 ? `border-transparent opacity-60 saturate-50 hover:opacity-100 hover:saturate-100 ${getStatusStyle(order.status)}`
                                                 : `border-transparent ${getStatusStyle(order.status)}`
                                         }`}
@@ -1152,8 +1125,7 @@ function Kasir() {
                                                     {order.status === 'new' && order.paymentStatus !== 'paid' && (
                                                         <button
                                                             onClick={() => handleOpenPayment(order)}
-                                                            disabled={isAdmin}
-                                                            className={`px-3 py-1 bg-purple-500/20 text-purple-400 rounded-lg text-sm hover:bg-purple-500/30 flex items-center gap-1 ${isAdmin ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                                            className="px-3 py-1 bg-purple-500/20 text-purple-400 rounded-lg text-sm hover:bg-purple-500/30 flex items-center gap-1"
                                                         >
                                                             <span>💸</span> Bayar
                                                         </button>
@@ -1163,8 +1135,8 @@ function Kasir() {
                                                     {order.status === 'new' && order.paymentStatus === 'paid' && (
                                                         <button
                                                             onClick={() => updateOrderStatus(order.id, 'process')}
-                                                            disabled={processingOrderId === order.id || isAdmin}
-                                                            className={`px-3 py-1 bg-blue-500/20 text-blue-400 rounded-lg text-sm hover:bg-blue-500/30 flex items-center gap-1 ${processingOrderId === order.id ? 'opacity-50 cursor-wait' : ''} ${isAdmin ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                                            disabled={processingOrderId === order.id}
+                                                            className={`px-3 py-1 bg-blue-500/20 text-blue-400 rounded-lg text-sm hover:bg-blue-500/30 flex items-center gap-1 ${processingOrderId === order.id ? 'opacity-50 cursor-wait' : ''}`}
                                                         >
                                                             {processingOrderId === order.id ? '⏳ Proses...' : '▶️ Proses'}
                                                         </button>
@@ -1188,8 +1160,8 @@ function Kasir() {
                                                     {order.status === 'new' && (
                                                         <button
                                                             onClick={() => updateOrderStatus(order.id, 'process')}
-                                                            disabled={processingOrderId === order.id || isAdmin}
-                                                            className={`px-3 py-1 bg-blue-500/20 text-blue-400 rounded-lg text-sm hover:bg-blue-500/30 ${processingOrderId === order.id ? 'opacity-50 cursor-wait' : ''} ${isAdmin ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                                            disabled={processingOrderId === order.id}
+                                                            className={`px-3 py-1 bg-blue-500/20 text-blue-400 rounded-lg text-sm hover:bg-blue-500/30 ${processingOrderId === order.id ? 'opacity-50 cursor-wait' : ''}`}
                                                         >
                                                             {processingOrderId === order.id ? '⏳ Proses...' : '▶️ Proses'}
                                                         </button>
@@ -1199,8 +1171,8 @@ function Kasir() {
                                                     {order.status === 'pending_payment' && (
                                                         <button
                                                             onClick={() => updateOrderStatus(order.id, 'process')}
-                                                            disabled={processingOrderId === order.id || isAdmin}
-                                                            className={`px-3 py-1 bg-blue-500/20 text-blue-400 rounded-lg text-sm hover:bg-blue-500/30 flex items-center gap-1 ${processingOrderId === order.id ? 'opacity-50 cursor-wait' : ''} ${isAdmin ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                                            disabled={processingOrderId === order.id}
+                                                            className={`px-3 py-1 bg-blue-500/20 text-blue-400 rounded-lg text-sm hover:bg-blue-500/30 flex items-center gap-1 ${processingOrderId === order.id ? 'opacity-50 cursor-wait' : ''}`}
                                                         >
                                                             {processingOrderId === order.id ? '⏳ Proses...' : <><span>💰</span> Bayar & Proses</>}
                                                         </button>
@@ -1210,8 +1182,7 @@ function Kasir() {
                                                     {order.status === 'process' && order.paymentStatus !== 'paid' && (
                                                         <button
                                                             onClick={() => handleOpenPayment(order)}
-                                                            disabled={isAdmin}
-                                                            className={`px-3 py-1 bg-purple-500/20 text-purple-400 rounded-lg text-sm hover:bg-purple-500/30 flex items-center gap-1 ${isAdmin ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                                            className="px-3 py-1 bg-purple-500/20 text-purple-400 rounded-lg text-sm hover:bg-purple-500/30 flex items-center gap-1"
                                                         >
                                                             <span>💸</span> Bayar
                                                         </button>
@@ -1499,9 +1470,7 @@ function Kasir() {
                             {(selectedOrderForDetail.status !== 'done' && selectedOrderForDetail.status !== 'cancel') && (
                                 <button
                                     onClick={() => setShowCancelModal(true)}
-                                    disabled={isAdmin}
-                                    className={`w-full py-2.5 rounded-xl border font-bold transition-all flex items-center justify-center gap-2 ${isAdmin ? 'border-gray-300 text-gray-500 cursor-not-allowed' : 'border-red-500/30 text-red-500 hover:bg-red-50 hover:border-red-500'}`}
-                                    title={isAdmin ? "Admin tidak dapat membatalkan pesanan" : ""}
+                                    className="w-full py-2.5 rounded-xl border font-bold transition-all flex items-center justify-center gap-2 border-red-500/30 text-red-500 hover:bg-red-50 hover:border-red-500"
                                 >
                                     ⛔ Batalkan Pesanan
                                 </button>
@@ -1940,12 +1909,14 @@ function Kasir() {
             {
                 selectedForMerge.length >= 1 && (
                     <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 animate-bounce flex items-center gap-3">
-                        <button
-                            onClick={handleBatchDelete}
-                            className="px-6 py-3 rounded-full bg-gradient-to-r from-red-500 to-rose-600 text-white font-bold shadow-2xl hover:from-red-600 hover:to-rose-700 flex items-center gap-2"
-                        >
-                            🗑️ HAPUS ({selectedForMerge.length})
-                        </button>
+                        {isAdmin && (
+                            <button
+                                onClick={handleBatchDelete}
+                                className="px-6 py-3 rounded-full bg-gradient-to-r from-red-500 to-rose-600 text-white font-bold shadow-2xl hover:from-red-600 hover:to-rose-700 flex items-center gap-2"
+                            >
+                                🗑️ HAPUS ({selectedForMerge.length})
+                            </button>
+                        )}
 
                         {selectedForMerge.length >= 2 && (
                             <button

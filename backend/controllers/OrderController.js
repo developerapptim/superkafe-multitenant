@@ -2,6 +2,7 @@ const Order = require('../models/Order');
 const Table = require('../models/Table');
 const axios = require('axios');
 const WANotification = require('../services/WhatsAppNotificationService');
+const logActivity = require('../utils/activityLogger'); // NEW: Activity Logger
 
 // Services (Sprint 2 Refactor — extracted from this controller)
 const OrderService = require('../services/OrderService');
@@ -187,6 +188,16 @@ const createOrder = async (req, res) => {
 
         console.log("🎉 Order Creation Complete");
 
+        // Activity Log
+        const cashierName = req.user?.name || 'Kasir/Staff';
+        await logActivity({ 
+            req, 
+            action: 'CREATE_ORDER', 
+            module: 'ORDER', 
+            description: `Pesanan dibuat oleh ${cashierName} (Total: IDR ${newOrder.total})`, 
+            metadata: { orderId: newOrder.id, total: newOrder.total } 
+        });
+
         // SEND WA NOTIFICATION: PESANAN DIPROSES (fire-and-forget)
         WANotification.sendNotification(newOrder, 'proses');
 
@@ -293,6 +304,16 @@ const deleteOrder = async (req, res) => {
         await Order.deleteOne({ id: orderId });
         console.log(`🗑️ Order ${orderId} deleted by user`);
 
+        // Activity Log
+        const cashierName = req.user?.name || 'Admin';
+        await logActivity({ 
+            req, 
+            action: 'DELETE_ORDER', 
+            module: 'ORDER', 
+            description: `Pesanan dihapus oleh ${cashierName}`, 
+            metadata: { orderId } 
+        });
+
         // Emit Socket Event
         const io = req.app.get('io');
         if (io) {
@@ -365,6 +386,26 @@ const updateOrderStatus = async (req, res) => {
 
         await order.save();
         console.log(`✅ Order ${order.id} status updated: ${previousStatus} → ${status || previousStatus}`);
+
+        if (status === 'cancel') {
+             const cashierName = req.user?.name || 'Kasir/Staff';
+             await logActivity({ 
+                 req, 
+                 action: 'CANCEL_ORDER', 
+                 module: 'ORDER', 
+                 description: `Pesanan diubah ke status Batal oleh ${cashierName}`, 
+                 metadata: { orderId: order.id } 
+             });
+        } else if (status === 'done') {
+            const cashierName = req.user?.name || 'Kasir/Staff';
+            await logActivity({ 
+                req, 
+                action: 'COMPLETE_ORDER', 
+                module: 'ORDER', 
+                description: `Pesanan diselesaikan oleh ${cashierName}`, 
+                metadata: { orderId: order.id } 
+            });
+        }
 
         // TRIGGER WA NOTIFICATION: PESANAN SELESAI (fire-and-forget)
         if (status === 'done' && previousStatus !== 'done') {
@@ -476,6 +517,15 @@ const voidOrder = async (req, res) => {
 
         await order.save();
         console.log(`❌ Order ${order.id} VOIDED by ${employeeName}`);
+
+        // Activity Log
+        await logActivity({ 
+            req, 
+            action: 'CANCEL_ORDER', 
+            module: 'ORDER', 
+            description: `Pesanan dibatalkan/void oleh ${employeeName}. Alasan: ${reason}`, 
+            metadata: { orderId: order.id, reason } 
+        });
 
         // 5. Emit Socket Event
         const io = req.app.get('io');

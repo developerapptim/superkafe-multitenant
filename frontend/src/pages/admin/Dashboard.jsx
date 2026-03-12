@@ -75,7 +75,7 @@ function Dashboard() {
                 revenueChange: '+0%', // Future implementation
                 orders: backendStats.orders || 0,
                 tables: tablesCount,
-                customers: (recentOrders || []).length
+                customers: backendStats.customers || (recentOrders || []).length
             },
             topMenuItems: topProducts || [],
             transactions: processedTransactions,
@@ -89,8 +89,12 @@ function Dashboard() {
         status: t.status || 'available',
     })) : [];
 
-    // Derived State: Low Stock
+    // Derived State: Low Stock (from stats API response)
     const lowStockItems = useMemo(() => {
+        if (Array.isArray(statsData?.lowStockItems) && statsData.lowStockItems.length > 0) {
+            return statsData.lowStockItems.slice(0, 5);
+        }
+        // Fallback to menu data
         return Array.isArray(menuData) ? menuData
             .filter(m => m.available_qty !== undefined && m.available_qty < 10 && m.use_stock_check)
             .slice(0, 5)
@@ -99,7 +103,7 @@ function Dashboard() {
                 stock: m.available_qty || 0,
                 unit: 'porsi',
             })) : [];
-    }, [menuData]);
+    }, [statsData, menuData]);
 
     // Filter Transactions
     const filteredTransactions = transactions.filter(t =>
