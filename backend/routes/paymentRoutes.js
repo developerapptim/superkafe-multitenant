@@ -20,8 +20,4 @@ router.get('/status/:merchantOrderId', checkJwt, PaymentController.checkStatus);
 // GET /api/payments/pricing - Get pricing plans
 router.get('/pricing', PaymentController.getPricing);
 
-// POST /api/payments/guest-checkout - Guest checkout (no auth required)
-// Used for Duitku verification and landing page checkout
-router.post('/guest-checkout', PaymentController.createGuestInvoice);
-
 module.exports = router;

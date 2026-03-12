@@ -42,6 +42,7 @@ const DeviceLogin = lazy(() => import('./pages/auth/DeviceLogin'));
 const OTPVerification = lazy(() => import('./pages/auth/OTPVerification'));
 const SetupWizard = lazy(() => import('./pages/SetupWizard'));
 const OnboardingScreen = lazy(() => import('./pages/OnboardingScreen'));
+const CheckoutPage = lazy(() => import('./pages/CheckoutPage'));
 
 // Admin Layout
 const AdminLayout = lazy(() => import('./pages/admin/AdminLayout'));
@@ -144,6 +145,7 @@ function App() {
 
                 {/* Priority 3: Setup Wizard - Must be before dynamic routes */}
                 <Route path="/setup-cafe" element={<SetupWizard />} />
+                <Route path="/checkout" element={<CheckoutPage />} />
 
                 {/* Priority 4: Legacy Admin Redirect - Must be before tenant-specific routes */}
                 <Route path="/admin/*" element={<LegacyAdminRedirect />} />

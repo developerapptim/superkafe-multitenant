@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { FiMail, FiLock, FiArrowLeft, FiEye, FiEyeOff } from 'react-icons/fi';
 import { FcGoogle } from 'react-icons/fc';
@@ -15,6 +15,9 @@ const isNativePlatform = Capacitor.isNativePlatform();
 
 const SimpleLogin = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const planParam = searchParams.get('plan');
+
   const [formData, setFormData] = useState({
     email: '',
     password: ''
@@ -24,6 +27,14 @@ const SimpleLogin = () => {
   const [googleReady, setGoogleReady] = useState(isNativePlatform); // Native is always ready
   const [showPassword, setShowPassword] = useState(false);
   const [checkingSession, setCheckingSession] = useState(true);
+
+  // Handle pending plan from URL
+  useEffect(() => {
+    if (planParam) {
+      console.log('[LOGIN] Pending plan detected:', planParam);
+      localStorage.setItem('pendingPlan', planParam);
+    }
+  }, [planParam]);
 
   // Check for active session on mount
   useEffect(() => {
@@ -117,7 +128,14 @@ const SimpleLogin = () => {
         toast.success('Login berhasil!');
 
         // Redirect berdasarkan hasCompletedSetup
-        if (response.data.user.hasCompletedSetup) {
+        const pendingPlan = localStorage.getItem('pendingPlan');
+
+        if (pendingPlan) {
+          console.log('[LOGIN] Pending plan found, redirecting to checkout');
+          setTimeout(() => {
+            navigate('/checkout');
+          }, 1000);
+        } else if (response.data.user.hasCompletedSetup) {
           // User sudah setup tenant → ke dashboard via legacy route (will redirect to tenant-specific)
           localStorage.setItem('tenant_slug', response.data.user.tenantSlug);
           setTimeout(() => {
@@ -178,7 +196,14 @@ const SimpleLogin = () => {
       }
 
       // Redirect berdasarkan hasCompletedSetup
-      if (backendResponse.data.user.hasCompletedSetup) {
+      const pendingPlan = localStorage.getItem('pendingPlan');
+
+      if (pendingPlan) {
+        console.log('[Google Login] Pending plan found, redirecting to checkout');
+        setTimeout(() => {
+          navigate('/checkout');
+        }, 1500);
+      } else if (backendResponse.data.user.hasCompletedSetup) {
         localStorage.setItem('tenant_slug', backendResponse.data.user.tenantSlug);
         setTimeout(() => {
           navigate('/admin');
@@ -417,7 +442,7 @@ const SimpleLogin = () => {
               <p className="text-gray-600 text-sm">
                 Belum punya akun?{' '}
                 <Link
-                  to="/auth/register"
+                  to={planParam ? `/auth/register?plan=${planParam}` : "/auth/register"}
                   className="text-amber-700 hover:text-amber-800 font-medium transition-colors"
                 >
                   Daftar Sekarang

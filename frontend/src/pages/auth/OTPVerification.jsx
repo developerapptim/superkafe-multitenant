@@ -102,10 +102,20 @@ const OTPVerification = () => {
           localStorage.setItem('tenant', JSON.stringify(response.data.tenant));
         }
         
-        // Redirect ke setup wizard (user belum punya tenant)
-        setTimeout(() => {
-          navigate('/setup-cafe');
-        }, 1500);
+        // Redirect berdasarkan pending plan
+        const pendingPlan = localStorage.getItem('pendingPlan');
+        
+        if (pendingPlan) {
+          console.log('[OTP] Pending plan found, redirecting to checkout');
+          setTimeout(() => {
+            navigate('/checkout');
+          }, 1500);
+        } else {
+          // Redirect ke setup wizard (user belum punya tenant)
+          setTimeout(() => {
+            navigate('/setup-cafe');
+          }, 1500);
+        }
       }
     } catch (error) {
       console.error('Verification error:', error);

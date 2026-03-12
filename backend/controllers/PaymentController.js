@@ -207,86 +207,9 @@ const getPricing = async (req, res) => {
   }
 };
 
-/**
- * POST /api/payments/guest-checkout
- * Create payment invoice WITHOUT auth (for Duitku verification & guest checkout)
- * Uses 'guest' as tenantSlug identifier
- */
-const createGuestInvoice = async (req, res) => {
-  const startTime = Date.now();
-
-  try {
-    const { planType, email, customerName } = req.body;
-
-    // Validate
-    if (!email || !customerName) {
-      return res.status(400).json({
-        success: false,
-        error: 'Nama dan email wajib diisi'
-      });
-    }
-
-    // Basic email validation
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      return res.status(400).json({
-        success: false,
-        error: 'Format email tidak valid'
-      });
-    }
-
-    console.log('[PAYMENT] Guest checkout — creating invoice', {
-      planType: planType || 'starter',
-      email,
-      customerName
-    });
-
-    // Use 'guest' as tenant slug for guest checkouts
-    const result = await PaymentService.createSubscriptionPayment({
-      tenantSlug: 'guest',
-      planType: planType || 'starter',
-      email,
-      customerName,
-      phoneNumber: '08000000000'
-    });
-
-    console.log('[PAYMENT] Guest invoice created', {
-      merchantOrderId: result.merchantOrderId,
-      amount: result.amount,
-      duration: `${Date.now() - startTime}ms`
-    });
-
-    res.json({
-      success: true,
-      message: 'Invoice berhasil dibuat',
-      data: {
-        paymentUrl: result.paymentUrl,
-        reference: result.reference,
-        merchantOrderId: result.merchantOrderId,
-        amount: result.amount,
-        planType: result.planType,
-        expiresAt: result.expiresAt
-      }
-    });
-  } catch (error) {
-    console.error('[PAYMENT ERROR] Guest checkout failed', {
-      error: error.message,
-      stack: error.stack,
-      body: req.body,
-      duration: `${Date.now() - startTime}ms`
-    });
-
-    res.status(500).json({
-      success: false,
-      error: error.message || 'Gagal membuat invoice pembayaran'
-    });
-  }
-};
-
 module.exports = {
   createInvoice,
   handleCallback,
   checkStatus,
-  getPricing,
-  createGuestInvoice
+  getPricing
 };

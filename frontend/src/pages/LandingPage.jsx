@@ -1,24 +1,16 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FiTrendingUp, FiPackage, FiShoppingCart, FiBarChart2, FiX, FiMail, FiPhone, FiMapPin } from 'react-icons/fi';
-import { motion, AnimatePresence } from 'framer-motion';
+import { FiTrendingUp, FiPackage, FiShoppingCart, FiBarChart2, FiMail, FiPhone, FiMapPin } from 'react-icons/fi';
+import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
 import HeroSlider from '../components/landing/HeroSlider';
 import FeatureCard from '../components/landing/FeatureCard';
 import PricingCard from '../components/landing/PricingCard';
 import LandingNavbar from '../components/landing/LandingNavbar';
 import { checkActiveSession, getDashboardUrl } from '../utils/authHelper';
-import { API_BASE_URL } from '../services/api';
-import axios from 'axios';
 
 const LandingPage = () => {
   const navigate = useNavigate();
-
-  // Guest checkout modal state
-  const [showCheckoutModal, setShowCheckoutModal] = useState(false);
-  const [selectedPlan, setSelectedPlan] = useState(null);
-  const [guestForm, setGuestForm] = useState({ name: '', email: '' });
-  const [processing, setProcessing] = useState(false);
 
   const handleLoginClick = () => {
     const session = checkActiveSession();
@@ -127,42 +119,9 @@ const LandingPage = () => {
     }
   ];
 
-  // Open guest checkout modal
+  // Handle plan selection: redirect to register with plan param
   const handleSelectPlan = (plan) => {
-    setSelectedPlan(plan);
-    setGuestForm({ name: '', email: '' });
-    setShowCheckoutModal(true);
-  };
-
-  // Guest checkout: create invoice via /guest-checkout (no JWT)
-  const handleGuestCheckout = async (e) => {
-    e.preventDefault();
-    if (!guestForm.name.trim() || !guestForm.email.trim()) {
-      toast.error('Nama dan email wajib diisi');
-      return;
-    }
-
-    setProcessing(true);
-    try {
-      const apiBase = API_BASE_URL || '/api';
-      const response = await axios.post(`${apiBase}/payments/guest-checkout`, {
-        planType: selectedPlan?.planType || 'starter',
-        email: guestForm.email.trim(),
-        customerName: guestForm.name.trim()
-      });
-
-      if (response.data.success && response.data.data.paymentUrl) {
-        toast.success('Mengarahkan ke halaman pembayaran...');
-        window.location.href = response.data.data.paymentUrl;
-      } else {
-        toast.error('Gagal membuat invoice');
-      }
-    } catch (error) {
-      console.error('Guest checkout error:', error);
-      toast.error(error.response?.data?.error || 'Gagal memproses pembayaran');
-    } finally {
-      setProcessing(false);
-    }
+    navigate(`/auth/register?plan=${plan.planType}`);
   };
 
   return (
@@ -277,93 +236,6 @@ const LandingPage = () => {
           </div>
         </div>
       </footer>
-
-      {/* ===== Guest Checkout Modal ===== */}
-      <AnimatePresence>
-        {showCheckoutModal && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
-            onClick={() => !processing && setShowCheckoutModal(false)}
-          >
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              transition={{ type: 'spring', duration: 0.4 }}
-              onClick={(e) => e.stopPropagation()}
-              className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden"
-            >
-              {/* Modal Header */}
-              <div className="bg-gradient-to-r from-amber-600 to-amber-800 px-6 py-5 flex items-center justify-between">
-                <div>
-                  <h3 className="text-white font-bold text-lg">Checkout — {selectedPlan?.name}</h3>
-                  <p className="text-amber-200 text-sm mt-0.5">{selectedPlan?.price} / {selectedPlan?.period}</p>
-                </div>
-                <button
-                  onClick={() => !processing && setShowCheckoutModal(false)}
-                  className="text-white/70 hover:text-white transition-colors"
-                >
-                  <FiX size={22} />
-                </button>
-              </div>
-
-              {/* Modal Body */}
-              <form onSubmit={handleGuestCheckout} className="p-6 space-y-4">
-                <p className="text-gray-600 text-sm">
-                  Masukkan data Anda untuk melanjutkan ke halaman pembayaran.
-                </p>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Nama Lengkap</label>
-                  <input
-                    type="text"
-                    value={guestForm.name}
-                    onChange={(e) => setGuestForm({ ...guestForm, name: e.target.value })}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition-all text-gray-900"
-                    placeholder="Nama Anda"
-                    required
-                    autoFocus
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                  <input
-                    type="email"
-                    value={guestForm.email}
-                    onChange={(e) => setGuestForm({ ...guestForm, email: e.target.value })}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition-all text-gray-900"
-                    placeholder="email@contoh.com"
-                    required
-                  />
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={processing}
-                  className="w-full py-3 bg-gradient-to-r from-amber-600 to-amber-800 text-white rounded-xl font-bold text-lg hover:shadow-lg hover:shadow-amber-700/30 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
-                >
-                  {processing ? (
-                    <span className="flex items-center justify-center gap-2">
-                      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                      Memproses...
-                    </span>
-                  ) : (
-                    'Lanjutkan ke Pembayaran'
-                  )}
-                </button>
-
-                <p className="text-xs text-gray-400 text-center">
-                  Anda akan diarahkan ke halaman pembayaran resmi Duitku
-                </p>
-              </form>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </div>
   );
 };

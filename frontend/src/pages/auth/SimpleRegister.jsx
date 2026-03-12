@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { FiUser, FiMail, FiLock, FiArrowLeft, FiEye, FiEyeOff } from 'react-icons/fi';
 import { FcGoogle } from 'react-icons/fc';
@@ -14,12 +14,23 @@ const isNativePlatform = Capacitor.isNativePlatform();
 
 const SimpleRegister = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const planParam = searchParams.get('plan');
+
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     password: '',
     confirmPassword: ''
   });
+
+  // Handle pending plan from URL
+  useEffect(() => {
+    if (planParam) {
+      console.log('[REGISTER] Pending plan detected:', planParam);
+      localStorage.setItem('pendingPlan', planParam);
+    }
+  }, [planParam]);
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [googleReady, setGoogleReady] = useState(isNativePlatform); // Native is always ready
@@ -119,11 +130,14 @@ const SimpleRegister = () => {
       if (response.data.success) {
         toast.success('Registrasi berhasil! Silakan cek email Anda untuk kode verifikasi.');
 
+        const pendingPlan = localStorage.getItem('pendingPlan');
+
         // Redirect ke halaman verifikasi OTP
         setTimeout(() => {
           navigate('/auth/verify-otp', {
             state: {
-              email: formData.email
+              email: formData.email,
+              plan: pendingPlan
             }
           });
         }, 1500);
@@ -161,7 +175,14 @@ const SimpleRegister = () => {
       }
 
       // Redirect berdasarkan hasCompletedSetup
-      if (backendResponse.data.user.hasCompletedSetup) {
+      const pendingPlan = localStorage.getItem('pendingPlan');
+      
+      if (pendingPlan) {
+        console.log('[Google Auth] Pending plan found, redirecting to checkout');
+        setTimeout(() => {
+          navigate('/checkout');
+        }, 1500);
+      } else if (backendResponse.data.user.hasCompletedSetup) {
         localStorage.setItem('tenant_slug', backendResponse.data.user.tenantSlug);
         setTimeout(() => {
           navigate('/admin');
