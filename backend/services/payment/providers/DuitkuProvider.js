@@ -54,8 +54,7 @@ class DuitkuProvider {
   }
 
   /**
-   * Create payment invoice (Passport API / Hosted Payment Page)
-   * V2 Inquiry API Implementation
+   * Create payment invoice (Passport API V1 / Hosted Payment Page)
    * @param {Object} params - Payment parameters
    * @returns {Promise<Object>} Payment response
    */
@@ -85,17 +84,16 @@ class DuitkuProvider {
         lastName = parts.slice(1).join(' ');
       }
 
-      // V2 Signature: MD5(merchantCode + merchantOrderId + paymentAmount + apiKey)
-      const stringToHash = `${this.merchantCode}${merchantOrderId}${paymentAmount}${this.apiKey}`;
-      const signature = crypto.createHash('md5').update(stringToHash).digest('hex');
+      // Passport API Header Signature: SHA256(merchantCode + timestamp + apiKey)
+      const timestamp = new Date().getTime();
+      const stringToHash = `${this.merchantCode}${timestamp}${this.apiKey}`;
+      const signature = crypto.createHash('sha256').update(stringToHash).digest('hex');
 
-      console.log('[DUITKU DEBUG] String to hash (V2 Inquiry):', stringToHash);
+      console.log('[DUITKU DEBUG] String to hash (V1 Headers):', stringToHash);
 
-      // Prepare request payload for Passport V2 API
+      // Prepare request payload for Passport V1 API (NO signature or paymentMethod in body)
       const payload = {
-        merchantCode: this.merchantCode,
         paymentAmount: paymentAmount,
-        paymentMethod: "", // Will be selected in Duitku UI if empty or use default VC
         merchantOrderId: merchantOrderId,
         productDetails: productDetails,
         additionalParam: "",
@@ -136,26 +134,28 @@ class DuitkuProvider {
         },
         callbackUrl: callbackUrl,
         returnUrl: returnUrl,
-        signature: signature,
         expiryPeriod: expiryPeriod
       };
 
-      console.log('[DUITKU] Creating Generic Payment Link via Passport V2 API');
+      console.log('[DUITKU] Creating Generic Payment Link via Passport API V1');
       console.log('[DUITKU] Request Payload:', JSON.stringify(payload, null, 2));
 
-      // Production uses Passport v2 (/v2/inquiry), Sandbox usually same
-      const invoicePath = '/v2/inquiry';
+      // Production & Sandbox both use /createInvoice for Passport V1
+      const invoicePath = '/createInvoice';
       const endpoint = `${this.baseURL}${invoicePath}`;
       console.log('[DUITKU] Endpoint:', endpoint);
 
-      // Call Duitku Passport API
+      // Call Duitku Passport API V1
       const response = await axios({
         method: 'POST',
         url: endpoint,
         data: payload,
         headers: {
           "Accept": "application/json",
-          "Content-type": "application/json"
+          "Content-type": "application/json; charset=UTF-8",
+          "x-duitku-signature": signature,
+          "x-duitku-timestamp": `${timestamp}`,
+          "x-duitku-merchantcode": `${this.merchantCode}`
         }
       });
 

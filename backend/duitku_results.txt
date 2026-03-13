@@ -1,0 +1,6 @@
+[Empty String] FAILED: paymentMethod is mandatory
+[Omitted] FAILED: paymentMethod is mandatory
+[Space] FAILED: Payment channel not available
+[00] FAILED: Payment channel not available
+[VC] FAILED: Payment channel not available
+[ALL] FAILED: Payment channel not available
