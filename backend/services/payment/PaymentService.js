@@ -55,7 +55,10 @@ class PaymentService {
 
       // SECURITY: Harga SELALU dari server
       const pricing = this.getPricing(planType);
-      const merchantOrderId = `SUB-${tenantSlug.toUpperCase()}-${planType.toUpperCase()}-${Date.now()}`;
+      
+      const safeTenantSlug = (tenantSlug || 'guest').replace(/[^a-zA-Z0-9]/g, '');
+      const safePlanType = (planType || 'starter').replace(/[^a-zA-Z0-9]/g, '');
+      const merchantOrderId = `SUB-${safeTenantSlug.toUpperCase()}-${safePlanType.toUpperCase()}-${Date.now()}`;
 
       const callbackUrl = process.env.DUITKU_CALLBACK_URL
         || `${process.env.BACKEND_URL || 'https://superkafe.com'}/api/payments/callback`;
@@ -70,7 +73,7 @@ class PaymentService {
         productDetails: pricing.description,
         email,
         customerName: tenantName,
-        phoneNumber: phoneNumber || '08123456789',
+        phoneNumber: phoneNumber && phoneNumber.length >= 10 ? phoneNumber : '08123456789',
         callbackUrl,
         returnUrl,
         expiryPeriod: 60

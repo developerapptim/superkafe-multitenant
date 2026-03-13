@@ -11,6 +11,25 @@ const CheckoutPage = () => {
   const [processing, setProcessing] = useState(false);
   const [plan, setPlan] = useState(null);
   const [user, setUser] = useState(null);
+  const [phone, setPhone] = useState('');
+  const [isPhoneValid, setIsPhoneValid] = useState(true);
+  const [showPhoneInput, setShowPhoneInput] = useState(false);
+
+  // Validasi Debounce Effect
+  useEffect(() => {
+    if (phone === '') {
+      setIsPhoneValid(false);
+      return;
+    }
+    const timer = setTimeout(() => {
+      const isFormatValid = /^[0-9]+$/.test(phone);
+      const isLengthValid = phone.length >= 10 && phone.length <= 13;
+      const isPrefixValid = phone.startsWith('08') || phone.startsWith('628');
+      setIsPhoneValid(isFormatValid && isLengthValid && isPrefixValid);
+    }, 400); // delay 400ms
+
+    return () => clearTimeout(timer);
+  }, [phone]);
 
   useEffect(() => {
     // Load plan and user data
@@ -30,6 +49,21 @@ const CheckoutPage = () => {
     }
 
     setUser(userData);
+
+    // Initialize phone number
+    const userPhone = userData.phone || userData.phoneNumber || '';
+    if (!userPhone || userPhone.trim() === '' || userPhone.startsWith('080000000')) {
+      setPhone('');
+      setIsPhoneValid(false);
+      setShowPhoneInput(true);
+    } else {
+      setPhone(userPhone);
+      const isLengthValid = userPhone.length >= 10 && userPhone.length <= 13;
+      const isPrefixValid = userPhone.startsWith('08') || userPhone.startsWith('628');
+      const valid = isLengthValid && isPrefixValid;
+      setIsPhoneValid(valid);
+      setShowPhoneInput(!valid);
+    }
 
     // Plan details (Authority comes from backend, but we show UI based on these)
     const pricingPlans = {
@@ -90,7 +124,7 @@ const CheckoutPage = () => {
         planType: plan.type,
         email: user.email,
         customerName: user.name,
-        phoneNumber: '08000000000' // Placeholder as we don't collect phone in register yet
+        phoneNumber: phone || '08000000000'
       });
 
       if (response.data.success && response.data.data.paymentUrl) {
@@ -202,16 +236,68 @@ const CheckoutPage = () => {
                   </div>
                   <div>
                     <p className="text-xs text-gray-500 uppercase tracking-wider font-semibold">Email Terdaftar</p>
-                    <p className="text-gray-900 font-bold">{user.email}</p>
+                    <p className="text-gray-900 font-bold truncate">{user.email}</p>
                   </div>
                 </div>
+
+                {showPhoneInput ? (
+                  <div className={`p-4 rounded-2xl border transition-colors ${!isPhoneValid && phone.length > 5 ? 'bg-red-50 border-red-200' : 'bg-blue-50/50 border-blue-100'}`}>
+                    <label className={`block text-sm font-semibold mb-2 ${!isPhoneValid && phone.length > 5 ? 'text-red-800' : 'text-gray-800'}`}>
+                      Nomor WhatsApp (Wajib)
+                    </label>
+                    <input
+                      type="tel"
+                      className={`w-full px-4 py-3 rounded-xl border focus:outline-none focus:ring-2 bg-white transition-all ${
+                        !isPhoneValid && phone.length > 5 
+                          ? 'border-red-300 focus:ring-red-400' 
+                          : 'border-blue-200 focus:ring-blue-400'
+                      }`}
+                      placeholder="Contoh: 08123456789"
+                      value={phone}
+                      onChange={(e) => {
+                        const val = e.target.value.replace(/\D/g, ''); // Hanya angka
+                        if (val.length <= 13) {
+                          setPhone(val);
+                        }
+                      }}
+                    />
+                    {!isPhoneValid && phone.length > 5 && (
+                      <p className="text-xs text-red-600 mt-2">
+                        Masukkan format yang valid (10-13 digit, awalan 08 atau 628).
+                      </p>
+                    )}
+                    {(isPhoneValid || phone.length <= 5) && (
+                      <p className="text-xs text-gray-500 mt-2">
+                        Nomor aktif dibutuhkan untuk pengiriman notifikasi via WhatsApp.
+                      </p>
+                    )}
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl border border-gray-100">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 bg-amber-100 rounded-full flex items-center justify-center text-amber-700">
+                        <FiUser size={24} />
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500 uppercase tracking-wider font-semibold">Nomor WhatsApp</p>
+                        <p className="text-gray-900 font-bold">{phone}</p>
+                      </div>
+                    </div>
+                    <button 
+                      onClick={() => setShowPhoneInput(true)}
+                      className="text-xs font-bold text-amber-600 hover:text-amber-800 transition-colors px-3 py-1 bg-amber-100 hover:bg-amber-200 rounded-lg"
+                    >
+                      Ubah
+                    </button>
+                  </div>
+                )}
               </div>
 
               <div className="space-y-4">
                 <button
                   onClick={handlePayment}
-                  disabled={processing}
-                  className="w-full py-4 bg-gradient-to-r from-amber-600 to-amber-800 text-white rounded-2xl font-bold text-lg hover:shadow-2xl hover:shadow-amber-700/40 transition-all disabled:opacity-60 transform active:scale-95 flex items-center justify-center gap-2"
+                  disabled={processing || !isPhoneValid}
+                  className="w-full py-4 bg-gradient-to-r from-amber-600 to-amber-800 text-white rounded-2xl font-bold text-lg hover:shadow-2xl hover:shadow-amber-700/40 transition-all disabled:opacity-60 disabled:cursor-not-allowed transform active:scale-95 flex items-center justify-center gap-2"
                 >
                   {processing ? (
                     <>

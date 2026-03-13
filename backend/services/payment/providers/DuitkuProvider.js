@@ -32,7 +32,8 @@ class DuitkuProvider {
    * Format: MD5(merchantCode + merchantOrderId + amount + apiKey)
    */
   generateSignature(merchantOrderId, amount) {
-    const stringToHash = `${this.merchantCode}${merchantOrderId}${amount}${this.apiKey}`;
+    const sanitizedAmount = Math.round(Number(amount));
+    const stringToHash = `${this.merchantCode}${merchantOrderId}${sanitizedAmount}${this.apiKey}`;
     console.log('[DUITKU DEBUG] String to Hash (Inquiry):', stringToHash);
 
     return crypto.createHash('md5').update(stringToHash).digest('hex');
@@ -43,9 +44,10 @@ class DuitkuProvider {
    * Format: MD5(merchantCode + amount + merchantOrderId + apiKey)
    */
   verifyCallbackSignature(merchantOrderId, amount, signature) {
+    const sanitizedAmount = Math.round(Number(amount));
     const expectedSignature = crypto
       .createHash('md5')
-      .update(`${this.merchantCode}${amount}${merchantOrderId}${this.apiKey}`)
+      .update(`${this.merchantCode}${sanitizedAmount}${merchantOrderId}${this.apiKey}`)
       .digest('hex');
 
     return signature === expectedSignature;
@@ -84,9 +86,12 @@ class DuitkuProvider {
         lastName = parts.slice(1).join(' ');
       }
 
+      // Ensure amount is integer
+      const sanitizedAmount = Math.round(Number(amount));
+
       // Prepare request payload for Passport API
       const payload = {
-        paymentAmount: amount,
+        paymentAmount: sanitizedAmount,
         merchantOrderId: merchantOrderId,
         productDetails: productDetails,
         email: email,
@@ -97,7 +102,7 @@ class DuitkuProvider {
         itemDetails: [
           {
             name: productDetails,
-            price: amount,
+            price: sanitizedAmount,
             quantity: 1
           }
         ],
@@ -159,12 +164,19 @@ class DuitkuProvider {
         };
       }
     } catch (error) {
+      let specificError = error.message;
+      if (error.response && error.response.data && error.response.data.Message) {
+         specificError = `Duitku Rejected: ${error.response.data.Message}`;
+      } else if (error.response && error.response.data && error.response.data.statusMessage) {
+         specificError = error.response.data.statusMessage;
+      }
+
       console.error('[DUITKU ERROR] Create invoice failed', {
-        error: error.message,
+        error: specificError,
         response: error.response?.data
       });
 
-      throw new Error(`Duitku API Error: ${error.message}`);
+      throw new Error(specificError);
     }
   }
 

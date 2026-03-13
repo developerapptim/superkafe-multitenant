@@ -41,7 +41,8 @@ function AdminLayout() {
 
     // Subscription state for lock screen & banner
     const [subscriptionData, setSubscriptionData] = useState(null);
-    const showLockScreen = subscriptionData && !subscriptionData.canAccessFeatures;
+    const isUpgradePage = location.pathname.endsWith('/admin/subscription/upgrade');
+    const showLockScreen = subscriptionData && !subscriptionData.canAccessFeatures && !isUpgradePage;
 
     // Fetch subscription status on mount
     useEffect(() => {
@@ -68,7 +69,13 @@ function AdminLayout() {
                 }
             }
         };
+
         fetchSubscription();
+
+        // Auto-refresh subscription state when user returns to the tab
+        // Crucial for refreshing state after paying on Duitku's payment page
+        window.addEventListener('focus', fetchSubscription);
+        return () => window.removeEventListener('focus', fetchSubscription);
     }, [tenantSlug]);
 
     // Listen for real-time subscription updates via Socket.io
