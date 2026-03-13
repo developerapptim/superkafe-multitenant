@@ -27,7 +27,7 @@ function Pegawai() {
     // Form data
     const [formData, setFormData] = useState({
         name: '',
-        role: 'kasir',
+        role: 'staf',
         phone: '',
         address: '',
         salary: '',

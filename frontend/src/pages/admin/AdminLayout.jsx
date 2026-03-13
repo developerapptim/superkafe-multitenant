@@ -167,7 +167,7 @@ function AdminLayout() {
     // First-time PIN setup popup state
     const [showPinPopup, setShowPinPopup] = useState(() => {
         const hasSetupPinLocal = localStorage.getItem('has_setup_pin') === 'true';
-        return (user.role === 'admin' || user.role === 'owner') &&
+        return (user.role === 'admin') &&
             tenantInfo.tenantId &&
             tenantInfo.hasPin === false &&
             !hasSetupPinLocal;
@@ -408,7 +408,7 @@ function AdminLayout() {
                             </div>
 
                             {/* Monitor Mode Badge - Mobile Only */}
-                            {(user.role === 'admin' || user.role === 'owner') && location.pathname === '/admin/kasir' && (
+                            {user.role === 'admin' && location.pathname === '/admin/kasir' && (
                                 <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-yellow-500/10 border border-yellow-500/20 text-yellow-500 text-[10px] font-medium animate-fade-in select-none whitespace-nowrap shrink-0">
                                     <span>👁️</span>
                                     <span>Pantau</span>

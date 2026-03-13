@@ -50,14 +50,14 @@ const CommandPalette = ({ isOpen, onClose }) => {
         { id: 'kasir', name: 'Kasir (POS)', icon: '🧾', url: '/admin/kasir', access: 'POS', type: 'Navigasi', keywords: ['jual', 'bayar', 'transaksi'] },
         { id: 'gramasi', name: 'Gramasi & HPP', icon: '⚖️', url: '/admin/gramasi', access: 'Gramasi', type: 'Navigasi', keywords: ['resep', 'bahan baku'] },
         { id: 'inventaris', name: 'Inventaris', icon: '📦', url: '/admin/inventaris', access: 'Inventori', type: 'Navigasi', keywords: ['stok', 'gudang'] },
-        { id: 'keuangan', name: 'Keuangan & Kas', icon: '💰', url: '/admin/keuangan', access: 'Keuangan', roles: ['admin', 'owner'], type: 'Navigasi', keywords: ['laba', 'rugi'] },
-        { id: 'pegawai', name: 'Pegawai', icon: '👥', url: '/admin/pegawai', access: 'Pegawai', roles: ['admin', 'owner'], type: 'Navigasi', keywords: ['karyawan', 'staff'] },
+        { id: 'keuangan', name: 'Keuangan & Kas', icon: '💰', url: '/admin/keuangan', access: 'Keuangan', roles: ['admin'], type: 'Navigasi', keywords: ['laba', 'rugi'] },
+        { id: 'pegawai', name: 'Pegawai', icon: '👥', url: '/admin/pegawai', access: 'Pegawai', roles: ['admin'], type: 'Navigasi', keywords: ['karyawan', 'staff'] },
         { id: 'meja', name: 'Meja & Reservasi', icon: '🪑', url: '/admin/meja', access: 'Meja', type: 'Navigasi', keywords: ['booking', 'denah'] },
         { id: 'pelanggan', name: 'Pelanggan & Loyalti', icon: '❤️', url: '/admin/pelanggan', access: 'Pelanggan', type: 'Navigasi', keywords: ['member', 'crm'] },
-        { id: 'laporan', name: 'Laporan & Analitik', icon: '📈', url: '/admin/laporan', access: 'Laporan', roles: ['admin', 'owner'], type: 'Navigasi', keywords: ['audit', 'export'] },
-        { id: 'shift', name: 'Laporan Shift', icon: '🔐', url: '/admin/shift', access: 'Laporan', roles: ['admin', 'owner'], type: 'Navigasi', keywords: ['tutup kasir'] },
-        { id: 'pengaturan', name: 'Pengaturan Umum', icon: '⚙️', url: '/admin/pengaturan', access: 'Settings', roles: ['admin', 'owner'], type: 'Navigasi', keywords: ['system'] },
-        { id: 'datacenter', name: 'Pusat Data', icon: '🗄️', url: '/admin/data-center', access: 'Settings', roles: ['admin', 'owner'], type: 'Navigasi', keywords: ['backup'] }
+        { id: 'laporan', name: 'Laporan & Analitik', icon: '📈', url: '/admin/laporan', access: 'Laporan', roles: ['admin'], type: 'Navigasi', keywords: ['audit', 'export'] },
+        { id: 'shift', name: 'Laporan Shift', icon: '🔐', url: '/admin/shift', access: 'Laporan', roles: ['admin'], type: 'Navigasi', keywords: ['tutup kasir'] },
+        { id: 'pengaturan', name: 'Pengaturan Umum', icon: '⚙️', url: '/admin/pengaturan', access: 'Settings', roles: ['admin'], type: 'Navigasi', keywords: ['system'] },
+        { id: 'datacenter', name: 'Pusat Data', icon: '🗄️', url: '/admin/data-center', access: 'Settings', roles: ['admin'], type: 'Navigasi', keywords: ['backup'] }
     ];
 
     // Generate tenant-specific navigation actions
@@ -72,7 +72,7 @@ const CommandPalette = ({ isOpen, onClose }) => {
 
     // Check Access Helper
     const checkAccess = (action) => {
-        if (userRole === 'admin' || userRole === 'owner' || userRoleAccess?.includes('*')) return true;
+        if (userRole === 'admin' || userRoleAccess?.includes('*')) return true;
         if (action.access && userRoleAccess?.includes(action.access)) return true;
         if (action.roles && !action.roles.includes(userRole)) return false;
         if (!action.roles && !action.access) return true;
@@ -109,7 +109,7 @@ const CommandPalette = ({ isOpen, onClose }) => {
                     const promises = [];
 
                     // API Call: Employees (if accessible)
-                    if (checkAccess({ access: 'Pegawai', roles: ['admin', 'owner'] })) {
+                    if (checkAccess({ access: 'Pegawai', roles: ['admin'] })) {
                         promises.push(employeesAPI.getAll().then(res => {
                             // Helper to safely extract array from various API response structures
                             const rawData = res.data;

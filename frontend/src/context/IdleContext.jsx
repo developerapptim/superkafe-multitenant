@@ -40,7 +40,7 @@ export const IdleProvider = ({ children }) => {
     const isPersonalDevice = localStorage.getItem('isPersonalDevice') === 'true';
 
     // Auto-lock berlaku jika bukan Master Role ATAU bukan Personal Device
-    const isMasterRole = ['admin', 'owner'].includes(user.role);
+    const isMasterRole = user.role === 'admin';
     const shouldLock = !(isMasterRole && isPersonalDevice);
 
     if (shouldLock && tenantSlug) {
@@ -71,7 +71,7 @@ export const IdleProvider = ({ children }) => {
     }
 
     // Skip auto-lock mutlak jika ini adalah Personal Device milik Owner/Admin
-    const isMasterRole = ['admin', 'owner'].includes(user.role);
+    const isMasterRole = user.role === 'admin';
     const isPersonalDevice = localStorage.getItem('isPersonalDevice') === 'true';
 
     if (isMasterRole && isPersonalDevice) {

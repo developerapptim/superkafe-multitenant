@@ -11,7 +11,7 @@ const EmployeeSchema = new mongoose.Schema({
     pin_code: { type: String, maxlength: 6 }, // Legacy 6-digit PIN for kiosk attendance (plain text)
     image: { type: String }, // Profile image URL for staff selection screen
     name: { type: String, required: true },
-    role: { type: String, enum: ['admin', 'kasir', 'waiter', 'kitchen', 'barista', 'manager', 'owner', 'staf'], default: 'kasir' },
+    role: { type: String, enum: ['admin', 'staf'], default: 'admin' },
     role_access: [{ type: String }], // ['POS', 'Kitchen', 'Meja', 'Keuangan', 'Laporan', 'Menu']
     phone: String,
     address: String,

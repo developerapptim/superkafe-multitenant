@@ -152,7 +152,7 @@ function App() {
 
                 {/* Priority 5: Tenant-Specific Admin Routes - Must be before dynamic storefront */}
                 <Route path="/:tenantSlug/admin" element={
-                  <ProtectedRoute allowedRoles={['admin', 'kasir', 'staf']} requireTenant={true}>
+                  <ProtectedRoute allowedRoles={['admin', 'staf']} requireTenant={true}>
                     <TenantRouter>
                       <AdminLayout />
                     </TenantRouter>

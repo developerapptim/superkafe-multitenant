@@ -26,7 +26,7 @@ function MenuCustomer() {
                 const user = JSON.parse(userStr);
                 const role = user?.role || '';
                 setUserRole(role);
-                setIsStaffOrAdmin(['admin', 'owner', 'staf', 'kasir'].includes(role));
+                setIsStaffOrAdmin(['admin', 'staf'].includes(role));
             }
         } catch (err) {
             console.error('Error parsing user:', err);

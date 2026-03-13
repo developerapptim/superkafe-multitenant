@@ -82,7 +82,7 @@ const GlobalLogin = () => {
         localStorage.setItem('user', JSON.stringify(user));
 
         // Simpan status personal device owner
-        if (formData.isPersonalDevice && (user.role === 'admin' || user.role === 'owner')) {
+        if (formData.isPersonalDevice && user.role === 'admin') {
           localStorage.setItem('isPersonalDevice', 'true');
         } else {
           localStorage.removeItem('isPersonalDevice');

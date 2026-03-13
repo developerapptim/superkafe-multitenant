@@ -6,9 +6,9 @@ const isOwner = (req) => {
     const logMsg = `[${new Date().toISOString()}] User: ${JSON.stringify(req.user)} | Role: ${req.user?.role}\n`;
     fs.appendFileSync(logPath, logMsg);
 
-    // Allow Owner, Admin, or Administrator (case-insensitive just in case)
+    // Only Admin can manage expenses
     const role = req.user?.role?.toLowerCase();
-    return req.user && (role === 'owner' || role === 'admin' || role === 'administrator');
+    return req.user && role === 'admin';
 };
 
 const getExpenses = async (req, res) => {

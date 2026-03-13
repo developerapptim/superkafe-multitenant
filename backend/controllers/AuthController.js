@@ -31,7 +31,7 @@ async function ensureUniqueSlug(baseSlug) {
 }
 
 // Restricted roles that can only have one active session at a time
-const restrictedRoles = ['kasir', 'waiter', 'kitchen', 'barista', 'staf'];
+const restrictedRoles = ['staf'];
 
 const login = async (req, res) => {
     try {

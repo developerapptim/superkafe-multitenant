@@ -41,7 +41,7 @@ exports.globalLogin = async (req, res) => {
     }
 
     // Determine token expiration based on personal device flag
-    const isAdmin = ['admin', 'owner'].includes(user.role);
+    const isAdmin = user.role === 'admin';
     const expiresIn = (isPersonalDevice && isAdmin) ? '30d' : '24h';
 
     const token = jwt.sign(
@@ -274,7 +274,7 @@ exports.verifyAdminPIN = async (req, res) => {
 
     const admin = await runWithTenantContext(getTenantCtx(tenant), async () => {
       const admins = await Employee.find({
-        role: { $in: ['admin', 'owner'] },
+        role: 'admin',
         status: 'active'
       });
 

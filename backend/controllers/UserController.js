@@ -53,11 +53,11 @@ const resetSessions = async (req, res) => {
     try {
         // Ensure only admin/owner can do this (Middleware checkJwt already ran, check role here or in routes)
         // Assuming checkRole('admin') middleware will be used, or check here:
-        if (req.user.role !== 'admin' && req.user.role !== 'owner') {
+        if (req.user.role !== 'admin') {
             return res.status(403).json({ error: 'Akses ditolak' });
         }
 
-        const restrictedRoles = ['kasir', 'staf', 'waiter', 'barista', 'kitchen'];
+        const restrictedRoles = ['staf'];
 
         await Employee.updateMany(
             { role: { $in: restrictedRoles } },

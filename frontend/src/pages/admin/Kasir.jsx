@@ -50,7 +50,7 @@ function Kasir() {
     } catch (e) {
         console.error('Error parsing user:', e);
     }
-    const isAdmin = user.role === 'admin' || user.role === 'owner';
+    const isAdmin = user.role === 'admin';
 
     // Socket Listener (Real-time Updates)
     useEffect(() => {

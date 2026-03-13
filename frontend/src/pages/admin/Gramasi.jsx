@@ -15,8 +15,8 @@ function Gramasi() {
     const { data: settingsData } = useSWR('/settings', fetcher);
 
     // Determine edit permission
-    const isAdmin = user.role === 'admin' || user.role === 'owner' || (user.role_access && user.role_access.includes('*'));
-    const isStaff = user.role === 'staf' || user.role === 'kasir';
+    const isAdmin = user.role === 'admin' || (user.role_access && user.role_access.includes('*'));
+    const isStaff = user.role === 'staf';
     const canEdit = isAdmin || (isStaff && settingsData?.allowStaffEditInventory);
 
     // SWR Data Fetching

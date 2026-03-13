@@ -54,7 +54,7 @@ const LegacyAdminRedirect = () => {
 
         if (!targetTenant) {
             // Jika user benar-benar tidak terikat dengan tenant manapun
-            if (decoded.role !== 'staff' && decoded.role !== 'kasir') {
+            if (decoded.role !== 'staf') {
                 return <Navigate to="/setup-cafe" replace />;
             } else {
                 // Should not happen for staff, but just in case

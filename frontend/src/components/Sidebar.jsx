@@ -22,20 +22,20 @@ const baseMenuItems = [
   { path: '/admin/kasir', icon: '🧾', label: 'Kasir (POS)', section: 'pos', access: 'POS' },
   { path: '/admin/gramasi', icon: '⚖️', label: 'Gramasi & HPP', section: 'gramasi', access: 'Gramasi' },
   { path: '/admin/inventaris', icon: '📦', label: 'Inventaris', section: 'inventory', access: 'Inventori' },
-  { path: '/admin/keuangan', icon: '💰', label: 'Keuangan & Kas', section: 'finance', access: 'Keuangan', roles: ['admin', 'owner'] },
-  { path: '/admin/pegawai', icon: '👥', label: 'Pegawai', section: 'employee', access: 'Pegawai', roles: ['admin', 'owner'] },
+  { path: '/admin/keuangan', icon: '💰', label: 'Keuangan & Kas', section: 'finance', access: 'Keuangan', roles: ['admin'] },
+  { path: '/admin/pegawai', icon: '👥', label: 'Pegawai', section: 'employee', access: 'Pegawai', roles: ['admin'] },
   { path: '/admin/meja', icon: '🪑', label: 'Meja & Reservasi', section: 'table', access: 'Meja' },
-  { path: '/admin/laporan', icon: '📈', label: 'Laporan & Analitik', section: 'report', access: 'Laporan', roles: ['admin', 'owner'] },
-  { path: '/admin/shift', icon: '🔐', label: 'Laporan Shift', section: 'shiftReport', access: 'Laporan', roles: ['admin', 'owner'] },
+  { path: '/admin/laporan', icon: '📈', label: 'Laporan & Analitik', section: 'report', access: 'Laporan', roles: ['admin'] },
+  { path: '/admin/shift', icon: '🔐', label: 'Laporan Shift', section: 'shiftReport', access: 'Laporan', roles: ['admin'] },
   { path: '/admin/pelanggan', icon: '❤️', label: 'Pelanggan & Loyalti', section: 'customer', access: 'Pelanggan' },
   { path: '/admin/feedback', icon: '💬', label: 'Masukan Pelanggan', section: 'feedback', access: 'Dashboard' },
-  { path: '/admin/marketing', icon: '📢', label: 'Marketing & Promo', section: 'marketing', access: 'Marketing', roles: ['admin', 'owner'] },
+  { path: '/admin/marketing', icon: '📢', label: 'Marketing & Promo', section: 'marketing', access: 'Marketing', roles: ['admin'] },
   {
     label: 'Pengaturan',
     icon: '⚙️',
     section: 'settings',
     access: 'Settings',
-    roles: ['admin', 'owner'],
+    roles: ['admin'],
     children: [
       { path: '/admin/pengaturan', label: 'Umum' },
       { path: '/admin/data-center', label: 'Pusat Data' }
@@ -47,7 +47,7 @@ const baseMenuItems = [
     label: 'Lihat Tampilan Customer',
     section: 'customerPreview',
     access: 'Menu',
-    roles: ['admin', 'owner']
+    roles: ['admin']
   },
 ];
 
@@ -171,7 +171,7 @@ function Sidebar({ onLogout, isCollapsed, toggleSidebar }) {
 
     const filtered = menuItems.filter(item => {
       // 1. Admin/Owner Bypass
-      if (userRole === 'admin' || userRole === 'owner' || userRoleAccess?.includes('*')) {
+      if (userRole === 'admin' || userRoleAccess?.includes('*')) {
         return true;
       }
 
@@ -209,7 +209,7 @@ function Sidebar({ onLogout, isCollapsed, toggleSidebar }) {
   const { data: currentShift } = useSWR('/shifts/current', fetcher);
 
   const handleLogoutClick = () => {
-    const isAdminOrOwner = userRole === 'admin' || userRole === 'owner';
+    const isAdminOrOwner = userRole === 'admin';
 
     if (isAdminOrOwner) {
       // Admin/Owner: Show role-aware popup (Keluar Akun vs Login Kasir)
@@ -324,8 +324,7 @@ function Sidebar({ onLogout, isCollapsed, toggleSidebar }) {
           <div className={`overflow-hidden transition-all duration-300 ${isCollapsed ? 'w-0 opacity-0' : 'w-auto opacity-100 hidden lg:block'}`}>
             <h1 className="font-bold text-white text-sm whitespace-nowrap">{settings.businessName}</h1>
             <p className="text-xs text-gray-400 whitespace-nowrap">
-              {userRole === 'admin' || userRole === 'owner' ? 'Administrator' :
-                userRole === 'staf' ? 'Staf Server' : 'Kasir'}
+              {userRole === 'admin' ? 'Administrator' : 'Staf Server'}
             </p>
           </div>
         </div>

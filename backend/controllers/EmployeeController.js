@@ -62,7 +62,7 @@ const createEmployee = async (req, res) => {
             name,
             username: username || undefined,
             password: hashedPassword,
-            role: role || 'kasir',
+            role: role || 'staf',
             phone,
             address,
             salary: Number(salary) || 0,

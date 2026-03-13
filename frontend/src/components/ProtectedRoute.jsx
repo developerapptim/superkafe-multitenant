@@ -121,7 +121,7 @@ const ProtectedRoute = ({ children, allowedRoles, requireTenant = true }) => {
             if (requireTenant && userTenantSlug) {
                 toast.error('Anda tidak memiliki izin untuk mengakses halaman ini');
                 // Staff roles → Kasir (POS). Admin roles → Dashboard.
-                const isStaffRole = ['staf', 'kasir', 'waiter', 'kitchen', 'barista'].includes(userRole);
+                const isStaffRole = userRole === 'staf';
                 const redirectPath = isStaffRole ? 'kasir' : 'dashboard';
                 return <Navigate to={`/${userTenantSlug}/admin/${redirectPath}`} replace />;
             }

@@ -33,7 +33,7 @@ function CustomerLayout() {
                 setUserRole(role);
 
                 // Check if user is admin, owner, or staff
-                if (['admin', 'owner', 'staf', 'kasir'].includes(role)) {
+                if (['admin', 'staf'].includes(role)) {
                     setIsStaffOrAdmin(true);
                     setTenantSlug(slug);
                 }
@@ -45,7 +45,7 @@ function CustomerLayout() {
 
     const handleBackToAdmin = () => {
         if (tenantSlug) {
-            const path = ['admin', 'owner'].includes(userRole) ? 'dashboard' : 'kasir';
+            const path = userRole === 'admin' ? 'dashboard' : 'kasir';
             navigate(`/${tenantSlug}/admin/${path}`);
         }
     };
@@ -396,7 +396,7 @@ function CustomerLayout() {
                                         className="w-full sm:w-auto px-5 py-2.5 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white font-medium rounded-lg flex items-center justify-center gap-2 transition-all shadow-lg shadow-purple-500/20 admin-preview-btn"
                                     >
                                         <span>⬅️</span>
-                                        <span>{['admin', 'owner'].includes(userRole) ? 'Kembali ke Admin' : 'Kembali ke Panel Kasir'}</span>
+                                        <span>{userRole === 'admin' ? 'Kembali ke Admin' : 'Kembali ke Panel Kasir'}</span>
                                     </button>
                                 </motion.div>
                             )}

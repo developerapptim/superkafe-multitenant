@@ -55,6 +55,7 @@ class DuitkuProvider {
 
   /**
    * Create payment invoice (Passport API / Hosted Payment Page)
+   * V2 Inquiry API Implementation
    * @param {Object} params - Payment parameters
    * @returns {Promise<Object>} Payment response
    */
@@ -72,10 +73,8 @@ class DuitkuProvider {
         expiryPeriod = 60 // minutes
       } = params;
 
-      // Passport API Header Signature: SHA256(merchantCode + timestamp + apiKey)
-      const timestamp = new Date().getTime();
-      const stringToHash = `${this.merchantCode}${timestamp}${this.apiKey}`;
-      const signature = crypto.createHash('sha256').update(stringToHash).digest('hex');
+      // Ensure amount is integer
+      const paymentAmount = Math.round(Number(amount));
 
       // Nama depan dan nama belakang untuk form Duitku (dipisah secara sederhana)
       let firstName = customerName;
@@ -86,23 +85,28 @@ class DuitkuProvider {
         lastName = parts.slice(1).join(' ');
       }
 
-      // Ensure amount is integer
-      const sanitizedAmount = Math.round(Number(amount));
+      // V2 Signature: MD5(merchantCode + merchantOrderId + paymentAmount + apiKey)
+      const stringToHash = `${this.merchantCode}${merchantOrderId}${paymentAmount}${this.apiKey}`;
+      const signature = crypto.createHash('md5').update(stringToHash).digest('hex');
 
-      // Prepare request payload for Passport API
+      console.log('[DUITKU DEBUG] String to hash (V2 Inquiry):', stringToHash);
+
+      // Prepare request payload for Passport V2 API
       const payload = {
-        paymentAmount: sanitizedAmount,
+        merchantCode: this.merchantCode,
+        paymentAmount: paymentAmount,
+        paymentMethod: "", // Will be selected in Duitku UI if empty or use default VC
         merchantOrderId: merchantOrderId,
         productDetails: productDetails,
-        email: email,
-        additionalParam: '',
-        merchantUserInfo: '',
+        additionalParam: "",
+        merchantUserInfo: "",
         customerVaName: customerName,
-        phoneNumber: phoneNumber,
+        email: email,
+        phoneNumber: phoneNumber || "",
         itemDetails: [
           {
             name: productDetails,
-            price: sanitizedAmount,
+            price: paymentAmount,
             quantity: 1
           }
         ],
@@ -110,17 +114,37 @@ class DuitkuProvider {
           firstName: firstName,
           lastName: lastName,
           email: email,
-          phoneNumber: phoneNumber
+          phoneNumber: phoneNumber || "",
+          billingAddress: {
+             firstName: firstName,
+             lastName: lastName,
+             address: "",
+             city: "",
+             postalCode: "",
+             phone: phoneNumber || "",
+             countryCode: "ID"
+          },
+          shippingAddress: {
+             firstName: firstName,
+             lastName: lastName,
+             address: "",
+             city: "",
+             postalCode: "",
+             phone: phoneNumber || "",
+             countryCode: "ID"
+          }
         },
         callbackUrl: callbackUrl,
         returnUrl: returnUrl,
+        signature: signature,
         expiryPeriod: expiryPeriod
       };
 
-      console.log('[DUITKU] Creating Generic Payment Link via Passport API');
+      console.log('[DUITKU] Creating Generic Payment Link via Passport V2 API');
+      console.log('[DUITKU] Request Payload:', JSON.stringify(payload, null, 2));
 
-      // Production uses Passport v2 (/v2/inquiry), Sandbox uses (/createInvoice)
-      const invoicePath = this.mode === 'production' ? '/v2/inquiry' : '/createInvoice';
+      // Production uses Passport v2 (/v2/inquiry), Sandbox usually same
+      const invoicePath = '/v2/inquiry';
       const endpoint = `${this.baseURL}${invoicePath}`;
       console.log('[DUITKU] Endpoint:', endpoint);
 
@@ -131,10 +155,7 @@ class DuitkuProvider {
         data: payload,
         headers: {
           "Accept": "application/json",
-          "Content-type": "application/json; charset=UTF-8",
-          "x-duitku-signature": signature,
-          "x-duitku-timestamp": `${timestamp}`,
-          "x-duitku-merchantcode": `${this.merchantCode}`
+          "Content-type": "application/json"
         }
       });
 
@@ -148,7 +169,7 @@ class DuitkuProvider {
           success: true,
           paymentUrl: response.data.paymentUrl,
           reference: response.data.reference,
-          amount: amount,
+          amount: paymentAmount,
           statusCode: response.data.statusCode,
           statusMessage: response.data.statusMessage
         };
