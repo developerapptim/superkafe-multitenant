@@ -15,12 +15,13 @@ class DuitkuProvider {
     this.mode = config.mode || 'sandbox'; // sandbox or production
 
     // Set base URL berdasarkan mode.
-    // Duitku Passport API (Hosted Payment Page)
+    // Duitku Passport V1 (Hosted Payment Page) endpoint is api-prod.duitku.com
     if (process.env.DUITKU_URL && this.mode === 'production') {
-      this.baseURL = process.env.DUITKU_URL.replace('/v2/inquiry', '');
+      // Ignore DUITKU_URL if it's set to the POP v2 URL because we are using HPP V1
+      this.baseURL = 'https://api-prod.duitku.com/api/merchant';
     } else {
       this.baseURL = this.mode === 'production'
-        ? 'https://passport.duitku.com/webapi/api/merchant'
+        ? 'https://api-prod.duitku.com/api/merchant'
         : 'https://api-sandbox.duitku.com/api/merchant';
     }
 

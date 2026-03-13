@@ -1,0 +1,3 @@
+[https://api-prod.duitku.com/api/merchant/createInvoice] SUCCESS: 00 SUCCESS https://app-prod.duitku.com/redirect_checkout?reference=D2188026D5NLH3UMEJQE1TS
+[https://passport.duitku.com/webapi/api/merchant/v2/inquiry] FAILED: {"Message":"Merchant not found"}
+[https://api-prod.duitku.com/api/merchant/v2/inquiry] FAILED: Request failed with status code 404
