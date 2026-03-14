@@ -128,7 +128,7 @@ function Sidebar({ onLogout, isCollapsed, toggleSidebar }) {
   // Safe User Parsing with loading state
   const [userLoaded, setUserLoaded] = useState(false);
   let user = {};
-  let userRole = 'staf';
+  let userRole = 'admin';
   let userRoleAccess = [];
 
   try {

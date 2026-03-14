@@ -118,6 +118,7 @@ const googleAuth = async (req, res) => {
           console.log('[GOOGLE AUTH] ✅ Auto-Login - Email sudah terdaftar:', {
             email: user.email,
             name: user.name,
+            role: user.role,
             tenant: tenantSlug
           });
 
@@ -129,6 +130,22 @@ const googleAuth = async (req, res) => {
             user.authProvider = 'google';
             user.isVerified = true;
             needsUpdate = true;
+          }
+
+          // AUTO-FIX: Ensure role is set (legacy migration)
+          if (!user.role || user.role === '') {
+            user.role = 'admin';
+            needsUpdate = true;
+            console.log('[GOOGLE AUTH] ⚠️ Auto-fixed missing role to admin for:', user.email);
+          }
+
+          // AUTO-FIX: Ensure role_access is set for admin users
+          if (!user.role_access || user.role_access.length === 0) {
+            if (user.role === 'admin') {
+              user.role_access = ['POS', 'Kitchen', 'Meja', 'Keuangan', 'Laporan', 'Menu', 'Pegawai', 'Pengaturan'];
+              needsUpdate = true;
+              console.log('[GOOGLE AUTH] ⚠️ Auto-fixed missing role_access for admin:', user.email);
+            }
           }
 
           // Update foto profil dari Google jika belum ada atau masih default
@@ -327,6 +344,21 @@ const googleCallback = async (req, res) => {
             user.authProvider = 'google';
             user.isVerified = true;
           }
+
+          // AUTO-FIX: Ensure role is set (legacy migration)
+          if (!user.role || user.role === '') {
+            user.role = 'admin';
+            console.log('[GOOGLE CALLBACK] ⚠️ Auto-fixed missing role to admin for:', user.email);
+          }
+
+          // AUTO-FIX: Ensure role_access is set for admin users
+          if (!user.role_access || user.role_access.length === 0) {
+            if (user.role === 'admin') {
+              user.role_access = ['POS', 'Kitchen', 'Meja', 'Keuangan', 'Laporan', 'Menu', 'Pegawai', 'Pengaturan'];
+              console.log('[GOOGLE CALLBACK] ⚠️ Auto-fixed missing role_access for admin:', user.email);
+            }
+          }
+
           if (!user.image || user.image === '' || user.image.includes('default')) {
             user.image = googleUser.picture;
           }
