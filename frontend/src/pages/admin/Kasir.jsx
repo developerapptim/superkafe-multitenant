@@ -247,8 +247,43 @@ function Kasir() {
 
 
 
-    // Audio State (Mute Toggle Only)
+    // Audio State
     const [isMuted, setIsMuted] = useState(() => localStorage.getItem('pos_muted') === 'true');
+    const [soundUrl, setSoundUrl] = useState(null);
+
+    // Ensure we always have the latest sound URL directly from the API (bypassing stale localStorage)
+    useEffect(() => {
+        const fetchSoundUrl = async () => {
+            try {
+                const cached = localStorage.getItem('appSettings');
+                if (cached) {
+                    try {
+                        const parsed = JSON.parse(cached);
+                        if (parsed.notificationSoundUrl) setSoundUrl(parsed.notificationSoundUrl);
+                    } catch (e) {}
+                }
+
+                // Always ping backend for latest settings
+                const res = await api.get('/settings');
+                if (res.data?.notificationSoundUrl) {
+                    setSoundUrl(res.data.notificationSoundUrl);
+                    
+                    // Keep cache in sync for other components
+                    try {
+                        const currentCache = JSON.parse(localStorage.getItem('appSettings') || '{}');
+                        currentCache.notificationSoundUrl = res.data.notificationSoundUrl;
+                        localStorage.setItem('appSettings', JSON.stringify(currentCache));
+                    } catch (e) {}
+                }
+            } catch (err) {
+                console.warn('Gagal memuat URL suara:', err);
+            }
+        };
+
+        fetchSoundUrl();
+        window.addEventListener('focus', fetchSoundUrl);
+        return () => window.removeEventListener('focus', fetchSoundUrl);
+    }, []);
 
     // Mute Toggle Handler
     const toggleMute = () => {
@@ -265,29 +300,22 @@ function Kasir() {
         if (!newState) {
             // Unmuting — play a test sound to confirm audio works
             try {
-                const ctx = new (window.AudioContext || window.webkitAudioContext)();
-                if (ctx.state === 'suspended') ctx.resume();
-
-                const now = ctx.currentTime;
-                const playNote = (freq, startTime, duration) => {
-                    const osc = ctx.createOscillator();
-                    const gain = ctx.createGain();
-                    osc.connect(gain);
-                    gain.connect(ctx.destination);
-                    osc.type = 'sine';
-                    osc.frequency.setValueAtTime(freq, startTime);
-                    gain.gain.setValueAtTime(0.2, startTime);
-                    gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
-                    osc.start(startTime);
-                    osc.stop(startTime + duration);
-                };
-                playNote(880, now, 0.3);
-                playNote(659.25, now + 0.3, 0.5);
-
-                toast.success('Suara Notifikasi Aktif 🔊', { icon: '🔊' });
+                if (soundUrl) {
+                    let finalUrl = soundUrl;
+                    if (finalUrl.startsWith('/')) {
+                        const apiUrl = api.defaults?.baseURL || API_BASE_URL || '';
+                        const baseUrl = apiUrl.replace(/\/api$/, '');
+                        finalUrl = `${baseUrl}${finalUrl}`;
+                    }
+                    const audio = new Audio(finalUrl);
+                    audio.play().catch(e => console.warn('Audio play blocked:', e));
+                    toast.success('Suara Notifikasi Aktif 🔊', { icon: '🔊' });
+                } else {
+                    toast.success('Suara Aktif (Belum ada file suara di Pengaturan)', { icon: '🔊' });
+                }
             } catch (e) {
                 console.warn('Test sound failed:', e);
-                toast.success('Suara Notifikasi Aktif (test sound gagal)', { icon: '🔊' });
+                toast.success('Suara Notifikasi Aktif (Gagal memutar)', { icon: '🔊' });
             }
         } else {
             toast('Notifikasi Dibisukan', { icon: '🔇' });

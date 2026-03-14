@@ -7,44 +7,7 @@ const OrderNotification = () => {
     const socket = useSocket();
     const [isMuted, setIsMuted] = useState(() => localStorage.getItem('pos_muted') === 'true');
     const [soundUrl, setSoundUrl] = useState(null);
-    const audioContextRef = useRef(null);
     const lastPlayedRef = useRef(0);
-    const isAudioUnlockedRef = useRef(false); // Track if audio is unlocked via user gesture
-
-    // ─── Unlock AudioContext on first user interaction ───────────────────
-    // Browsers require a user gesture before audio can play.
-    // We create + resume the AudioContext on any click/tap to pre-unlock it.
-    useEffect(() => {
-        const unlockAudio = () => {
-            if (isAudioUnlockedRef.current) return;
-            try {
-                if (!audioContextRef.current) {
-                    audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
-                }
-                if (audioContextRef.current.state === 'suspended') {
-                    audioContextRef.current.resume().then(() => {
-                        isAudioUnlockedRef.current = true;
-                        console.log('🔊 AudioContext unlocked by user gesture');
-                    });
-                } else {
-                    isAudioUnlockedRef.current = true;
-                }
-            } catch (e) {
-                console.warn('Audio unlock failed:', e);
-            }
-        };
-
-        // Any interactive event will unlock the audio
-        document.addEventListener('click', unlockAudio, { once: false });
-        document.addEventListener('keydown', unlockAudio, { once: false });
-        document.addEventListener('touchstart', unlockAudio, { once: false });
-
-        return () => {
-            document.removeEventListener('click', unlockAudio);
-            document.removeEventListener('keydown', unlockAudio);
-            document.removeEventListener('touchstart', unlockAudio);
-        };
-    }, []);
 
     // ─── Fetch notification sound URL ────────────────────────────────────
     useEffect(() => {
@@ -52,18 +15,28 @@ const OrderNotification = () => {
             try {
                 const cached = localStorage.getItem('appSettings');
                 if (cached) {
-                    const parsed = JSON.parse(cached);
-                    if (parsed.notificationSoundUrl) setSoundUrl(parsed.notificationSoundUrl);
+                    try {
+                        const parsed = JSON.parse(cached);
+                        if (parsed.notificationSoundUrl) setSoundUrl(parsed.notificationSoundUrl);
+                    } catch (e) {}
                 }
                 const res = await api.get('/settings');
                 if (res.data?.notificationSoundUrl) {
                     setSoundUrl(res.data.notificationSoundUrl);
+                    // Update cache for others
+                    try {
+                        const currentCache = JSON.parse(localStorage.getItem('appSettings') || '{}');
+                        currentCache.notificationSoundUrl = res.data.notificationSoundUrl;
+                        localStorage.setItem('appSettings', JSON.stringify(currentCache));
+                    } catch (e) {}
                 }
             } catch (err) {
                 console.warn('Failed to fetch sound settings:', err);
             }
         };
+
         fetchSettings();
+        window.addEventListener('focus', fetchSettings);
 
         // Listen for mute toggles from Kasir.jsx header button
         const handleStorageChange = (e) => {
@@ -72,7 +45,11 @@ const OrderNotification = () => {
             }
         };
         window.addEventListener('storage', handleStorageChange);
-        return () => window.removeEventListener('storage', handleStorageChange);
+
+        return () => {
+            window.removeEventListener('focus', fetchSettings);
+            window.removeEventListener('storage', handleStorageChange);
+        };
     }, []);
 
     // ─── Play Notification Sound ─────────────────────────────────────────
@@ -85,55 +62,24 @@ const OrderNotification = () => {
         // Check mute state directly from storage (most reliable)
         if (localStorage.getItem('pos_muted') === 'true') return;
 
-        // Strategy A: Play custom sound file if configured
         if (soundUrl) {
             try {
-                const audio = new Audio(soundUrl);
+                let finalUrl = soundUrl;
+                // Parse relative URL by prepending backend host (same as Pengaturan.jsx)
+                if (finalUrl.startsWith('/')) {
+                    const apiUrl = api.defaults?.baseURL || '';
+                    const baseUrl = apiUrl.replace(/\/api$/, '');
+                    finalUrl = `${baseUrl}${finalUrl}`;
+                }
+
+                const audio = new Audio(finalUrl);
                 audio.volume = 0.8;
                 await audio.play();
-                return; // Success — stop here
             } catch (audioErr) {
-                console.warn('Custom sound failed, using oscillator fallback:', audioErr.message);
+                console.warn('Playback failed:', audioErr.message);
             }
-        }
-
-        // Strategy B: Oscillator "Ding-Dong" fallback
-        try {
-            // Ensure AudioContext is initialized + resumed
-            if (!audioContextRef.current) {
-                audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
-            }
-            const ctx = audioContextRef.current;
-
-            if (ctx.state === 'suspended') {
-                await ctx.resume();
-            }
-
-            if (ctx.state !== 'running') {
-                console.warn('AudioContext not running, cannot play sound. State:', ctx.state);
-                return;
-            }
-
-            const now = ctx.currentTime;
-
-            const playNote = (freq, startTime, duration) => {
-                const osc = ctx.createOscillator();
-                const gain = ctx.createGain();
-                osc.connect(gain);
-                gain.connect(ctx.destination);
-                osc.type = 'sine';
-                osc.frequency.setValueAtTime(freq, startTime);
-                gain.gain.setValueAtTime(0.15, startTime);
-                gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
-                osc.start(startTime);
-                osc.stop(startTime + duration);
-            };
-
-            playNote(880, now, 0.4);         // High note (Ding)
-            playNote(659.25, now + 0.4, 0.8); // Low note (Dong)
-
-        } catch (e) {
-            console.error('Audio playback failed:', e);
+        } else {
+             console.warn('No notification sound URL configured.');
         }
     }, [soundUrl]);
 
