@@ -374,7 +374,7 @@ const registerTenant = async (req, res) => {
           tenantSlug: slug.toLowerCase(), // CRITICAL: Add tenantSlug for frontend header
           tenantDbName: dbName
         },
-        process.env.JWT_SECRET || 'your-secret-key',
+        process.env.JWT_SECRET || 'change_this_secret',
         { expiresIn: '7d' }
       );
 

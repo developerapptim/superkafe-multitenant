@@ -50,7 +50,8 @@ function Kasir() {
     } catch (e) {
         console.error('Error parsing user:', e);
     }
-    const isAdmin = user.role === 'admin';
+    const userRole = user?.role || 'admin';
+    const isAdmin = userRole === 'admin';
 
     // Socket Listener (Real-time Updates)
     useEffect(() => {
@@ -262,7 +263,32 @@ function Kasir() {
         }));
 
         if (!newState) {
-            toast.success('Suara Notifikasi Aktif', { icon: '🔊' });
+            // Unmuting — play a test sound to confirm audio works
+            try {
+                const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                if (ctx.state === 'suspended') ctx.resume();
+
+                const now = ctx.currentTime;
+                const playNote = (freq, startTime, duration) => {
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(freq, startTime);
+                    gain.gain.setValueAtTime(0.2, startTime);
+                    gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
+                    osc.start(startTime);
+                    osc.stop(startTime + duration);
+                };
+                playNote(880, now, 0.3);
+                playNote(659.25, now + 0.3, 0.5);
+
+                toast.success('Suara Notifikasi Aktif 🔊', { icon: '🔊' });
+            } catch (e) {
+                console.warn('Test sound failed:', e);
+                toast.success('Suara Notifikasi Aktif (test sound gagal)', { icon: '🔊' });
+            }
         } else {
             toast('Notifikasi Dibisukan', { icon: '🔇' });
         }
@@ -624,13 +650,12 @@ function Kasir() {
         }
     };
 
-    // Get status label
     const getStatusLabel = (status) => {
         switch (status) {
-            case 'new': return '🟡 Baru';
-            case 'pending_payment': return '🟠 Menunggu Bayar';
-            case 'process': return '🔵 Diproses';
-            case 'done': return '🟢 Selesai';
+            case 'new': return 'Baru';
+            case 'pending_payment': return 'Menunggu Bayar';
+            case 'process': return 'Diproses';
+            case 'done': return 'Selesai';
             default: return status;
         }
     };
@@ -828,7 +853,7 @@ function Kasir() {
                                     : 'bg-white/5 text-gray-400 hover:bg-white/10'
                                     }`}
                             >
-                                🟠 Bayar
+                                Bayar
                             </button>
                             <button
                                 onClick={() => setFilter('process')}
@@ -837,7 +862,7 @@ function Kasir() {
                                     : 'bg-white/5 text-gray-400 hover:bg-white/10'
                                     }`}
                             >
-                                🔵 Diproses
+                                Diproses
                             </button>
                             <button
                                 onClick={() => setFilter('ready')}
@@ -846,7 +871,7 @@ function Kasir() {
                                     : 'bg-white/5 text-gray-400 hover:bg-white/10'
                                     }`}
                             >
-                                ✅ Siap
+                                Siap
                             </button>
                             <button
                                 onClick={() => setFilter('done')}
@@ -855,7 +880,7 @@ function Kasir() {
                                     : 'bg-white/5 text-gray-400 hover:bg-white/10'
                                     }`}
                             >
-                                🟢 Selesai
+                                Selesai
                             </button>
                         </div>
                     </div>
@@ -950,27 +975,24 @@ function Kasir() {
                             className={`px-3 py-1.5 rounded-lg text-sm transition-all whitespace-nowrap flex items-center gap-1 ${filter === 'pending_payment'
                                 ? 'bg-orange-500 text-white'
                                 : 'bg-white/5 text-gray-400'
-                                }`}
-                        >
-                            🟠 Bayar
+                                }`}>
+                            Bayar
                         </button>
                         <button
                             onClick={() => setFilter('process')}
                             className={`px-3 py-1.5 rounded-lg text-sm transition-all whitespace-nowrap flex items-center gap-1 ${filter === 'process'
                                 ? 'bg-blue-500 text-white'
                                 : 'bg-white/5 text-gray-400'
-                                }`}
-                        >
-                            🔵 Proses
+                                }`}>
+                            Proses
                         </button>
                         <button
                             onClick={() => setFilter('done')}
                             className={`px-3 py-1.5 rounded-lg text-sm transition-all whitespace-nowrap flex items-center gap-1 ${filter === 'done'
                                 ? 'bg-green-500 text-white'
                                 : 'bg-white/5 text-gray-400'
-                                }`}
-                        >
-                            🟢 Selesai
+                                }`}>
+                            Selesai
                         </button>
                     </div>
                 </div>

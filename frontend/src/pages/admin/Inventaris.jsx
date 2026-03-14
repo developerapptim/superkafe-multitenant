@@ -135,13 +135,23 @@ function Inventaris() {
     // Fetch settings to check staff permission
     const { data: settingsData } = useSWR('/settings', fetcher);
 
-    // Determine edit permission
-    const isAdmin = user.role === 'admin' || (user.role_access && user.role_access.includes('*'));
-    const isStaff = user.role === 'staf';
+    // Determine edit permission, match Sidebar logic for user parsing
+    const userRole = user?.role || 'admin';
+    const userRoleAccess = user?.role_access || ['*'];
+
+    // Admin checking: Is explicitly admin OR has wildcard role_access
+    const isAdmin = userRole === 'admin' || userRoleAccess.includes('*');
+    const isStaff = userRole === 'staf';
+
+    // Add debug log to verify permissions in browser console
+    useEffect(() => {
+        console.log('[Inventaris] Role check:', { userRole, userRoleAccess, isAdmin, isStaff, settingsAllow: settingsData?.allowStaffEditInventory });
+    }, [userRole, userRoleAccess, isAdmin, isStaff, settingsData]);
+
     const canEdit = isAdmin || (isStaff && settingsData?.allowStaffEditInventory);
 
     const [ingredients, setIngredients] = useState([]);
-    const [loading, setLoading] = useState(false); // Changed to false to prevent initial flicker
+    const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
     const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
@@ -196,6 +206,9 @@ function Inventaris() {
     const [filterStatus, setFilterStatus] = useState('all'); // 'all', 'Aman', 'Rendah', 'Habis'
     const [showRestockModal, setShowRestockModal] = useState(false);
     const [isUnitDropdownOpen, setIsUnitDropdownOpen] = useState(false);
+    const [isProductUnitDropdownOpen, setIsProductUnitDropdownOpen] = useState(false);
+    const [unitSearch, setUnitSearch] = useState('');
+    const [prodUnitSearch, setProdUnitSearch] = useState('');
     const [restockData, setRestockData] = useState({
         amount: '',
         unitPrice: '',
@@ -1436,22 +1449,18 @@ function Inventaris() {
                                             type="number"
                                             value={formData.stok}
                                             onChange={(e) => handleNumberChange('stok', e.target.value)}
-                                            className={`w-full px-4 py-2 rounded-lg bg-white/5 border border-purple-500/30 text-white focus:outline-none focus:border-purple-500 ${editingItem ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                            className={`w-full px-4 py-2 rounded-lg border focus:outline-none focus:border-purple-500 ${editingItem ? 'bg-black/30 text-gray-500 border-gray-700/50 cursor-not-allowed' : 'bg-white/5 border-purple-500/30 text-white'}`}
                                             disabled={!!editingItem}
                                         />
-                                        {editingItem && (
-                                            <p className="text-[10px] text-amber-500 mt-1 italic">
-                                                *Untuk mengubah jumlah stok, gunakan fitur Stock Opname.
-                                            </p>
-                                        )}
                                     </div>
                                     <div>
                                         <label className="block text-sm text-gray-400 mb-1">Satuan Beli</label>
                                         <div className="relative">
                                             <button
                                                 type="button"
-                                                onClick={() => setIsUnitDropdownOpen(!isUnitDropdownOpen)}
-                                                className="w-full px-4 py-2 rounded-lg bg-white/5 border border-purple-500/30 text-white flex justify-between items-center focus:outline-none focus:border-purple-500 transition-colors hover:bg-white/10"
+                                                onClick={() => !editingItem && setIsUnitDropdownOpen(!isUnitDropdownOpen)}
+                                                className={`w-full px-4 py-2 rounded-lg border flex justify-between items-center transition-colors ${editingItem ? 'bg-black/30 text-gray-500 border-gray-700/50 cursor-not-allowed' : 'bg-white/5 border-purple-500/30 text-white hover:bg-white/10 focus:outline-none focus:border-purple-500'}`}
+                                                disabled={!!editingItem}
                                             >
                                                 <span className={!formData.satuan_beli ? 'text-gray-500' : ''}>
                                                     {formData.satuan_beli || 'Pilih Satuan'}
@@ -1464,23 +1473,40 @@ function Inventaris() {
                                             {isUnitDropdownOpen && (
                                                 <>
                                                     {/* Backdrop to close on click outside */}
-                                                    <div className="fixed inset-0 z-40" onClick={() => setIsUnitDropdownOpen(false)}></div>
+                                                    <div className="fixed inset-0 z-40" onClick={() => { setIsUnitDropdownOpen(false); setUnitSearch(''); }}></div>
 
                                                     {/* Dropdown Menu */}
-                                                    <div className="absolute z-50 w-full mt-1 bg-[#1f2937] border border-purple-500/30 rounded-lg shadow-xl max-h-60 overflow-y-auto animate-in fade-in zoom-in-95 duration-100">
-                                                        {units.map(u => (
-                                                            <button
-                                                                key={u}
-                                                                type="button"
-                                                                onClick={() => {
-                                                                    setFormData({ ...formData, satuan_beli: u });
-                                                                    setIsUnitDropdownOpen(false);
-                                                                }}
-                                                                className={`w-full text-left px-4 py-2 hover:bg-purple-500/20 text-white transition-colors border-b border-white/5 last:border-0 ${formData.satuan_beli === u ? 'bg-purple-500/20 text-purple-400 font-bold' : ''}`}
-                                                            >
-                                                                {u}
-                                                            </button>
-                                                        ))}
+                                                    <div className="absolute z-50 w-full mt-1 bg-[#1f2937] border border-purple-500/30 rounded-lg shadow-xl flex flex-col animate-in fade-in zoom-in-95 duration-100">
+                                                        <div className="p-2 border-b border-purple-500/30 sticky top-0 bg-[#1f2937] z-10 rounded-t-lg">
+                                                            <input
+                                                                type="text"
+                                                                autoFocus
+                                                                placeholder="Cari satuan..."
+                                                                value={unitSearch}
+                                                                onChange={(e) => setUnitSearch(e.target.value)}
+                                                                className="w-full px-3 py-1.5 bg-black/30 border border-purple-500/30 rounded text-sm text-white placeholder-gray-500 focus:outline-none focus:border-purple-500"
+                                                            />
+                                                        </div>
+                                                        <div className="max-h-48 overflow-y-auto w-full">
+                                                            {units.filter(u => u.toLowerCase().includes(unitSearch.toLowerCase())).length === 0 ? (
+                                                                <div className="px-4 py-3 text-sm text-gray-400 text-center">Satuan tidak ditemukan</div>
+                                                            ) : (
+                                                                units.filter(u => u.toLowerCase().includes(unitSearch.toLowerCase())).map(u => (
+                                                                    <button
+                                                                        key={u}
+                                                                        type="button"
+                                                                        onClick={() => {
+                                                                            setFormData({ ...formData, satuan_beli: u });
+                                                                            setIsUnitDropdownOpen(false);
+                                                                            setUnitSearch('');
+                                                                        }}
+                                                                        className={`w-full text-left px-4 py-2 hover:bg-purple-500/20 text-white transition-colors border-b border-white/5 last:border-0 ${formData.satuan_beli === u ? 'bg-purple-500/20 text-purple-400 font-bold' : ''}`}
+                                                                    >
+                                                                        {u}
+                                                                    </button>
+                                                                ))
+                                                            )}
+                                                        </div>
                                                     </div>
                                                 </>
                                             )}
@@ -1495,7 +1521,8 @@ function Inventaris() {
                                             type="number"
                                             value={formData.harga_beli}
                                             onChange={(e) => handleNumberChange('harga_beli', e.target.value)}
-                                            className="w-full px-4 py-2 rounded-lg bg-white/5 border border-purple-500/30 text-white focus:outline-none focus:border-purple-500"
+                                            className={`w-full px-4 py-2 rounded-lg border focus:outline-none focus:border-purple-500 ${editingItem ? 'bg-black/30 text-gray-500 border-gray-700/50 cursor-not-allowed' : 'bg-white/5 border-purple-500/30 text-white'}`}
+                                            disabled={!!editingItem}
                                         />
                                     </div>
                                     <div>
@@ -1509,12 +1536,13 @@ function Inventaris() {
                                     </div>
                                 </div>
 
-                                <label className="flex items-center gap-2 cursor-pointer mb-4">
+                                <label className={`flex items-center gap-2 mb-4 ${editingItem ? 'cursor-not-allowed opacity-50 text-gray-500' : 'cursor-pointer'}`}>
                                     <input
                                         type="checkbox"
                                         checked={formData.use_konversi}
                                         onChange={(e) => setFormData({ ...formData, use_konversi: e.target.checked })}
-                                        className="w-5 h-5 rounded accent-purple-500"
+                                        className={`w-5 h-5 rounded accent-purple-500 ${editingItem ? 'grayscale opacity-50 cursor-not-allowed' : ''}`}
+                                        disabled={!!editingItem}
                                     />
                                     <span className="font-medium">Centang Jika Satuan Beli & Produksi Berbeda</span>
                                 </label>
@@ -1530,19 +1558,69 @@ function Inventaris() {
                                                     type="number"
                                                     value={formData.isi_prod}
                                                     onChange={(e) => setFormData({ ...formData, isi_prod: e.target.value })}
-                                                    className="w-full px-4 py-2 rounded-lg bg-gray-900/50 border border-purple-500/30 text-white focus:outline-none focus:border-purple-500"
+                                                    className={`w-full px-4 py-2 rounded-lg border focus:outline-none focus:border-purple-500 ${editingItem ? 'bg-black/30 text-gray-500 border-gray-700/50 cursor-not-allowed' : 'bg-gray-900/50 border-purple-500/30 text-white'}`}
                                                     placeholder="0"
+                                                    disabled={!!editingItem}
                                                 />
                                             </div>
                                             <div>
                                                 <label className="block text-sm font-medium text-gray-300 mb-1">Satuan Produksi</label>
-                                                <select
-                                                    value={formData.satuan_prod}
-                                                    onChange={(e) => setFormData({ ...formData, satuan_prod: e.target.value })}
-                                                    className="w-full px-4 py-2 rounded-lg bg-gray-900/50 border border-purple-500/30 text-white focus:outline-none focus:border-purple-500"
-                                                >
-                                                    {units.map(u => <option key={u} value={u} className="bg-gray-900">{u}</option>)}
-                                                </select>
+                                                <div className="relative">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => !editingItem && setIsProductUnitDropdownOpen(!isProductUnitDropdownOpen)}
+                                                        className={`w-full px-4 py-2 rounded-lg border flex justify-between items-center transition-colors ${editingItem ? 'bg-black/30 text-gray-500 border-gray-700/50 cursor-not-allowed' : 'bg-gray-900/50 border-purple-500/30 text-white hover:bg-white/10 focus:outline-none focus:border-purple-500'}`}
+                                                        disabled={!!editingItem}
+                                                    >
+                                                        <span className={!formData.satuan_prod ? 'text-gray-500' : ''}>
+                                                            {formData.satuan_prod || 'Pilih Satuan'}
+                                                        </span>
+                                                        <svg className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${isProductUnitDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                                                        </svg>
+                                                    </button>
+                                                    
+                                                    {isProductUnitDropdownOpen && (
+                                                        <>
+                                                            {/* Backdrop to close on click outside */}
+                                                            <div className="fixed inset-0 z-40" onClick={() => { setIsProductUnitDropdownOpen(false); setProdUnitSearch(''); }}></div>
+
+                                                            {/* Dropdown Menu */}
+                                                            <div className="absolute z-50 w-full mt-1 bg-[#1f2937] border border-purple-500/30 rounded-lg shadow-xl flex flex-col animate-in fade-in zoom-in-95 duration-100">
+                                                                <div className="p-2 border-b border-purple-500/30 sticky top-0 bg-[#1f2937] z-10 rounded-t-lg">
+                                                                    <input
+                                                                        type="text"
+                                                                        autoFocus
+                                                                        placeholder="Cari satuan..."
+                                                                        value={prodUnitSearch}
+                                                                        onChange={(e) => setProdUnitSearch(e.target.value)}
+                                                                        className="w-full px-3 py-1.5 bg-black/30 border border-purple-500/30 rounded text-sm text-white placeholder-gray-500 focus:outline-none focus:border-purple-500"
+                                                                    />
+                                                                </div>
+                                                                <div className="max-h-48 overflow-y-auto w-full">
+                                                                    {units.filter(u => u.toLowerCase().includes(prodUnitSearch.toLowerCase())).length === 0 ? (
+                                                                        <div className="px-4 py-3 text-sm text-gray-400 text-center">Satuan tidak ditemukan</div>
+                                                                    ) : (
+                                                                        units.filter(u => u.toLowerCase().includes(prodUnitSearch.toLowerCase())).map(u => (
+                                                                            <button
+                                                                                key={u}
+                                                                                type="button"
+                                                                                onClick={() => {
+                                                                                    setFormData({ ...formData, satuan_prod: u });
+                                                                                    setIsProductUnitDropdownOpen(false);
+                                                                                    setProdUnitSearch('');
+                                                                                }}
+                                                                                className={`w-full text-left px-4 py-2 hover:bg-purple-500/20 text-white transition-colors border-b border-white/5 last:border-0 ${formData.satuan_prod === u ? 'bg-purple-500/20 text-purple-400 font-bold' : ''}`}
+                                                                            >
+                                                                                {u}
+                                                                            </button>
+                                                                        ))
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        </>
+                                                    )}
+                                                </div>
                                             </div>
                                         </div>
 
@@ -1567,7 +1645,14 @@ function Inventaris() {
                                     </div>
                                 )}
 
-                                <div className="flex gap-3 pt-4 border-t border-white/10 mt-6">
+                                {editingItem && (
+                                    <div className="text-center pb-2">
+                                        <p className="text-[12px] text-gray-500 font-light">
+                                            Beberapa data terkunci untuk menjaga akurasi HPP & Stok. Gunakan fitur Stok Opname untuk perubahan stok.
+                                        </p>
+                                    </div>
+                                )}
+                                <div className="flex gap-3 pt-4 border-t border-white/10 mt-2">
                                     <button
                                         type="button"
                                         onClick={() => setShowModal(false)}

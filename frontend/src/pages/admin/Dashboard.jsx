@@ -322,10 +322,13 @@ function Dashboard() {
                     {tableStatuses.length > 0 ? tableStatuses.map((table) => (
                         <div
                             key={table.number}
-                            className={`aspect-square rounded-xl flex items-center justify-center font-bold text-lg cursor-pointer transition-all duration-200 hover:scale-105 ${table.status === 'available'
-                                ? 'bg-green-500/20 text-green-400 border border-green-500/30'
-                                : 'bg-red-500/20 text-red-400 border border-red-500/30'
-                                }`}
+                            className={`aspect-square rounded-xl flex items-center justify-center font-bold text-lg cursor-pointer transition-all duration-200 hover:scale-105 ${
+                                table.status === 'available'
+                                    ? 'bg-green-500/20 text-green-400 border border-green-500/30'
+                                    : table.status === 'reserved'
+                                        ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
+                                        : 'bg-red-500/20 text-red-400 border border-red-500/30'
+                            }`}
                         >
                             {table.number}
                         </div>
@@ -339,6 +342,21 @@ function Dashboard() {
                             </div>
                         ))
                     )}
+                </div>
+                {/* Color Legend */}
+                <div className="flex items-center gap-6 mt-4 text-xs text-gray-400">
+                    <div className="flex items-center gap-1.5">
+                        <span className="w-3 h-3 rounded-full bg-green-500"></span>
+                        Tersedia
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                        <span className="w-3 h-3 rounded-full bg-red-500"></span>
+                        Terisi
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                        <span className="w-3 h-3 rounded-full bg-blue-500"></span>
+                        Dipesan
+                    </div>
                 </div>
             </div>
         </section>

@@ -250,7 +250,7 @@ const setupTenant = async (req, res) => {
         userId: user._id,
         hasPin: false
       },
-      process.env.JWT_SECRET || 'your-secret-key',
+      process.env.JWT_SECRET || 'change_this_secret',
       { expiresIn: '7d' }
     );
 

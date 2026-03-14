@@ -143,7 +143,7 @@ const OrderNotification = () => {
 
         const handleOrderUpdate = (data) => {
             if (data.action === 'create') {
-                console.log('🔔 New Order Received!');
+                console.log('🔔 New Order Received via Socket!');
                 playNotificationSound();
                 toast('Pesanan Baru Masuk! 🔔', {
                     duration: 6000,
@@ -160,6 +160,71 @@ const OrderNotification = () => {
 
         socket.on('orders:update', handleOrderUpdate);
         return () => socket.off('orders:update', handleOrderUpdate);
+    }, [socket, playNotificationSound]);
+
+    // ─── Fallback Polling (ONLY when socket is disconnected) ─────────────
+    const lastPendingCountRef = useRef(null);
+    const pollIntervalRef = useRef(null);
+
+    useEffect(() => {
+        if (!socket) return;
+
+        const pollPendingCount = async () => {
+            try {
+                const res = await api.get('/orders/pending-count');
+                const newCount = res.data?.count ?? 0;
+
+                if (lastPendingCountRef.current !== null && newCount > lastPendingCountRef.current) {
+                    console.log(`🔔 Fallback Poll: Pending count increased ${lastPendingCountRef.current} → ${newCount}`);
+                    playNotificationSound();
+                    toast('Pesanan Baru Masuk! 🔔', {
+                        duration: 6000,
+                        position: 'top-right',
+                        style: {
+                            background: '#1e1b4b',
+                            color: '#fff',
+                            border: '1px solid #a855f7',
+                            fontWeight: 'bold'
+                        }
+                    });
+                }
+                lastPendingCountRef.current = newCount;
+            } catch (err) {
+                // Silently fail
+            }
+        };
+
+        const startPolling = () => {
+            if (pollIntervalRef.current) return; // Already polling
+            console.log('⚠️ Socket disconnected — starting fallback polling (every 10s)');
+            pollPendingCount(); // Baseline
+            pollIntervalRef.current = setInterval(pollPendingCount, 10000);
+        };
+
+        const stopPolling = () => {
+            if (pollIntervalRef.current) {
+                clearInterval(pollIntervalRef.current);
+                pollIntervalRef.current = null;
+                console.log('✅ Socket reconnected — stopped fallback polling');
+            }
+        };
+
+        const handleConnect = () => stopPolling();
+        const handleDisconnect = () => startPolling();
+
+        socket.on('connect', handleConnect);
+        socket.on('disconnect', handleDisconnect);
+
+        // If socket is already disconnected at mount time, start polling immediately
+        if (!socket.connected) {
+            startPolling();
+        }
+
+        return () => {
+            socket.off('connect', handleConnect);
+            socket.off('disconnect', handleDisconnect);
+            stopPolling();
+        };
     }, [socket, playNotificationSound]);
 
     return null;

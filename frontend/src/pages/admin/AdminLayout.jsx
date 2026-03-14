@@ -36,7 +36,9 @@ function AdminLayout() {
 
     // Get User Role and Tenant Info
     const user = JSON.parse(localStorage.getItem('user') || '{}');
-    const isStaff = user.role === 'staf';
+    const userRole = user?.role || 'admin';
+    const isStaff = userRole === 'staf';
+    const isAdmin = userRole === 'admin';
     const tenantSlug = localStorage.getItem('tenant_slug');
 
     // Subscription state for lock screen & banner
@@ -167,7 +169,7 @@ function AdminLayout() {
     // First-time PIN setup popup state
     const [showPinPopup, setShowPinPopup] = useState(() => {
         const hasSetupPinLocal = localStorage.getItem('has_setup_pin') === 'true';
-        return (user.role === 'admin') &&
+        return (userRole === 'admin') &&
             tenantInfo.tenantId &&
             tenantInfo.hasPin === false &&
             !hasSetupPinLocal;
@@ -230,17 +232,38 @@ function AdminLayout() {
     }, [location.pathname]);
 
     const [showShiftModal, setShowShiftModal] = useState(false);
+    const [showActiveShiftWarning, setShowActiveShiftWarning] = useState(false);
     const [shiftData, setShiftData] = useState({ startCash: '' });
     const { data: currentShift, mutate: mutateShift } = useSWR('/shifts/current', fetcher);
 
     // Effects to check shift status
     useEffect(() => {
-        if (isStaff && currentShift === null) {
-            setShowShiftModal(true);
+        // Admin bypass: never block admin users
+        if (isAdmin) {
+            setShowShiftModal(false);
+            setShowActiveShiftWarning(false);
+            return;
+        }
+
+        if (isStaff) {
+            if (currentShift === null) {
+                // No active shift at all — show "Open Shift" modal
+                setShowActiveShiftWarning(false);
+                setShowShiftModal(true);
+            } else if (currentShift && currentShift.userId && currentShift.userId !== user?.id) {
+                // Another staff's shift is active — show warning, block access
+                setShowShiftModal(false);
+                setShowActiveShiftWarning(true);
+            } else {
+                // Current user's own shift is active — everything is fine
+                setShowShiftModal(false);
+                setShowActiveShiftWarning(false);
+            }
         } else {
             setShowShiftModal(false);
+            setShowActiveShiftWarning(false);
         }
-    }, [isStaff, currentShift]);
+    }, [isStaff, isAdmin, currentShift, user?.id]);
 
     const handleOpenShift = async (e) => {
         e.preventDefault();
@@ -408,7 +431,7 @@ function AdminLayout() {
                             </div>
 
                             {/* Monitor Mode Badge - Mobile Only */}
-                            {user.role === 'admin' && location.pathname === '/admin/kasir' && (
+                            {userRole === 'admin' && location.pathname === '/admin/kasir' && (
                                 <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-yellow-500/10 border border-yellow-500/20 text-yellow-500 text-[10px] font-medium animate-fade-in select-none whitespace-nowrap shrink-0">
                                     <span>👁️</span>
                                     <span>Pantau</span>
@@ -486,22 +509,6 @@ function AdminLayout() {
 
                     <CommandPalette isOpen={showCmd} onClose={() => setShowCmd(false)} />
 
-                    {/* Draggable Search FAB */}
-                    <motion.button
-                        drag
-                        dragConstraints={constraintsRef}
-                        dragMomentum={false}
-                        whileHover={{ scale: 1.1 }}
-                        whileTap={{ scale: 0.9 }}
-                        onClick={() => setShowCmd(true)}
-                        className="fixed bottom-48 md:bottom-32 right-8 z-50 p-4 bg-blue-600/20 hover:bg-blue-600/80 text-white/70 hover:text-white rounded-full shadow-lg shadow-blue-500/10 hover:shadow-blue-500/40 border border-white/5 hover:border-white/20 backdrop-blur-sm cursor-grab active:cursor-grabbing transition-colors duration-300 group"
-                        title="Cari (Ctrl+K)"
-                    >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                        </svg>
-                    </motion.button>
-
                     {/* Blocking Shift Modal for Staff */}
                     {showShiftModal && (
                         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
@@ -532,6 +539,30 @@ function AdminLayout() {
                                         🚀 Mulai Shift
                                     </button>
                                 </form>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Active Shift Warning Modal for Staff */}
+                    {showActiveShiftWarning && currentShift && (
+                        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
+                            <div className="admin-bg-sidebar p-8 rounded-2xl w-full max-w-md border admin-border-accent shadow-2xl">
+                                <div className="text-center mb-6">
+                                    <div className="text-5xl mb-3">⚠️</div>
+                                    <h2 className="text-2xl font-bold text-white">Shift Sedang Aktif</h2>
+                                    <p className="text-gray-400 mt-3">
+                                        Shift atas nama <span className="text-yellow-400 font-bold">{currentShift.cashierName || 'Staff lain'}</span> masih berjalan.
+                                    </p>
+                                    <p className="text-gray-500 mt-2 text-sm">
+                                        Harap selesaikan shift sebelumnya terlebih dahulu sebelum memulai shift baru.
+                                    </p>
+                                </div>
+                                <button
+                                    onClick={handleLogout}
+                                    className="w-full py-3 rounded-lg bg-red-600 hover:bg-red-700 text-white font-bold text-lg transition-all"
+                                >
+                                    🔙 Kembali ke Login
+                                </button>
                             </div>
                         </div>
                     )}

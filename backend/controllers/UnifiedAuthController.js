@@ -27,6 +27,8 @@ const getEmployeeTokenPayload = async (user) => {
     tenantSlug: user.tenantSlug
   };
 
+  let employeeData = null;
+
   if (user.hasCompletedSetup && user.tenantId) {
     // Fetch tenant info
     const tenant = await Tenant.findById(user.tenantId);
@@ -35,11 +37,35 @@ const getEmployeeTokenPayload = async (user) => {
       const employee = await runWithTenantContext(
         { id: tenant._id.toString(), slug: tenant.slug, name: tenant.name, dbName: tenant.dbName },
         async () => {
-          return await Employee.findOne({ email: user.email }).lean();
+          return await Employee.findOne({ email: user.email });
         }
       );
 
       if (employee) {
+        // AUTO-FIX: Ensure role and role_access are set for admin users
+        let needsSave = false;
+        if (!employee.role || employee.role === '') {
+          employee.role = 'admin';
+          needsSave = true;
+          console.log('[UNIFIED AUTH] ⚠️ Auto-fixed missing role to admin for:', employee.email);
+        }
+        if (!employee.role_access || employee.role_access.length === 0) {
+          if (employee.role === 'admin') {
+            employee.role_access = ['POS', 'Kitchen', 'Meja', 'Keuangan', 'Laporan', 'Menu', 'Pegawai', 'Pengaturan'];
+            needsSave = true;
+            console.log('[UNIFIED AUTH] ⚠️ Auto-fixed missing role_access for admin:', employee.email);
+          }
+        }
+
+        if (needsSave) {
+          await runWithTenantContext(
+            { id: tenant._id.toString(), slug: tenant.slug, name: tenant.name, dbName: tenant.dbName },
+            async () => {
+              await employee.save();
+            }
+          );
+        }
+
         tokenPayload = {
           id: employee._id.toString(),
           email: employee.email,
@@ -51,11 +77,20 @@ const getEmployeeTokenPayload = async (user) => {
           userId: user._id.toString(),
           hasPin: !!(employee.pin || employee.pin_code)
         };
+
+        // Store employee data for response enrichment
+        employeeData = {
+          id: employee.id || employee._id.toString(),
+          role: employee.role,
+          role_access: employee.role_access,
+          name: employee.name,
+          image: employee.image
+        };
       }
     }
   }
 
-  return tokenPayload;
+  return { tokenPayload, employeeData };
 };
 
 /**
@@ -202,12 +237,12 @@ const login = async (req, res) => {
     }
 
     // Get token payload with employee data if setup completed
-    const tokenPayload = await getEmployeeTokenPayload(user);
+    const { tokenPayload, employeeData } = await getEmployeeTokenPayload(user);
 
     // Generate JWT token
     const token = jwt.sign(
       tokenPayload,
-      process.env.JWT_SECRET || 'your-secret-key',
+      process.env.JWT_SECRET || 'change_this_secret',
       { expiresIn: '7d' }
     );
 
@@ -237,10 +272,12 @@ const login = async (req, res) => {
       message: 'Login berhasil',
       token: token,
       user: {
-        id: user._id,
+        id: employeeData?.id || user._id,
         email: user.email,
-        name: user.name,
-        image: user.image,
+        name: employeeData?.name || user.name,
+        image: employeeData?.image || user.image,
+        role: employeeData?.role || 'admin',
+        role_access: employeeData?.role_access || ['POS', 'Kitchen', 'Meja', 'Keuangan', 'Laporan', 'Menu', 'Pegawai', 'Pengaturan'],
         authProvider: user.authProvider,
         hasCompletedSetup: user.hasCompletedSetup,
         tenantSlug: user.tenantSlug
@@ -351,12 +388,12 @@ const googleAuth = async (req, res) => {
     }
 
     // Get token payload with employee data if setup completed
-    const tokenPayload = await getEmployeeTokenPayload(user);
+    const { tokenPayload, employeeData } = await getEmployeeTokenPayload(user);
 
     // Generate JWT token
     const token = jwt.sign(
       tokenPayload,
-      process.env.JWT_SECRET || 'your-secret-key',
+      process.env.JWT_SECRET || 'change_this_secret',
       { expiresIn: '7d' }
     );
 
@@ -384,10 +421,12 @@ const googleAuth = async (req, res) => {
       isNewUser: isNewUser,
       token: token,
       user: {
-        id: user._id,
+        id: employeeData?.id || user._id,
         email: user.email,
-        name: user.name,
-        image: user.image,
+        name: employeeData?.name || user.name,
+        image: employeeData?.image || user.image,
+        role: employeeData?.role || 'admin',
+        role_access: employeeData?.role_access || ['POS', 'Kitchen', 'Meja', 'Keuangan', 'Laporan', 'Menu', 'Pegawai', 'Pengaturan'],
         authProvider: user.authProvider,
         hasCompletedSetup: user.hasCompletedSetup,
         tenantSlug: user.tenantSlug
@@ -460,12 +499,12 @@ const verifyOTP = async (req, res) => {
     });
 
     // Get token payload with employee data if setup completed
-    const tokenPayload = await getEmployeeTokenPayload(user);
+    const { tokenPayload, employeeData } = await getEmployeeTokenPayload(user);
 
     // Generate JWT token
     const token = jwt.sign(
       tokenPayload,
-      process.env.JWT_SECRET || 'your-secret-key',
+      process.env.JWT_SECRET || 'change_this_secret',
       { expiresIn: '7d' }
     );
 
@@ -489,10 +528,12 @@ const verifyOTP = async (req, res) => {
       message: 'Email berhasil diverifikasi!',
       token: token,
       user: {
-        id: user._id,
+        id: employeeData?.id || user._id,
         email: user.email,
-        name: user.name,
-        image: user.image,
+        name: employeeData?.name || user.name,
+        image: employeeData?.image || user.image,
+        role: employeeData?.role || 'admin',
+        role_access: employeeData?.role_access || ['POS', 'Kitchen', 'Meja', 'Keuangan', 'Laporan', 'Menu', 'Pegawai', 'Pengaturan'],
         authProvider: user.authProvider,
         hasCompletedSetup: user.hasCompletedSetup,
         tenantSlug: user.tenantSlug

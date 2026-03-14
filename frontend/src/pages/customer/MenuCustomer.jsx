@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useOutletContext, useNavigate, useParams } from 'react-router-dom';
 import { motion, AnimatePresence } from "framer-motion";
-import { menuAPI, categoriesAPI, bannerAPI } from '../../services/api';
+import { menuAPI, categoriesAPI, bannerAPI, getImageUrl } from '../../services/api';
 import { useCart } from '../../context/CartContext';
 import { useRefresh } from '../../context/RefreshContext';
 
@@ -177,7 +177,7 @@ function MenuCustomer() {
                     <AnimatePresence mode="wait">
                         <motion.img
                             key={activeBanner}
-                            src={banners[activeBanner]?.image_url}
+                            src={getImageUrl(banners[activeBanner]?.image_url)}
                             alt={banners[activeBanner]?.title || 'Banner Promo'}
                             className="w-full h-full object-cover"
                             initial={{ opacity: 0, x: 30 }}
@@ -256,8 +256,7 @@ function MenuCustomer() {
                 </div>
             ) : (
                 <motion.div
-                    key={activeCategory + '-' + search}
-                    className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6"
+                    className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6 min-h-[60vh]"
                     initial="hidden"
                     animate="visible"
                     variants={{

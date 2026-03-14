@@ -70,7 +70,7 @@
     color: rgba(255, 244, 230, 0.6) !important;
 }
 
-[data-customer-theme="light-coffee"] .customer-view header nav a.text-white {
+[data-customer-theme="light-coffee"] .customer-view header nav a span.text-white:not(.theme-cart-badge) {
     color: var(--customer-accent-cream) !important;
     border-bottom-color: var(--customer-accent-cream) !important;
     font-weight: 700;
@@ -396,7 +396,7 @@
     color: rgba(255, 255, 255, 0.7) !important;
 }
 
-[data-customer-theme="merah-putih"] .customer-view header nav a.text-white {
+[data-customer-theme="merah-putih"] .customer-view header nav a span.text-white:not(.theme-cart-badge) {
     color: #FFFFFF !important;
     border-bottom-color: var(--mkp-accent-yellow) !important;
     font-weight: 700;

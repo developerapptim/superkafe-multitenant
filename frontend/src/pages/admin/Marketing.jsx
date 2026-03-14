@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import useSWR, { mutate } from 'swr';
 import toast from 'react-hot-toast';
 import imageCompression from 'browser-image-compression';
-import api, { voucherAPI, bannerAPI } from '../../services/api';
+import api, { voucherAPI, bannerAPI, getImageUrl } from '../../services/api';
 import { useRefresh } from '../../context/RefreshContext';
 
 const fetcher = url => api.get(url).then(res => res.data);
@@ -392,7 +392,7 @@ function Marketing() {
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                                 {banners.map(b => (
                                     <div key={b._id} className="relative group bg-white/5 rounded-xl overflow-hidden border border-purple-500/20 hover:border-purple-500/40 transition-all">
-                                        <img src={b.image_url} alt={b.title || 'Banner'} className="w-full h-40 object-cover" />
+                                        <img src={getImageUrl(b.image_url)} alt={b.title || 'Banner'} className="w-full h-40 object-cover" />
                                         <div className="p-3 flex items-center justify-between">
                                             <div>
                                                 <p className="text-sm font-medium text-white truncate">{b.title || 'Tanpa Judul'}</p>

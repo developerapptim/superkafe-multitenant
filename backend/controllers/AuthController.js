@@ -4,7 +4,7 @@ const Employee = require('../models/Employee');
 const Shift = require('../models/Shift');
 const Tenant = require('../models/Tenant');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'warkop_secret_jwt';
+const JWT_SECRET = process.env.JWT_SECRET || 'change_this_secret';
 
 // Helper: Generate slug dari nama
 function generateSlug(name) {
@@ -189,7 +189,7 @@ const login = async (req, res) => {
                 name: employee.name,
                 role: employee.role,
                 image: employee.image,
-                role_access: employee.role_access,
+                role_access: (employee.role_access && employee.role_access.length > 0) ? employee.role_access : ['POS', 'Kitchen', 'Meja', 'Keuangan', 'Laporan', 'Menu', 'Pegawai', 'Pengaturan'],
                 tenantId: employee.tenantId,
                 tenantSlug: tenantSlug
             }

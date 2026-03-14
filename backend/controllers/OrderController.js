@@ -412,6 +412,36 @@ const updateOrderStatus = async (req, res) => {
             WANotification.sendNotification(order, 'selesai');
         }
 
+        // ========= TABLE STATUS RELEASE =========
+        // When order is done or cancelled, release the table if no other active orders remain
+        if ((status === 'done' || status === 'cancel') && order.orderType === 'dine_in' && order.tableNumber) {
+            try {
+                // Check if there are other active orders on the same table
+                const activeOrdersOnTable = await Order.countDocuments({
+                    tableNumber: order.tableNumber,
+                    status: { $in: ['new', 'process', 'pending_payment'] },
+                    id: { $ne: order.id } // Exclude current order
+                });
+
+                if (activeOrdersOnTable === 0) {
+                    const table = await Table.findOne({ number: order.tableNumber.toString() });
+                    if (table && table.status === 'occupied') {
+                        table.status = 'available';
+                        table.currentOrderId = null;
+                        table.currentOrderIds = [];
+                        table.occupiedSince = null;
+                        await table.save();
+                        console.log(`✅ Table ${order.tableNumber} released to AVAILABLE (no more active orders)`);
+                    }
+                } else {
+                    console.log(`ℹ️ Table ${order.tableNumber} still has ${activeOrdersOnTable} active order(s), keeping OCCUPIED`);
+                }
+            } catch (tblErr) {
+                console.error('⚠️ Failed to release table status:', tblErr);
+            }
+        }
+        // ==========================================
+
         // Emit Socket Event
         const io = req.app.get('io');
         if (io) {
@@ -526,6 +556,29 @@ const voidOrder = async (req, res) => {
             description: `Pesanan dibatalkan/void oleh ${employeeName}. Alasan: ${reason}`, 
             metadata: { orderId: order.id, reason } 
         });
+        // Release table if voided dine_in order
+        if (order.orderType === 'dine_in' && order.tableNumber) {
+            try {
+                const activeOrdersOnTable = await Order.countDocuments({
+                    tableNumber: order.tableNumber,
+                    status: { $in: ['new', 'process', 'pending_payment'] },
+                    id: { $ne: order.id }
+                });
+                if (activeOrdersOnTable === 0) {
+                    const table = await Table.findOne({ number: order.tableNumber.toString() });
+                    if (table && table.status === 'occupied') {
+                        table.status = 'available';
+                        table.currentOrderId = null;
+                        table.currentOrderIds = [];
+                        table.occupiedSince = null;
+                        await table.save();
+                        console.log(`✅ Table ${order.tableNumber} released to AVAILABLE (void)`);
+                    }
+                }
+            } catch (tblErr) {
+                console.error('⚠️ Failed to release table on void:', tblErr);
+            }
+        }
 
         // 5. Emit Socket Event
         const io = req.app.get('io');

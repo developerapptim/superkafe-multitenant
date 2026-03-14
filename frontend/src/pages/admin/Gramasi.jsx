@@ -14,9 +14,19 @@ function Gramasi() {
     const user = JSON.parse(localStorage.getItem('user') || '{}');
     const { data: settingsData } = useSWR('/settings', fetcher);
 
-    // Determine edit permission
-    const isAdmin = user.role === 'admin' || (user.role_access && user.role_access.includes('*'));
-    const isStaff = user.role === 'staf';
+    // Determine edit permission, match Sidebar logic for user parsing
+    const userRole = user?.role || 'admin';
+    const userRoleAccess = user?.role_access || ['*'];
+    
+    // Admin checking: Is explicitly admin OR has wildcard role_access
+    const isAdmin = userRole === 'admin' || userRoleAccess.includes('*');
+    const isStaff = userRole === 'staf';
+    
+    // Add debug log to verify permissions in browser console
+    useEffect(() => {
+        console.log('[Gramasi] Role check:', { userRole, userRoleAccess, isAdmin, isStaff, settingsAllow: settingsData?.allowStaffEditInventory });
+    }, [userRole, userRoleAccess, isAdmin, isStaff, settingsData]);
+
     const canEdit = isAdmin || (isStaff && settingsData?.allowStaffEditInventory);
 
     // SWR Data Fetching

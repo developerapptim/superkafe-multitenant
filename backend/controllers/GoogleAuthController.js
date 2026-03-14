@@ -204,7 +204,7 @@ const googleAuth = async (req, res) => {
         tenant: tenantSlug,
         tenantDbName: tenant.dbName
       },
-      process.env.JWT_SECRET || 'your-secret-key',
+      process.env.JWT_SECRET || 'change_this_secret',
       { expiresIn: '7d' }
     );
 
@@ -217,13 +217,13 @@ const googleAuth = async (req, res) => {
       isNewUser: isNewUser,
       token: token,
       user: {
-        id: user.id,
+        id: user.id || user._id.toString(),
         username: user.username,
         email: user.email,
         name: user.name,
         image: user.image, // Foto profil dari Google
-        role: user.role,
-        role_access: user.role_access,
+        role: user.role || 'admin',
+        role_access: (user.role_access && user.role_access.length > 0) ? user.role_access : ['POS', 'Kitchen', 'Meja', 'Keuangan', 'Laporan', 'Menu', 'Pegawai', 'Pengaturan'],
         isVerified: user.isVerified,
         authProvider: user.authProvider
       },
@@ -380,7 +380,7 @@ const googleCallback = async (req, res) => {
         tenant: tenantSlug,
         tenantDbName: tenant.dbName
       },
-      process.env.JWT_SECRET || 'your-secret-key',
+      process.env.JWT_SECRET || 'change_this_secret',
       { expiresIn: '7d' }
     );
 

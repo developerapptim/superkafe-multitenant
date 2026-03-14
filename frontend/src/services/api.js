@@ -37,6 +37,13 @@ const getBaseUrl = () => {
 
 export const API_BASE_URL = getBaseUrl();
 
+export const getImageUrl = (path) => {
+    if (!path) return '';
+    if (path.startsWith('http') || path.startsWith('data:')) return path;
+    const SERVER_URL = API_BASE_URL.replace(/\/api$/, '');
+    return `${SERVER_URL}${path.startsWith('/') ? path : '/' + path}`;
+};
+
 // Create axios instance with dynamic baseURL
 const api = axios.create({
     baseURL: API_BASE_URL,
