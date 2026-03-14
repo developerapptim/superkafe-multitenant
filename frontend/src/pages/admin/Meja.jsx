@@ -10,12 +10,14 @@ import toast from 'react-hot-toast';
 import { useRefresh } from '../../context/RefreshContext';
 import { useTenant } from '../../components/TenantRouter';
 import { downloadFile } from '../../utils/downloadHelper';
+import { useTourGuide } from '../../context/TourGuideContext';
 
 const fetcher = url => api.get(url).then(res => res.data);
 
 function Meja() {
     const navigate = useNavigate();
     const { tenantSlug } = useTenant();
+    const { isTourActive } = useTourGuide();
     // SWR Data Fetching with auto-refresh every 30s
     const { data: tablesData, error: swrError } = useSWR('/tables', fetcher, { refreshInterval: 30000 });
     const tables = useMemo(() => {
@@ -50,6 +52,20 @@ function Meja() {
         };
         return registerRefreshHandler(handleRefresh);
     }, [registerRefreshHandler]);
+
+    // Tour Guide Integration for opening modal
+    useEffect(() => {
+        const handleTourAction = (e) => {
+            if (e.detail?.action === 'open-meja-modal') {
+                setFormData({ number: tables.length + 1, capacity: 4, status: 'available' });
+                setShowModal(true);
+            } else if (e.detail?.action === 'open-qr-modal') {
+                openGeneralQRModal();
+            }
+        };
+        window.addEventListener('tour:action', handleTourAction);
+        return () => window.removeEventListener('tour:action', handleTourAction);
+    }, [tables.length]);
 
     const [showModal, setShowModal] = useState(false);
 
@@ -395,6 +411,7 @@ function Meja() {
             {/* Header - Buttons Grid */}
             <div className="grid grid-cols-3 md:grid-cols-4 gap-2 md:gap-4 mb-2">
                 <button
+                    id="tour-meja-qr"
                     onClick={openGeneralQRModal}
                     className="bg-gradient-to-r from-orange-500 to-yellow-500 hover:from-orange-600 hover:to-yellow-600 p-2 md:p-4 rounded-xl text-[10px] md:text-sm font-medium flex flex-col items-center justify-center gap-1 md:gap-2 shadow-lg hover:scale-105 transition-transform h-full"
                 >
@@ -402,6 +419,7 @@ function Meja() {
                     <span className="text-center leading-tight">QR General</span>
                 </button>
                 <button
+                    id="tour-tambah-meja"
                     onClick={() => {
                         setFormData({ number: tables.length + 1, capacity: 4, status: 'available' });
                         setShowModal(true);
@@ -816,7 +834,7 @@ function Meja() {
             {
                 showModal && createPortal(
                     <div className="modal-overlay">
-                        <div className="glass rounded-2xl p-6 w-full max-w-sm">
+                        <div id="tour-meja-modal" className="glass rounded-2xl p-6 w-full max-w-sm relative z-10 bg-[#1f2937]">
                             <div className="flex items-center justify-between mb-6">
                                 <h3 className="text-xl font-bold">➕ Tambah Meja</h3>
                                 <button

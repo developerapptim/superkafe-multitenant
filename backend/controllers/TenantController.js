@@ -626,6 +626,60 @@ const getTrialStatus = async (req, res) => {
 };
 
 /**
+ * GET /api/tenants/:tenantId/tour-status
+ * Mendapatkan status tour guide onboarding untuk tenant
+ */
+const getTourStatus = async (req, res) => {
+  try {
+    const { tenantId } = req.params;
+    const tenant = await Tenant.findById(tenantId).select('hasCompletedTour').lean();
+
+    if (!tenant) {
+      return res.status(404).json({ success: false, message: 'Tenant tidak ditemukan' });
+    }
+
+    res.json({
+      success: true,
+      hasCompletedTour: tenant.hasCompletedTour || false
+    });
+  } catch (error) {
+    console.error('[TENANT ERROR] Gagal mengambil tour status', { error: error.message, tenantId: req.params.tenantId });
+    res.status(500).json({ success: false, message: 'Gagal mengambil tour status' });
+  }
+};
+
+/**
+ * PUT /api/tenants/:tenantId/tour-status
+ * Memperbarui status tour guide onboarding (complete/reset)
+ */
+const updateTourStatus = async (req, res) => {
+  try {
+    const { tenantId } = req.params;
+    const { hasCompletedTour } = req.body;
+
+    const tenant = await Tenant.findByIdAndUpdate(
+      tenantId,
+      { hasCompletedTour: !!hasCompletedTour },
+      { new: true, select: 'hasCompletedTour' }
+    );
+
+    if (!tenant) {
+      return res.status(404).json({ success: false, message: 'Tenant tidak ditemukan' });
+    }
+
+    console.log('[TENANT] Tour status updated', { tenantId, hasCompletedTour: tenant.hasCompletedTour });
+
+    res.json({
+      success: true,
+      hasCompletedTour: tenant.hasCompletedTour
+    });
+  } catch (error) {
+    console.error('[TENANT ERROR] Gagal update tour status', { error: error.message, tenantId: req.params.tenantId });
+    res.status(500).json({ success: false, message: 'Gagal update tour status' });
+  }
+};
+
+/**
  * PUT /api/tenants/:id/faqs
  * Memperbarui daftar FAQ untuk tenant. Data FAQ akan di-replace sepenuhnya.
  */
@@ -686,5 +740,7 @@ module.exports = {
   getTenantBySlug,
   toggleTenantStatus,
   getTrialStatus,
+  getTourStatus,
+  updateTourStatus,
   updateFaqs
 };

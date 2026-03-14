@@ -1,0 +1,363 @@
+/* ================================================
+   SuperKafe Tour Guide - driver.js Theme Overrides
+   ================================================ */
+
+/* Import driver.js base styles */
+@import "driver.js/dist/driver.css";
+
+/* ===== Overlay ===== */
+.driver-overlay {
+  background: rgba(0, 0, 0, 0.65) !important;
+}
+
+/* ===== Popover ===== */
+.driver-popover {
+  background: #1a1640 !important;
+  border: 1px solid rgba(139, 92, 246, 0.4) !important;
+  border-radius: 16px !important;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5), 0 0 40px rgba(139, 92, 246, 0.15) !important;
+  max-width: 380px !important;
+  padding: 0 !important;
+  color: #e2e0f0 !important;
+}
+
+[data-theme="light-coffee"] .driver-popover {
+  background: #fffaf5 !important;
+  border: 1px solid rgba(180, 120, 60, 0.3) !important;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15), 0 0 40px rgba(180, 120, 60, 0.1) !important;
+  color: #3d2c1e !important;
+}
+
+/* ===== Popover Arrow ===== */
+.driver-popover-arrow {
+  border-color: #1a1640 !important;
+}
+
+[data-theme="light-coffee"] .driver-popover-arrow {
+  border-color: #fffaf5 !important;
+}
+
+.driver-popover-arrow-side-left {
+  border-left-color: #1a1640 !important;
+}
+.driver-popover-arrow-side-right {
+  border-right-color: #1a1640 !important;
+}
+.driver-popover-arrow-side-top {
+  border-top-color: #1a1640 !important;
+}
+.driver-popover-arrow-side-bottom {
+  border-bottom-color: #1a1640 !important;
+}
+
+[data-theme="light-coffee"] .driver-popover-arrow-side-left {
+  border-left-color: #fffaf5 !important;
+}
+[data-theme="light-coffee"] .driver-popover-arrow-side-right {
+  border-right-color: #fffaf5 !important;
+}
+[data-theme="light-coffee"] .driver-popover-arrow-side-top {
+  border-top-color: #fffaf5 !important;
+}
+[data-theme="light-coffee"] .driver-popover-arrow-side-bottom {
+  border-bottom-color: #fffaf5 !important;
+}
+
+/* ===== Popover Title ===== */
+.driver-popover-title {
+  font-size: 1.05rem !important;
+  font-weight: 700 !important;
+  color: #d4b4ff !important;
+  padding: 20px 20px 6px 20px !important;
+  line-height: 1.4 !important;
+}
+
+[data-theme="light-coffee"] .driver-popover-title {
+  color: #6b3a1f !important;
+}
+
+/* ===== Popover Description ===== */
+.driver-popover-description {
+  font-size: 0.88rem !important;
+  line-height: 1.65 !important;
+  color: #b8b0d8 !important;
+  padding: 4px 20px 16px 20px !important;
+}
+
+[data-theme="light-coffee"] .driver-popover-description {
+  color: #5c4a3a !important;
+}
+
+/* ===== Progress Info (Step x of y) ===== */
+.driver-popover-progress-text {
+  font-size: 0.72rem !important;
+  color: #8b7ab8 !important;
+  margin: 0 !important;
+  padding: 0 20px 14px 20px !important;
+}
+
+[data-theme="light-coffee"] .driver-popover-progress-text {
+  color: #a08060 !important;
+}
+
+/* ===== Footer (Buttons) ===== */
+.driver-popover-footer {
+  padding: 0 20px 16px 20px !important;
+  display: flex !important;
+  gap: 8px !important;
+  justify-content: space-between !important;
+  border-top: none !important;
+}
+
+/* ===== Buttons ===== */
+.driver-popover-footer button {
+  border-radius: 10px !important;
+  font-size: 0.82rem !important;
+  font-weight: 600 !important;
+  padding: 8px 18px !important;
+  transition: all 0.2s ease !important;
+  cursor: pointer !important;
+  border: none !important;
+}
+
+/* Previous Button */
+.driver-popover-prev-btn {
+  background: rgba(139, 92, 246, 0.15) !important;
+  color: #b8a0e8 !important;
+}
+.driver-popover-prev-btn:hover {
+  background: rgba(139, 92, 246, 0.25) !important;
+}
+
+[data-theme="light-coffee"] .driver-popover-prev-btn {
+  background: rgba(180, 120, 60, 0.1) !important;
+  color: #8b6914 !important;
+}
+[data-theme="light-coffee"] .driver-popover-prev-btn:hover {
+  background: rgba(180, 120, 60, 0.2) !important;
+}
+
+/* Next / Done Button */
+.driver-popover-next-btn {
+  background: linear-gradient(135deg, #8b5cf6, #6d28d9) !important;
+  color: #fff !important;
+  box-shadow: 0 4px 14px rgba(139, 92, 246, 0.35) !important;
+}
+.driver-popover-next-btn:hover {
+  box-shadow: 0 6px 20px rgba(139, 92, 246, 0.5) !important;
+  transform: translateY(-1px) !important;
+}
+
+[data-theme="light-coffee"] .driver-popover-next-btn {
+  background: linear-gradient(135deg, #b47a3c, #8B5E2B) !important;
+  box-shadow: 0 4px 14px rgba(139, 90, 43, 0.3) !important;
+}
+[data-theme="light-coffee"] .driver-popover-next-btn:hover {
+  box-shadow: 0 6px 20px rgba(139, 90, 43, 0.45) !important;
+}
+
+/* ===== Close Button ===== */
+.driver-popover-close-btn {
+  color: #8b7ab8 !important;
+  font-size: 1.2rem !important;
+  width: 28px !important;
+  height: 28px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border-radius: 8px !important;
+  top: 12px !important;
+  right: 12px !important;
+}
+.driver-popover-close-btn:hover {
+  background: rgba(139, 92, 246, 0.15) !important;
+  color: #d4b4ff !important;
+}
+
+[data-theme="light-coffee"] .driver-popover-close-btn {
+  color: #a08060 !important;
+}
+[data-theme="light-coffee"] .driver-popover-close-btn:hover {
+  background: rgba(180, 120, 60, 0.1) !important;
+  color: #6b3a1f !important;
+}
+
+/* ===== Highlighted Element ===== */
+.driver-active-element {
+  border-radius: 12px !important;
+}
+
+/* Make forms brighter inside the active element so user knows they can fill it */
+.driver-active-element input,
+.driver-active-element select,
+.driver-active-element textarea,
+.driver-active-element .border {
+  background-color: rgba(255, 255, 255, 0.15) !important;
+  border-color: #a78bfa !important;
+  box-shadow: 0 0 10px rgba(167, 139, 250, 0.5) !important;
+  color: #ffffff !important;
+}
+
+.driver-active-element input::placeholder,
+.driver-active-element textarea::placeholder {
+  color: rgba(255, 255, 255, 0.7) !important;
+}
+
+[data-theme="light-coffee"] .driver-active-element input,
+[data-theme="light-coffee"] .driver-active-element select,
+[data-theme="light-coffee"] .driver-active-element textarea,
+[data-theme="light-coffee"] .driver-active-element .border {
+  background-color: #ffffff !important;
+  border-color: #b47a3c !important;
+  box-shadow: 0 0 10px rgba(180, 120, 60, 0.4) !important;
+  color: #3d2c1e !important;
+}
+
+[data-theme="light-coffee"] .driver-active-element input::placeholder,
+[data-theme="light-coffee"] .driver-active-element textarea::placeholder {
+  color: rgba(61, 44, 30, 0.6) !important;
+}
+
+/* ===== Welcome Modal ===== */
+.tour-welcome-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 99998;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  animation: tourFadeIn 0.3s ease;
+}
+
+.tour-welcome-card {
+  background: linear-gradient(145deg, #1e1b4b, #1a1640);
+  border: 1px solid rgba(139, 92, 246, 0.3);
+  border-radius: 24px;
+  padding: 40px 32px;
+  max-width: 440px;
+  width: 100%;
+  text-align: center;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.5), 0 0 60px rgba(139, 92, 246, 0.08);
+  animation: tourSlideUp 0.4s ease;
+}
+
+[data-theme="light-coffee"] .tour-welcome-card {
+  background: linear-gradient(145deg, #fffaf5, #fdf2e9);
+  border: 1px solid rgba(180, 120, 60, 0.2);
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.12);
+}
+
+.tour-welcome-emoji {
+  font-size: 4rem;
+  margin-bottom: 16px;
+  animation: tourBounce 1s ease infinite;
+}
+
+.tour-welcome-title {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: #e8e0ff;
+  margin-bottom: 12px;
+}
+
+[data-theme="light-coffee"] .tour-welcome-title {
+  color: #3d2c1e;
+}
+
+.tour-welcome-desc {
+  font-size: 0.92rem;
+  color: #a098c0;
+  line-height: 1.6;
+  margin-bottom: 28px;
+}
+
+[data-theme="light-coffee"] .tour-welcome-desc {
+  color: #6b5a4a;
+}
+
+.tour-welcome-start-btn {
+  width: 100%;
+  padding: 14px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #8b5cf6, #6d28d9);
+  color: #fff;
+  font-size: 1rem;
+  font-weight: 700;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 6px 20px rgba(139, 92, 246, 0.35);
+  transition: all 0.2s ease;
+  margin-bottom: 12px;
+}
+
+.tour-welcome-start-btn:hover {
+  box-shadow: 0 8px 30px rgba(139, 92, 246, 0.5);
+  transform: translateY(-2px);
+}
+
+[data-theme="light-coffee"] .tour-welcome-start-btn {
+  background: linear-gradient(135deg, #b47a3c, #8B5E2B);
+  box-shadow: 0 6px 20px rgba(139, 90, 43, 0.3);
+}
+
+.tour-welcome-skip-btn {
+  width: 100%;
+  padding: 12px;
+  border-radius: 14px;
+  background: rgba(139, 92, 246, 0.1);
+  color: #a098c0;
+  font-size: 0.88rem;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.tour-welcome-skip-btn:hover {
+  background: rgba(139, 92, 246, 0.2);
+}
+
+[data-theme="light-coffee"] .tour-welcome-skip-btn {
+  background: rgba(180, 120, 60, 0.08);
+  color: #8b6a4a;
+}
+
+/* ===== Animations ===== */
+@keyframes tourFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes tourSlideUp {
+  from { opacity: 0; transform: translateY(30px) scale(0.96); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes tourBounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+
+/* ===== Responsive ===== */
+@media (max-width: 640px) {
+  .driver-popover {
+    max-width: 320px !important;
+    margin: 0 10px !important;
+  }
+
+  .tour-welcome-card {
+    padding: 32px 24px;
+    margin: 0 8px;
+  }
+
+  .tour-welcome-emoji {
+    font-size: 3rem;
+  }
+
+  .tour-welcome-title {
+    font-size: 1.3rem;
+  }
+}

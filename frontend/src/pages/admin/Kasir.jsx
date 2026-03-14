@@ -7,6 +7,7 @@ import CustomSelect from '../../components/CustomSelect';
 import { useSocket } from '../../context/SocketContext';
 import useOfflineSync from '../../hooks/useOfflineSync'; // New: Offline Hook
 import { useRefresh } from '../../context/RefreshContext';
+import { useTourGuide } from '../../context/TourGuideContext'; // New: Tour Guide
 
 // Fetcher for SWR
 const fetcher = url => api.get(url).then(res => res.data);
@@ -24,6 +25,7 @@ function Kasir() {
     const { isOnline, saveOrderOffline, getLocalMenu } = useOfflineSync(); // Offline Hook
     const socket = useSocket(); // New: Get Socket
     const { registerRefreshHandler } = useRefresh();
+    const { isTourActive } = useTourGuide(); // New: Tour Guide
 
     // Register Pull-to-Refresh Handler
     useEffect(() => {
@@ -245,7 +247,17 @@ function Kasir() {
         };
     }, []);
 
+    // Tour guide custom events listener
+    useEffect(() => {
+        const handleTourAction = (e) => {
+            if (e.detail.action === 'open-order-modal') {
+                setShowModal(true);
+            }
+        };
 
+        window.addEventListener('tour:action', handleTourAction);
+        return () => window.removeEventListener('tour:action', handleTourAction);
+    }, []);
 
     // Audio State
     const [isMuted, setIsMuted] = useState(() => localStorage.getItem('pos_muted') === 'true');
@@ -928,8 +940,9 @@ function Kasir() {
                         </button>
 
                         <button
+                            id="tour-tambah-pesanan"
                             onClick={() => setShowModal(true)}
-                            className="h-11 bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 text-white px-4 rounded-xl font-bold flex items-center gap-2 shadow-lg shadow-purple-500/40 whitespace-nowrap transition-all"
+                            className={`h-11 bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 text-white px-4 rounded-xl font-bold flex items-center gap-2 shadow-lg shadow-purple-500/40 whitespace-nowrap transition-all ${isTourActive ? 'relative z-[9999]' : ''}`}
                         >
                             <span className="text-xl">➕</span> <span className="text-base truncate hidden xl:inline">Pesanan Baru</span><span className="text-base xl:hidden">Baru</span>
                         </button>
@@ -1647,6 +1660,7 @@ function Kasir() {
                 showModal && (
                     <div className="fixed inset-0 z-[60] bg-black/90 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setShowModal(false)}>
                         <div
+                            id="tour-order-modal"
                             className="bg-[#1A1A2E] w-full max-w-4xl max-h-[90vh] rounded-3xl shadow-2xl border border-purple-500/20 overflow-hidden flex flex-col animate-scale-up"
                             onClick={e => e.stopPropagation()}
                         >
@@ -1896,7 +1910,7 @@ function Kasir() {
                                     </div>
 
                                     {/* Section 3: Payment & Notes */}
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div id="tour-order-payment" className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <div>
                                             <label className="block text-xs font-medium text-gray-400 mb-1.5 ml-1">Metode Pembayaran</label>
                                             <CustomSelect

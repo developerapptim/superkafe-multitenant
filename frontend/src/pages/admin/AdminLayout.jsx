@@ -15,6 +15,7 @@ import { useRefresh } from '../../context/RefreshContext';
 import { ThemeProvider, useTheme } from '../../context/ThemeContext';
 import FirstTimeThemePopup from '../../components/admin/FirstTimeThemePopup';
 import FirstTimePinPopup from '../../components/admin/FirstTimePinPopup';
+import { TourGuideProvider } from '../../context/TourGuideContext';
 import TrialStatusBanner from '../../components/TrialStatusBanner';
 import SubscriptionLockScreen from '../../components/SubscriptionLockScreen';
 import { useSocket } from '../../context/SocketContext';
@@ -371,8 +372,12 @@ function AdminLayout() {
         }
     };
 
+    // Only start tour if no blocking popups are active
+    const isReadyForTour = !showPinPopup && !showThemePopup && hasSeenThemePopup;
+
     return (
         <ThemeProvider initialTheme={tenantInfo.initialTheme} tenantId={tenantInfo.tenantId}>
+          <TourGuideProvider tenantId={tenantInfo.tenantId} tenantSlug={tenantSlug} isReady={isReadyForTour}>
             <div
                 id="adminPage"
                 className="flex flex-col h-screen overflow-hidden admin-gradient-bg admin-text-primary"
@@ -587,6 +592,7 @@ function AdminLayout() {
                     )}
                 </div>
             </div>
+          </TourGuideProvider>
         </ThemeProvider>
     );
 }

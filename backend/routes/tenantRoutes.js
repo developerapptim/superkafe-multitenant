@@ -26,4 +26,10 @@ router.patch('/:id/toggle', TenantController.toggleTenantStatus);
 // PUT /api/tenants/:id/faqs - Update FAQs (Protected)
 router.put('/:id/faqs', checkJwt, TenantController.updateFaqs);
 
+// GET /api/tenants/:tenantId/tour-status - Get tour completion status (Protected)
+router.get('/:tenantId/tour-status', checkJwt, TenantController.getTourStatus);
+
+// PUT /api/tenants/:tenantId/tour-status - Update tour completion status (Protected)
+router.put('/:tenantId/tour-status', checkJwt, TenantController.updateTourStatus);
+
 module.exports = router;

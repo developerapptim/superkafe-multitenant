@@ -6,6 +6,7 @@ import Swal from 'sweetalert2';
 import api, { inventoryAPI, settingsAPI } from '../../services/api';
 import SmartText from '../../components/SmartText';
 import { useRefresh } from '../../context/RefreshContext';
+import { useTourGuide } from '../../context/TourGuideContext';
 
 
 
@@ -138,6 +139,7 @@ function Inventaris() {
     // Determine edit permission, match Sidebar logic for user parsing
     const userRole = user?.role || 'admin';
     const userRoleAccess = user?.role_access || ['*'];
+    const { isTourActive } = useTourGuide();
 
     // Admin checking: Is explicitly admin OR has wildcard role_access
     const isAdmin = userRole === 'admin' || userRoleAccess.includes('*');
@@ -223,7 +225,16 @@ function Inventaris() {
 
     const { registerRefreshHandler } = useRefresh();
 
-
+    // Tour Guide Integration for opening modal
+    useEffect(() => {
+        const handleTourAction = (e) => {
+            if (e.detail?.action === 'open-bahan-modal') {
+                openAddModal();
+            }
+        };
+        window.addEventListener('tour:action', handleTourAction);
+        return () => window.removeEventListener('tour:action', handleTourAction);
+    }, []);
 
     const fetchStats = async () => {
         try {
@@ -739,6 +750,7 @@ function Inventaris() {
                     </button>
                     {canEdit && (
                         <button
+                            id="tour-tambah-bahan"
                             onClick={openAddModal}
                             className="w-full md:w-auto bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 px-4 py-2 rounded-lg text-sm font-medium flex items-center justify-center gap-2 transition-all whitespace-nowrap"
                         >
@@ -1411,7 +1423,7 @@ function Inventaris() {
             {
                 showModal && createPortal(
                     <div className="modal-overlay">
-                        <div className="glass rounded-2xl p-6 w-full max-w-lg max-h-[90vh] overflow-auto">
+                        <div id="tour-bahan-modal" className="glass rounded-2xl p-6 w-full max-w-lg max-h-[90vh] overflow-auto relative z-10 bg-[#1f2937]">
                             <div className="flex items-center justify-between mb-6">
                                 <h3 className="text-xl font-bold">
                                     {editingItem ? '✏️ Edit Bahan' : '➕ Tambah Bahan Baru'}
@@ -1625,7 +1637,7 @@ function Inventaris() {
                                         </div>
 
                                         {/* Harga Modal Dasar Calculator */}
-                                        <div className="pt-2 border-t border-white/10">
+                                        <div id="tour-bahan-hpp" className="pt-2 border-t border-white/10 relative z-20">
                                             <p className="text-sm text-gray-400 mb-1">Harga Modal Dasar (untuk Gramasi/HPP)</p>
                                             <p className="text-lg font-bold text-green-400">
                                                 {formatCurrency(formData.harga_beli > 0 && formData.isi_prod > 0 ? (formData.harga_beli / formData.isi_prod) : formData.harga_beli)}
@@ -1636,7 +1648,7 @@ function Inventaris() {
                                 )}
 
                                 {!formData.use_konversi && (
-                                    <div className="p-3 bg-white/5 rounded-lg border border-white/5">
+                                    <div id="tour-bahan-hpp" className="p-3 bg-white/5 rounded-lg border border-white/5 relative z-20 bg-[#1f2937]/90">
                                         <p className="text-sm text-gray-400 mb-1">Harga Modal Dasar</p>
                                         <p className="text-lg font-bold text-green-400">
                                             {formatCurrency(formData.harga_beli)}

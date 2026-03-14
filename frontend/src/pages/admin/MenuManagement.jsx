@@ -176,6 +176,17 @@ function MenuManagement() {
     const [editingItem, setEditingItem] = useState(null);
     const [editingCategory, setEditingCategory] = useState(null); // New state for editing category
 
+    // Tour Guide Integration for opening modal
+    useEffect(() => {
+        const handleTourAction = (e) => {
+            if (e.detail?.action === 'open-menu-modal') {
+                openAddModal();
+            }
+        };
+        window.addEventListener('tour:action', handleTourAction);
+        return () => window.removeEventListener('tour:action', handleTourAction);
+    }, []);
+
     // Form states
     const [formData, setFormData] = useState({
         id: '',
@@ -566,6 +577,7 @@ function MenuManagement() {
             <div className="flex items-center justify-end">
                 {/* <h2 className="text-2xl font-bold hidden md:block">🍽️ Manajemen Menu</h2> - Moved to Header */}
                 <button
+                    id="tour-tambah-menu"
                     onClick={openAddModal}
                     className="bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-all"
                 >

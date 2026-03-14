@@ -9,6 +9,7 @@ import { useRefresh } from '../../context/RefreshContext';
 import { useTheme } from '../../context/ThemeContext';
 import ThemeSelector from '../../components/admin/ThemeSelector';
 import usePlatform from '../../hooks/usePlatform';
+import { useTourGuide } from '../../context/TourGuideContext';
 
 // Import admin theme generated CSS classes
 import '../../styles/admin-theme.css';
@@ -59,6 +60,7 @@ const AccordionSection = ({ id, title, icon, isOpen, onToggle, isDirty, children
 
 function Pengaturan() {
     const { isWeb } = usePlatform();
+    const { resetTour } = useTourGuide();
     const { data: settingsData, error } = useSWR('/settings', fetcher);
     const isLoading = !settingsData && !error;
     const [saving, setSaving] = useState(false);
@@ -127,6 +129,17 @@ function Pengaturan() {
     // State to track open accordion section
     // Default open: 'profile'
     const [openSection, setOpenSection] = useState('profile');
+
+    // Subscribe to Tour Guide events to open accordions automatically
+    useEffect(() => {
+        const handleOpenAccordion = (e) => {
+            if (e.detail?.section) {
+                setOpenSection(e.detail.section);
+            }
+        };
+        window.addEventListener('tour:open-accordion', handleOpenAccordion);
+        return () => window.removeEventListener('tour:open-accordion', handleOpenAccordion);
+    }, []);
 
     const [settings, setSettings] = useState({
         businessName: 'Warkop Santai',
@@ -402,7 +415,7 @@ function Pengaturan() {
                 onToggle={() => toggleSection('profile')}
                 isDirty={checkDirty(['businessName', 'tagline', 'phone', 'address', 'logo'])}
             >
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div id="tour-profil-usaha" className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {/* Logo */}
                     <div className="md:col-span-2">
                         <label className="block text-sm opacity-80 admin-text-primary font-medium mb-1">Logo Usaha</label>
@@ -562,7 +575,7 @@ function Pengaturan() {
                 onToggle={() => toggleSection('notification')}
                 isDirty={checkDirty(['notificationSoundUrl'])}
             >
-                <div className="space-y-4">
+                <div id="tour-notifikasi" className="space-y-4">
                     <div className="p-4 bg-black/5 rounded-xl border admin-border-accent">
                         <label className="block text-sm opacity-80 admin-text-primary font-medium mb-2">Suara Notifikasi Pesanan Baru</label>
                         <div className="flex flex-wrap items-center gap-4">
@@ -766,7 +779,7 @@ function Pengaturan() {
                     </div>
 
                     {/* Cash Prepayment Toggle */}
-                    <div className="flex items-center justify-between p-4 bg-black/5 rounded-xl border border-orange-500/30 mt-4">
+                    <div id="tour-pembayaran-kasir" className="flex items-center justify-between p-4 bg-black/5 rounded-xl border border-orange-500/30 mt-4">
                         <div>
                             <p className="font-medium text-orange-600 dark:text-orange-400">Wajib Bayar Dulu (Tunai)</p>
                             <p className="text-sm opacity-70 admin-text-primary">Pembeli wajib bayar di kasir sebelum pesanan diproses di dapur</p>
@@ -1046,6 +1059,17 @@ function Pengaturan() {
                     </div>
                 </form>
             </AccordionSection>
+
+            {/* Tour Guide Reset Button */}
+            <div className="pt-6 pb-2 text-center">
+                <button
+                    onClick={resetTour}
+                    className="px-6 py-3 rounded-xl bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 font-bold border border-indigo-500/30 transition-all flex items-center gap-2 mx-auto"
+                >
+                    <span>🎯</span> Mulai Ulang Tour Guide Aplikasi
+                </button>
+            </div>
+
             <div className="fixed bottom-0 left-0 right-0 p-4 bg-gray-900/80 backdrop-blur-lg border-t border-white/10 md:static md:bg-transparent md:border-t-0 md:p-0 z-10">
                 <button
                     onClick={handleSave}

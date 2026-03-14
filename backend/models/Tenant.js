@@ -77,6 +77,11 @@ const tenantSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
+  // ===== Tour Guide Onboarding =====
+  hasCompletedTour: {
+    type: Boolean,
+    default: false
+  },
   createdAt: {
     type: Date,
     default: Date.now
