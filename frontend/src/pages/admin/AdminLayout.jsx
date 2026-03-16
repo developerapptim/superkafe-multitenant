@@ -4,6 +4,7 @@ import toast from 'react-hot-toast';
 import useSWR from 'swr';
 import { motion } from 'framer-motion';
 import { jwtDecode } from 'jwt-decode';
+import dayjs from 'dayjs';
 import { get, set } from 'idb-keyval';
 import api from '../../services/api';
 import Sidebar from '../../components/Sidebar';
@@ -266,6 +267,32 @@ function AdminLayout() {
         }
     }, [isStaff, isAdmin, currentShift, user?.id]);
 
+    // 15-Hour Shift Warning
+    useEffect(() => {
+        if (!currentShift || !currentShift.startTime) return;
+
+        // Check if we've already shown this warning in the current session
+        const warningKey = `shift_warning_shown_${currentShift._id}`;
+        if (sessionStorage.getItem(warningKey)) return;
+
+        const startTime = dayjs(currentShift.startTime);
+        const now = dayjs();
+        const hoursPassed = now.diff(startTime, 'hour');
+
+        if (hoursPassed >= 15) {
+            toast('Sesi Anda sudah berjalan lebih dari 15 jam. Jangan lupa tutup shift untuk merekap laporan hari ini!', {
+                icon: '⏰',
+                duration: 6000,
+                style: {
+                    borderRadius: '10px',
+                    background: '#333',
+                    color: '#fff',
+                },
+            });
+            sessionStorage.setItem(warningKey, 'true');
+        }
+    }, [currentShift]);
+
     const handleOpenShift = async (e) => {
         e.preventDefault();
         try {
@@ -372,8 +399,8 @@ function AdminLayout() {
         }
     };
 
-    // Only start tour if no blocking popups are active
-    const isReadyForTour = !showPinPopup && !showThemePopup && hasSeenThemePopup;
+    // Only start tour if no blocking popups are active AND user is admin
+    const isReadyForTour = !showPinPopup && !showThemePopup && hasSeenThemePopup && isAdmin;
 
     return (
         <ThemeProvider initialTheme={tenantInfo.initialTheme} tenantId={tenantInfo.tenantId}>

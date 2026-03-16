@@ -9,6 +9,8 @@ const TourGuideContext = createContext(null);
 
 // =========================================
 // Tour Steps Configuration
+// All selectors MUST point to elements that are always in the DOM
+// (i.e. buttons, sections — NOT modals or conditional elements)
 // =========================================
 const TOUR_STEPS = [
   {
@@ -32,49 +34,33 @@ const TOUR_STEPS = [
     page: 'menu',
     selector: '#tour-tambah-menu',
     title: '🍽️ Langkah 3: Menambahkan Menu',
-    description: 'Pertama, buatlah daftar produk yang ingin kamu jual (misal: Kopi Susu). Isi nama menu, kategori, dan harga jualnya di sini.',
-    action: 'open-menu-modal',
+    description: 'Klik tombol ini untuk membuat daftar produk yang ingin kamu jual (misal: Kopi Susu). Isi nama menu, kategori, dan harga jualnya.',
   },
   {
     id: 'tambah-bahan',
     page: 'inventaris',
     selector: '#tour-tambah-bahan',
     title: '📦 Langkah 4: Menambahkan Bahan',
-    description: 'Langkah terpenting: Masukkan bahan bakumu. Mari kita coba masukkan Susu UHT.',
-    action: 'open-bahan-modal',
-    autoFill: {
-      name: 'Susu UHT',
-      price: 16000,
-      buyUnit: 'pcs',
-      contentPerUnit: 950,
-      productionUnit: 'ml',
-    },
-  },
-  {
-    id: 'hpp-result',
-    page: 'inventaris',
-    selector: '#tour-hpp-result',
-    title: '📊 Harga Modal Dasar',
-    description: '🎯 Perhatikan hasil "Harga Modal Dasar (Rp 16,84/ml)" — ini adalah kunci akurasi profit kamu! Setiap menu yang menggunakan susu akan dihitung berdasarkan harga per ml ini.',
+    description: 'Klik tombol ini untuk memasukkan bahan baku (misal: Susu UHT). Masukkan harga beli dan satuan agar SuperKafe bisa menghitung Harga Modal Dasar secara otomatis.',
   },
   {
     id: 'gramasi',
     page: 'gramasi',
-    selector: '#tour-gramasi',
+    selector: '#tour-tambah-gramasi',
     title: '⚖️ Langkah 5: Resep Menu & HPP',
-    description: 'Inilah bagian tercanggihnya! Hubungkan Menu dengan Bahan. Masukkan berapa ml susu yang digunakan untuk satu gelas kopi. SuperKafe akan langsung menampilkan Profit Bersih kamu! Sistem otomatis memotong stok dan menghitung profit setiap kali menu ini terjual.',
+    description: 'Hubungkan Menu dengan Bahan. Masukkan takaran bahan per menu (misal: 200ml susu per gelas kopi). SuperKafe otomatis menghitung profit dan memotong stok setiap kali menu terjual!',
   },
   {
     id: 'marketing',
     page: 'marketing',
-    selector: '#tour-marketing',
+    selector: '#tour-tambah-voucher',
     title: '📢 Langkah 6: Pusat Marketing',
-    description: 'Tarik perhatian pelanggan dengan Banner Promo. Banner ini akan tampil di halaman menu digital yang dilihat pelanggan saat mereka scan QR.',
+    description: 'Tarik perhatian pelanggan dengan Banner Promo dan Voucher. Ini akan tampil di halaman menu digital yang dilihat pelanggan saat scan QR.',
   },
   {
     id: 'meja',
     page: 'meja',
-    selector: '#tour-meja',
+    selector: '#tour-tambah-meja',
     title: '🪑 Langkah 7: Manajemen Meja',
     description: 'Daftarkan meja kafemu dan download QR Code-nya. Pelanggan cukup scan dari meja untuk memesan!',
   },
@@ -89,11 +75,35 @@ const TOUR_STEPS = [
   {
     id: 'kasir',
     page: 'kasir',
-    selector: '#tour-kasir',
+    selector: '#tour-tambah-pesanan',
     title: '🧾 Langkah 9: Simulasi Kasir',
     description: 'Coba buat pesanan pertama kamu secara manual untuk melihat bagaimana semua data yang sudah dimasukkan tadi bekerja bersama. Selamat, kafemu siap beroperasi! 🎉',
   },
 ];
+
+// =========================================
+// Utility: Poll for an element in the DOM
+// Retries every intervalMs until found or maxWaitMs exceeded
+// =========================================
+function waitForElement(selector, maxWaitMs = 12000, intervalMs = 300) {
+  return new Promise((resolve) => {
+    const el = document.querySelector(selector);
+    if (el) return resolve(el);
+
+    const startTime = Date.now();
+    const timer = setInterval(() => {
+      const el = document.querySelector(selector);
+      if (el) {
+        clearInterval(timer);
+        resolve(el);
+      } else if (Date.now() - startTime > maxWaitMs) {
+        clearInterval(timer);
+        console.warn(`[TourGuide] waitForElement timeout: ${selector} not found after ${maxWaitMs}ms`);
+        resolve(null);
+      }
+    }, intervalMs);
+  });
+}
 
 // =========================================
 // TourGuide Provider Component
@@ -111,9 +121,31 @@ export function TourGuideProvider({ children, tenantId, tenantSlug, isReady = tr
   const tourStepsRef = useRef(TOUR_STEPS);
   const pendingStepRef = useRef(null);
 
+  // Get User Role to disable tour for staff
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  const userRole = user?.role || 'admin';
+  const isAdmin = userRole === 'admin';
+
+  // =========================================
+  // Refs to break circular dependency
+  // goToStepRef is used inside executeStep so we never have a stale closure
+  // =========================================
+  const goToStepRef = useRef(null);
+  const executeStepRef = useRef(null);
+  const skipTourRef = useRef(null);
+  const completeTourRef = useRef(null);
+
   // Check tour status on mount
   useEffect(() => {
     if (!tenantId) return;
+    
+    // If not admin, instantly mark as completed so tour never tries to load
+    if (!isAdmin) {
+      setTourStatusRetrieved(true);
+      setHasCompletedTour(true);
+      return;
+    }
+
     const fetchTourStatus = async () => {
       try {
         const res = await api.get(`/tenants/${tenantId}/tour-status`);
@@ -127,13 +159,15 @@ export function TourGuideProvider({ children, tenantId, tenantSlug, isReady = tr
       }
     };
     fetchTourStatus();
-  }, [tenantId]);
+  }, [tenantId, isAdmin]);
 
-  // Trigger welcome popup only when status is retrieved and parent signals readiness (e.g. no blocking popups)
+  // Trigger welcome popup only once per session for users who haven't completed the tour
   useEffect(() => {
-    if (tourStatusRetrieved === false && isReady && !hasCompletedTour) {
-      // Small delay so UI renders first
-      const timer = setTimeout(() => setShowWelcome(true), 800);
+    if (tourStatusRetrieved === false && isReady && !hasCompletedTour && !sessionStorage.getItem('tourWelcomeShown')) {
+      const timer = setTimeout(() => {
+        setShowWelcome(true);
+        sessionStorage.setItem('tourWelcomeShown', 'true');
+      }, 800);
       return () => clearTimeout(timer);
     }
   }, [tourStatusRetrieved, isReady, hasCompletedTour]);
@@ -178,7 +212,13 @@ export function TourGuideProvider({ children, tenantId, tenantSlug, isReady = tr
   const completeTour = useCallback(async () => {
     setIsTourActive(false);
     setCurrentStepIndex(0);
+    setIsNavigating(false);
     fireConfetti();
+
+    if (driverRef.current) {
+      try { driverRef.current.destroy(); } catch (e) { /* ignore */ }
+      driverRef.current = null;
+    }
 
     if (tenantId) {
       try {
@@ -190,164 +230,12 @@ export function TourGuideProvider({ children, tenantId, tenantSlug, isReady = tr
     }
   }, [tenantId, fireConfetti]);
 
-  // Dispatch a custom event to open accordions or modals on target pages
-  const dispatchTourAction = useCallback((step) => {
-    if (step.accordion) {
-      window.dispatchEvent(new CustomEvent('tour:open-accordion', { detail: { section: step.accordion } }));
-    }
-    if (step.action) {
-      window.dispatchEvent(new CustomEvent('tour:action', { detail: { action: step.action, autoFill: step.autoFill } }));
-    }
-  }, []);
-
-  // Execute a specific tour step using driver.js
-  const executeStep = useCallback((stepIndex) => {
-    const step = tourStepsRef.current[stepIndex];
-    if (!step) return;
-
-    setCurrentStepIndex(stepIndex);
-
-    // Dispatch actions first (open accordion, modal, etc.)
-    dispatchTourAction(step);
-
-    // Wait for DOM to settle after accordion/modal opens
-    const delay = step.accordion || step.action ? 600 : 200;
-
-    const initDriverObj = (stepIndex, step) => {
-      // Destroy existing driver instance
-      if (driverRef.current) {
-        try { driverRef.current.destroy(); } catch (e) { /* ignore */ }
-      }
-
-      const isLastStep = stepIndex === tourStepsRef.current.length - 1;
-      const isFirstStep = stepIndex === 0;
-      const totalSteps = tourStepsRef.current.length;
-
-      const driverObj = driver({
-        showProgress: true,
-        showButtons: ['next', 'previous', 'close'],
-        progressText: `Langkah {{current}} dari {{total}}`,
-        steps: [
-          {
-            element: step.selector,
-            popover: {
-              title: step.title,
-              description: step.description,
-              side: 'bottom',
-              align: 'start',
-              nextBtnText: isLastStep ? '🎉 Selesai!' : 'Lanjut →',
-              prevBtnText: '← Kembali',
-              doneBtnText: '🎉 Selesai!',
-              showButtons: isFirstStep
-                ? ['next', 'close']
-                : ['next', 'previous', 'close'],
-              onNextClick: () => {
-                driverObj.destroy();
-                if (isLastStep) {
-                  completeTour();
-                } else {
-                  goToStep(stepIndex + 1);
-                }
-              },
-              onPrevClick: () => {
-                driverObj.destroy();
-                goToStep(stepIndex - 1);
-              },
-              onCloseClick: () => {
-                driverObj.destroy();
-                skipTour();
-              },
-            },
-          },
-        ],
-        onDestroyStarted: () => {
-          // Don't call destroy again if triggered by our code
-        },
-      });
-
-      // Override progress text after creation
-      driverObj.drive(0);
-      driverRef.current = driverObj;
-
-      // Update progress text manually
-      setTimeout(() => {
-        const progressEl = document.querySelector('.driver-popover-progress-text');
-        if (progressEl) {
-          progressEl.textContent = `Langkah ${stepIndex + 1} dari ${totalSteps}`;
-        }
-      }, 50);
-    };
-
-    setTimeout(() => {
-      const el = document.querySelector(step.selector);
-      if (!el) {
-        // Log warning and retry once after a delay if first try fails.
-        // It could be that the modal hasn't finished rendering yet.
-        console.warn(`[TourGuide] Element not found: ${step.selector}, trying one more time in 800ms...`);
-        setTimeout(() => {
-          const retryEl = document.querySelector(step.selector);
-          if (!retryEl) {
-            console.error(`[TourGuide] Retry failed. Element still not found: ${step.selector}, skipping step ${stepIndex}`);
-            // Try next step
-            if (stepIndex < tourStepsRef.current.length - 1) {
-              executeStep(stepIndex + 1);
-            } else {
-              completeTour();
-            }
-          } else {
-             initDriverObj(stepIndex, step);
-          }
-        }, 800);
-        return;
-      }
-      initDriverObj(stepIndex, step);
-    }, delay);
-  }, [dispatchTourAction, completeTour]);
-
-  // Navigate to a step's page and execute it
-  const goToStep = useCallback((stepIndex) => {
-    if (stepIndex < 0 || stepIndex >= tourStepsRef.current.length) return;
-
-    const step = tourStepsRef.current[stepIndex];
-    const currentPage = getCurrentPage();
-    const targetPath = getAdminPath(step.page);
-
-    if (currentPage !== step.page) {
-      // Need to navigate to a different page
-      setIsNavigating(true);
-      pendingStepRef.current = stepIndex;
-      navigate(targetPath);
-    } else {
-      // Same page, execute step directly
-      executeStep(stepIndex);
-    }
-  }, [getCurrentPage, getAdminPath, navigate, executeStep]);
-
-  // Watch for route changes to execute pending steps
-  useEffect(() => {
-    if (pendingStepRef.current !== null && isTourActive) {
-      const stepIndex = pendingStepRef.current;
-      pendingStepRef.current = null;
-      setIsNavigating(false);
-      // Wait for page to render (increased delay to 800ms to ensure the page is fully loaded before executing the step)
-      setTimeout(() => executeStep(stepIndex), 800);
-    }
-  }, [location.pathname, isTourActive, executeStep]);
-
-  // Start the tour
-  const startTour = useCallback(() => {
-    setShowWelcome(false);
-    setIsTourActive(true);
-    setCurrentStepIndex(0);
-    // Navigate to first step's page
-    goToStep(0);
-  }, [goToStep]);
-
   // Skip / close tour  
   const skipTour = useCallback(async () => {
     setShowWelcome(false);
     setIsTourActive(false);
     setCurrentStepIndex(0);
+    setIsNavigating(false);
 
     if (driverRef.current) {
       try { driverRef.current.destroy(); } catch (e) { /* ignore */ }
@@ -364,8 +252,220 @@ export function TourGuideProvider({ children, tenantId, tenantSlug, isReady = tr
     }
   }, [tenantId]);
 
+  // Dispatch a custom event to open accordions on target pages
+  const dispatchTourAction = useCallback((step) => {
+    if (step.accordion) {
+      window.dispatchEvent(new CustomEvent('tour:open-accordion', { detail: { section: step.accordion } }));
+    }
+  }, []);
+
+  // =========================================
+  // Core step execution logic
+  // Uses refs to avoid stale closures
+  // =========================================
+  const executeStep = useCallback(async (stepIndex) => {
+    const step = tourStepsRef.current[stepIndex];
+    if (!step) return;
+
+    // Clear navigating state
+    setIsNavigating(false);
+    setCurrentStepIndex(stepIndex);
+
+    // Dispatch accordion open action first
+    dispatchTourAction(step);
+
+    // Small delay to let React re-render the accordion before polling
+    await new Promise(r => setTimeout(r, 150));
+
+    // Use polling to wait for the element (handles SWR loading, accordion animation, etc.)
+    const el = await waitForElement(step.selector, 12000, 300);
+
+    if (!el) {
+      console.error(`[TourGuide] Element not found after polling: ${step.selector}, skipping step ${stepIndex}`);
+      // Skip to next step using ref to avoid stale closure
+      if (stepIndex < tourStepsRef.current.length - 1) {
+        setTimeout(() => {
+          if (goToStepRef.current) goToStepRef.current(stepIndex + 1);
+        }, 200);
+      } else {
+        if (completeTourRef.current) completeTourRef.current();
+      }
+      return;
+    }
+
+    // Scroll element into view gently
+    try {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    } catch (e) { /* ignore */ }
+
+    // Small delay after scrolling
+    await new Promise(r => setTimeout(r, 200));
+
+    // Destroy existing driver instance
+    if (driverRef.current) {
+      try { driverRef.current.destroy(); } catch (e) { /* ignore */ }
+      driverRef.current = null;
+    }
+
+    const isLastStep = stepIndex === tourStepsRef.current.length - 1;
+    const isFirstStep = stepIndex === 0;
+    const totalSteps = tourStepsRef.current.length;
+
+    const driverObj = driver({
+      showProgress: true,
+      showButtons: ['next', 'previous', 'close'],
+      progressText: `Langkah {{current}} dari {{total}}`,
+      allowInteraction: true,
+      steps: [
+        {
+          element: step.selector,
+          popover: {
+            title: step.title,
+            description: step.description,
+            side: 'bottom',
+            align: 'start',
+            nextBtnText: isLastStep ? '🎉 Selesai!' : 'Lanjut →',
+            prevBtnText: '← Kembali',
+            doneBtnText: '🎉 Selesai!',
+            showButtons: isFirstStep
+              ? ['next', 'close']
+              : ['next', 'previous', 'close'],
+            onNextClick: () => {
+              try {
+                driverObj.destroy();
+              } catch (e) { /* ignore */ }
+              driverRef.current = null;
+              if (isLastStep) {
+                if (completeTourRef.current) completeTourRef.current();
+              } else {
+                // Use ref to always call the latest goToStep
+                setTimeout(() => {
+                  if (goToStepRef.current) goToStepRef.current(stepIndex + 1);
+                }, 50);
+              }
+            },
+            onPrevClick: () => {
+              try {
+                driverObj.destroy();
+              } catch (e) { /* ignore */ }
+              driverRef.current = null;
+              // Use ref to always call the latest goToStep
+              setTimeout(() => {
+                if (goToStepRef.current) goToStepRef.current(stepIndex - 1);
+              }, 50);
+            },
+            onCloseClick: () => {
+              try {
+                driverObj.destroy();
+              } catch (e) { /* ignore */ }
+              driverRef.current = null;
+              if (skipTourRef.current) skipTourRef.current();
+            },
+          },
+        },
+      ],
+      onDestroyStarted: () => {
+        // Don't call destroy again if triggered by our code
+      },
+    });
+
+    driverObj.drive(0);
+    driverRef.current = driverObj;
+
+    // Update progress text manually
+    setTimeout(() => {
+      const progressEl = document.querySelector('.driver-popover-progress-text');
+      if (progressEl) {
+        progressEl.textContent = `Langkah ${stepIndex + 1} dari ${totalSteps}`;
+      }
+    }, 100);
+  }, [dispatchTourAction]);
+
+  // Navigate to a step's page and execute it
+  const goToStep = useCallback((stepIndex) => {
+    if (stepIndex < 0 || stepIndex >= tourStepsRef.current.length) return;
+
+    const step = tourStepsRef.current[stepIndex];
+    const currentPage = getCurrentPage();
+    const targetPath = getAdminPath(step.page);
+
+    if (currentPage !== step.page) {
+      // Need to navigate to a different page
+      setIsNavigating(true);
+      pendingStepRef.current = stepIndex;
+      navigate(targetPath);
+    } else {
+      // Same page — execute step directly
+      // For accordion steps on the same page, we still need a small delay
+      // so the accordion event can be processed
+      executeStep(stepIndex);
+    }
+  }, [getCurrentPage, getAdminPath, navigate, executeStep]);
+
+  // =========================================
+  // Keep refs up to date with latest function references
+  // This is the key fix for stale closures
+  // =========================================
+  useEffect(() => {
+    goToStepRef.current = goToStep;
+  }, [goToStep]);
+
+  useEffect(() => {
+    executeStepRef.current = executeStep;
+  }, [executeStep]);
+
+  useEffect(() => {
+    skipTourRef.current = skipTour;
+  }, [skipTour]);
+
+  useEffect(() => {
+    completeTourRef.current = completeTour;
+  }, [completeTour]);
+
+  // Watch for route changes to execute pending steps
+  useEffect(() => {
+    let timeoutId;
+    if (pendingStepRef.current !== null && isTourActive) {
+      const stepIndex = pendingStepRef.current;
+      pendingStepRef.current = null;
+      // Use executeStepRef to avoid stale closure  
+      timeoutId = setTimeout(() => {
+        if (executeStepRef.current) executeStepRef.current(stepIndex);
+      }, 400);
+    }
+
+    // Safety fallback: if isNavigating is stuck for more than 10 seconds, clear it
+    let stuckTimeoutId;
+    if (isNavigating) {
+      stuckTimeoutId = setTimeout(() => {
+        console.warn('[TourGuide] Navigation stuck for 10s, clearing navigation state.');
+        setIsNavigating(false);
+      }, 10000);
+    }
+
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId);
+      if (stuckTimeoutId) clearTimeout(stuckTimeoutId);
+    };
+  }, [location.pathname, isTourActive, isNavigating]);
+
+  // Start the tour
+  const startTour = useCallback(() => {
+    setShowWelcome(false);
+    setIsTourActive(true);
+    setCurrentStepIndex(0);
+    // Navigate to first step's page
+    // Use setTimeout to ensure state is set before navigating
+    setTimeout(() => {
+      if (goToStepRef.current) goToStepRef.current(0);
+    }, 50);
+  }, []);
+
   // Reset tour (for "Tour Guide Aplikasi" button)
   const resetTour = useCallback(async () => {
+    // Clear session flag so welcome can show again
+    sessionStorage.removeItem('tourWelcomeShown');
+
     if (tenantId) {
       try {
         await api.put(`/tenants/${tenantId}/tour-status`, { hasCompletedTour: false });
@@ -376,8 +476,11 @@ export function TourGuideProvider({ children, tenantId, tenantSlug, isReady = tr
     }
     setCurrentStepIndex(0);
     setIsTourActive(true);
-    goToStep(0);
-  }, [tenantId, goToStep]);
+    // Use setTimeout + ref to ensure state is set
+    setTimeout(() => {
+      if (goToStepRef.current) goToStepRef.current(0);
+    }, 50);
+  }, [tenantId]);
 
   // Cleanup on unmount
   useEffect(() => {

@@ -229,7 +229,8 @@ function Inventaris() {
     useEffect(() => {
         const handleTourAction = (e) => {
             if (e.detail?.action === 'open-bahan-modal') {
-                openAddModal();
+                const fillData = e.detail?.autoFill;
+                openAddModal(fillData);
             }
         };
         window.addEventListener('tour:action', handleTourAction);
@@ -421,20 +422,23 @@ function Inventaris() {
 
 
     // Open add modal
-    const openAddModal = () => {
+    const openAddModal = (autoFill = null) => {
+        const isEvent = autoFill && autoFill.nativeEvent;
+        const fillData = isEvent ? null : autoFill;
+        
         setEditingItem(null);
         setFormData({
             id: generateId(),
-            nama: '',
+            nama: fillData?.name || '',
             // type: 'physical', // Removed from UI, always physical
             stok: 0,
-            satuan_beli: 'pcs',
-            harga_beli: 0,
+            satuan_beli: fillData?.buyUnit || 'pcs',
+            harga_beli: fillData?.price || 0,
             stok_min: 0,
-            use_konversi: false,
-            isi_prod: 1,
-            satuan_prod: 'gram',
-            satuan: 'pcs'
+            use_konversi: !!fillData,
+            isi_prod: fillData?.contentPerUnit || 1,
+            satuan_prod: fillData?.productionUnit || 'gram',
+            satuan: fillData?.buyUnit || 'pcs'
         });
         setShowModal(true);
     };
@@ -751,7 +755,7 @@ function Inventaris() {
                     {canEdit && (
                         <button
                             id="tour-tambah-bahan"
-                            onClick={openAddModal}
+                            onClick={() => openAddModal()}
                             className="w-full md:w-auto bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 px-4 py-2 rounded-lg text-sm font-medium flex items-center justify-center gap-2 transition-all whitespace-nowrap"
                         >
                             <span>➕</span> Tambah Bahan

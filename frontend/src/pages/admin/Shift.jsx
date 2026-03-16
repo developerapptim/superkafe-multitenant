@@ -75,34 +75,36 @@ const ShiftCard = ({ shift }) => {
 
             {/* Expanded Details */}
             {isOpen && (
-                <div className="bg-black/20 p-4 border-t border-white/5 grid grid-cols-1 md:grid-cols-4 gap-4 animate-fade-in text-sm">
-                    {/* Modal */}
-                    <div>
-                        <p className="text-gray-500 text-xs mb-1">💵 Modal Awal</p>
-                        <p className="font-mono">{formatCurrency(shift.openingCash)}</p>
-                    </div>
+                <div className="bg-black/20 p-4 border-t border-white/5 animate-fade-in text-sm">
+                    <div className="grid grid-cols-3 gap-3 mb-3">
+                        {/* Modal */}
+                        <div className="min-w-0">
+                            <p className="text-gray-500 text-xs mb-1">💵 Modal Awal</p>
+                            <p className="font-mono text-xs sm:text-sm truncate">{formatCurrency(shift.openingCash)}</p>
+                        </div>
 
-                    {/* Sales */}
-                    <div>
-                        <p className="text-gray-500 text-xs mb-1">📈 Penjualan (+)</p>
-                        <p className="font-mono text-green-400">+{formatCurrency(shift.totalSales)}</p>
-                    </div>
+                        {/* Sales */}
+                        <div className="min-w-0">
+                            <p className="text-gray-500 text-xs mb-1">📈 Penjualan (+)</p>
+                            <p className="font-mono text-green-400 text-xs sm:text-sm truncate">+{formatCurrency(shift.totalSales)}</p>
+                        </div>
 
-                    {/* Cash Out */}
-                    <div>
-                        <p className="text-gray-500 text-xs mb-1">💸 Kas Keluar (-)</p>
-                        <p className="font-mono text-red-400">-{formatCurrency(shift.cashOut)}</p>
+                        {/* Cash Out */}
+                        <div className="min-w-0">
+                            <p className="text-gray-500 text-xs mb-1">💸 Kas Keluar (-)</p>
+                            <p className="font-mono text-red-400 text-xs sm:text-sm truncate">-{formatCurrency(shift.cashOut)}</p>
+                        </div>
                     </div>
 
                     {/* Summary */}
                     <div className="bg-white/5 p-3 rounded-lg border border-white/5">
-                        <div className="flex justify-between mb-1">
-                            <span className="text-gray-400">Expected:</span>
-                            <span className="font-mono">{formatCurrency(shift.expectedCash)}</span>
+                        <div className="flex justify-between items-center gap-2 mb-1">
+                            <span className="text-gray-400 text-xs shrink-0">Expected:</span>
+                            <span className="font-mono text-xs sm:text-sm truncate min-w-0">{formatCurrency(shift.expectedCash)}</span>
                         </div>
-                        <div className="flex justify-between items-center">
-                            <span className="text-gray-400">Selisih:</span>
-                            <span className={`font-bold font-mono ${(shift.variance || 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                        <div className="flex justify-between items-center gap-2">
+                            <span className="text-gray-400 text-xs shrink-0">Selisih:</span>
+                            <span className={`font-bold font-mono text-xs sm:text-sm truncate min-w-0 ${(shift.variance || 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                                 {formatCurrency(shift.variance)}
                             </span>
                         </div>

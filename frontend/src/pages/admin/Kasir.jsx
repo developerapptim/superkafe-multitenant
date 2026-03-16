@@ -165,6 +165,9 @@ function Kasir() {
     const [selectedOrderForPayment, setSelectedOrderForPayment] = useState(null);
     const [paymentInput, setPaymentInput] = useState('');
 
+    // Modal Create Order: Payment Input (for Wajib Bayar Dulu mode)
+    const [modalPaymentInput, setModalPaymentInput] = useState('');
+
     // Form states
     const [customerName, setCustomerName] = useState('');
     const [customerPhone, setCustomerPhone] = useState('');
@@ -486,6 +489,8 @@ function Kasir() {
             return;
         }
 
+        const isWajibBayarDulu = settings?.isCashPrepaymentRequired;
+
         setSubmitting(true);
         const toastId = toast.loading('Memproses pesanan...');
         try {
@@ -497,8 +502,12 @@ function Kasir() {
                 customerPhone: formatPhoneNumber(customerPhone) || null,
                 tableNumber: orderType === 'dine_in' ? selectedTable : null,
                 orderType: orderType,
-                status: 'new',
+                // MANUAL ORDER: Always start at 'process' (skip 'new') since cashier validates directly
+                status: 'process',
+                // Payment status depends on wajibBayarDulu setting
+                paymentStatus: isWajibBayarDulu ? 'paid' : 'unpaid',
                 items: cart.map(item => ({
+                    id: item.id,
                     menuId: item.id,
                     name: item.name,
                     qty: item.qty,
@@ -516,22 +525,31 @@ function Kasir() {
             if (isOnline) {
                 await ordersAPI.create(orderData);
 
+                // If Wajib Bayar Dulu ON: also record payment via payOrder API
+                if (isWajibBayarDulu) {
+                    await ordersAPI.payOrder(orderData.id, paymentMethod);
+                }
+
                 // Mutate SWR cache to update UI
                 mutate('/orders?limit=200');
+                mutate('/shift/current-balance');
                 if (orderType === 'dine_in' && selectedTable) {
                     await tablesAPI.updateStatus(selectedTable, 'occupied');
                     mutate('/tables');
                 }
             } else {
                 await saveOrderOffline(orderData);
-                // No immediate mutation of /orders effectively unless we display offline orders too
-                // For now, simple "Saved" is enough, sync will happen later.
             }
 
             resetForm();
             setShowModal(false);
             if (isOnline) {
-                toast.success('Pesanan berhasil dibuat! ✅', { id: toastId });
+                toast.success(
+                    isWajibBayarDulu
+                        ? 'Pesanan lunas & masuk dapur! 🍳'
+                        : 'Pesanan masuk dapur! ✅',
+                    { id: toastId }
+                );
             } else {
                 toast.dismiss(toastId);
             }
@@ -552,9 +570,10 @@ function Kasir() {
         if (!selectedOrderForPayment) return;
 
         const toastId = toast.loading('Memproses pembayaran...');
+        const orderId = selectedOrderForPayment.id;
+        const isWajibBayarDulu = settings?.isCashPrepaymentRequired;
 
         // 🚀 OPTIMISTIC UI UPDATE
-        // Trick: Update UI immediately before server response
         if (shiftData) {
             const amount = selectedOrderForPayment.total || 0;
             const isCash = selectedOrderForPayment.paymentMethod === 'cash';
@@ -563,23 +582,28 @@ function Kasir() {
                 ...shiftData,
                 currentCash: isCash ? (shiftData.currentCash + amount) : shiftData.currentCash,
                 currentNonCash: !isCash ? (shiftData.currentNonCash + amount) : shiftData.currentNonCash,
-                // Simplify: just increment totals, server will correct it later if needed
             };
 
-            // Update SWR cache properly
             mutate('/shift/current-balance', optimisticData, false);
         }
 
         try {
-            // Update to paid
-            await ordersAPI.payOrder(selectedOrderForPayment.id, selectedOrderForPayment.paymentMethod);
+            // Step 1: Mark as paid
+            await ordersAPI.payOrder(orderId, selectedOrderForPayment.paymentMethod);
 
-            // If cash and payment input exists, maybe log it? For now just mark paid.
-            // In a real app we might want to record the exact cash amount given.
+            // Step 2: Auto-transition status based on workflow scenario
+            if (isWajibBayarDulu) {
+                // SCENARIO B (ON): After payment → auto move to 'process' (kitchen signal)
+                await ordersAPI.updateStatus(orderId, 'process');
+                toast.success('Pembayaran berhasil! Pesanan masuk ke dapur. 🍳', { id: toastId });
+            } else {
+                // SCENARIO A (OFF): After payment → auto complete to 'done'
+                await ordersAPI.updateStatus(orderId, 'done');
+                toast.success('Pembayaran berhasil! Pesanan selesai. ✅', { id: toastId });
+            }
 
-            mutate('/orders?limit=200'); // Refresh
-            mutate('/shift/current-balance'); // Revalidate (Sync with server to be safe)
-            toast.success('Pembayaran berhasil! Silakan selesaikan pesanan.', { id: toastId });
+            mutate('/orders?limit=200');
+            mutate('/shift/current-balance');
             setSelectedOrderForPayment(null);
         } catch (err) {
             console.error(err);
@@ -599,6 +623,7 @@ function Kasir() {
         setCart([]);
         setCustomerSuggestions([]);
         setShowSuggestions(false);
+        setModalPaymentInput('');
     };
 
     // Customer search for autocomplete
@@ -886,15 +911,7 @@ function Kasir() {
                             >
                                 {isOrdersValidating ? <span className="animate-spin text-xs">⏳</span> : '🪙'} Baru <span className="bg-white/20 px-1.5 rounded text-xs ml-1">{orderCounts.new}</span>
                             </button>
-                            <button
-                                onClick={() => setFilter('pending_payment')}
-                                className={`px-3 py-1.5 rounded-lg text-sm transition-all whitespace-nowrap flex items-center gap-1 ${filter === 'pending_payment'
-                                    ? 'bg-orange-500 text-white'
-                                    : 'bg-white/5 text-gray-400 hover:bg-white/10'
-                                    }`}
-                            >
-                                Bayar
-                            </button>
+
                             <button
                                 onClick={() => setFilter('process')}
                                 className={`px-3 py-1.5 rounded-lg text-sm transition-all whitespace-nowrap flex items-center gap-1 ${filter === 'process'
@@ -1011,14 +1028,7 @@ function Kasir() {
                         >
                             {isOrdersValidating ? <span className="animate-spin text-xs">⏳</span> : '🪙'} Baru <span className="bg-white/20 px-1.5 rounded text-xs ml-1">{orderCounts.new}</span>
                         </button>
-                        <button
-                            onClick={() => setFilter('pending_payment')}
-                            className={`px-3 py-1.5 rounded-lg text-sm transition-all whitespace-nowrap flex items-center gap-1 ${filter === 'pending_payment'
-                                ? 'bg-orange-500 text-white'
-                                : 'bg-white/5 text-gray-400'
-                                }`}>
-                            Bayar
-                        </button>
+
                         <button
                             onClick={() => setFilter('process')}
                             className={`px-3 py-1.5 rounded-lg text-sm transition-all whitespace-nowrap flex items-center gap-1 ${filter === 'process'
@@ -1180,85 +1190,52 @@ function Kasir() {
                                             <p className="font-bold text-green-400">{formatCurrency(order.total || 0)}</p>
                                         </div>
                                         <div className="flex gap-2">
-                                            {/* LOGIC: WAJIB BAYAR DULU (ON) vs STANDARD (OFF) */}
+                                            {/* DYNAMIC WORKFLOW: Based on isCashPrepaymentRequired setting */}
                                             {settings?.isCashPrepaymentRequired ? (
-                                                /* SCENARIO 1: WAJIB BAYAR DULU (ON) */
+                                                /* SCENARIO B: WAJIB BAYAR DULU (ON) — Fast Food / Bayar Di Awal */
                                                 <>
-                                                    {/* Step 1: Bayar dulu (Status New & Belum Lunas) */}
+                                                    {/* Step 1: Bayar & Proses (New → open payment modal) */}
                                                     {order.status === 'new' && order.paymentStatus !== 'paid' && (
                                                         <button
                                                             onClick={() => handleOpenPayment(order)}
-                                                            className="px-3 py-1 bg-purple-500/20 text-purple-400 rounded-lg text-sm hover:bg-purple-500/30 flex items-center gap-1"
+                                                            className="px-3 py-1 bg-gradient-to-r from-purple-500/20 to-blue-500/20 text-purple-400 rounded-lg text-sm hover:from-purple-500/30 hover:to-blue-500/30 flex items-center gap-1 border border-purple-500/20"
                                                         >
-                                                            <span>💸</span> Bayar
+                                                            <span>💸</span> Bayar & Proses
                                                         </button>
                                                     )}
 
-                                                    {/* Step 2: Proses (Status New & Sudah Lunas) */}
-                                                    {order.status === 'new' && order.paymentStatus === 'paid' && (
-                                                        <button
-                                                            onClick={() => updateOrderStatus(order.id, 'process')}
-                                                            disabled={processingOrderId === order.id}
-                                                            className={`px-3 py-1 bg-blue-500/20 text-blue-400 rounded-lg text-sm hover:bg-blue-500/30 flex items-center gap-1 ${processingOrderId === order.id ? 'opacity-50 cursor-wait' : ''}`}
-                                                        >
-                                                            {processingOrderId === order.id ? '⏳ Proses...' : '▶️ Proses'}
-                                                        </button>
-                                                    )}
-
-                                                    {/* Step 3: Selesai (Status Process - otomatis sudah lunas karena langkah 1) */}
+                                                    {/* Step 2: Selesai (Process → done, when food is served) */}
                                                     {order.status === 'process' && (
                                                         <button
                                                             onClick={() => updateOrderStatus(order.id, 'done')}
                                                             disabled={processingOrderId === order.id}
-                                                            className={`px-3 py-1 bg-green-500/20 text-green-400 rounded-lg text-sm hover:bg-green-500/30 ${processingOrderId === order.id ? 'opacity-50 cursor-wait' : ''}`}
+                                                            className={`px-3 py-1 bg-green-500/20 text-green-400 rounded-lg text-sm hover:bg-green-500/30 flex items-center gap-1 ${processingOrderId === order.id ? 'opacity-50 cursor-wait' : ''}`}
                                                         >
                                                             {processingOrderId === order.id ? '⏳ Proses...' : '✅ Selesai'}
                                                         </button>
                                                     )}
                                                 </>
                                             ) : (
-                                                /* SCENARIO 2: STANDARD FLOW (OFF) - Default */
+                                                /* SCENARIO A: BAYAR NANTI (OFF) — Table Service / Bayar Belakangan */
                                                 <>
-                                                    {/* Step 1: Proses dulu (Status New) */}
+                                                    {/* Step 1: Proses Pesanan (New → process) */}
                                                     {order.status === 'new' && (
-                                                        <button
-                                                            onClick={() => updateOrderStatus(order.id, 'process')}
-                                                            disabled={processingOrderId === order.id}
-                                                            className={`px-3 py-1 bg-blue-500/20 text-blue-400 rounded-lg text-sm hover:bg-blue-500/30 ${processingOrderId === order.id ? 'opacity-50 cursor-wait' : ''}`}
-                                                        >
-                                                            {processingOrderId === order.id ? '⏳ Proses...' : '▶️ Proses'}
-                                                        </button>
-                                                    )}
-
-                                                    {/* Helper: Bayar & Proses (Status Pending Payment) */}
-                                                    {order.status === 'pending_payment' && (
                                                         <button
                                                             onClick={() => updateOrderStatus(order.id, 'process')}
                                                             disabled={processingOrderId === order.id}
                                                             className={`px-3 py-1 bg-blue-500/20 text-blue-400 rounded-lg text-sm hover:bg-blue-500/30 flex items-center gap-1 ${processingOrderId === order.id ? 'opacity-50 cursor-wait' : ''}`}
                                                         >
-                                                            {processingOrderId === order.id ? '⏳ Proses...' : <><span>💰</span> Bayar & Proses</>}
+                                                            {processingOrderId === order.id ? '⏳ Proses...' : '▶️ Proses Pesanan'}
                                                         </button>
                                                     )}
 
-                                                    {/* Step 2: Bayar (Status Process & Belum Lunas) */}
+                                                    {/* Step 2: Bayar (Process → open payment modal → auto done) */}
                                                     {order.status === 'process' && order.paymentStatus !== 'paid' && (
                                                         <button
                                                             onClick={() => handleOpenPayment(order)}
                                                             className="px-3 py-1 bg-purple-500/20 text-purple-400 rounded-lg text-sm hover:bg-purple-500/30 flex items-center gap-1"
                                                         >
                                                             <span>💸</span> Bayar
-                                                        </button>
-                                                    )}
-
-                                                    {/* Step 3: Selesai (Status Process & Sudah Lunas) */}
-                                                    {order.status === 'process' && order.paymentStatus === 'paid' && (
-                                                        <button
-                                                            onClick={() => updateOrderStatus(order.id, 'done')}
-                                                            disabled={processingOrderId === order.id}
-                                                            className={`px-3 py-1 bg-green-500/20 text-green-400 rounded-lg text-sm hover:bg-green-500/30 ${processingOrderId === order.id ? 'opacity-50 cursor-wait' : ''}`}
-                                                        >
-                                                            {processingOrderId === order.id ? '⏳ Proses...' : '✅ Selesai'}
                                                         </button>
                                                     )}
                                                 </>
@@ -1830,11 +1807,11 @@ function Kasir() {
                                                 }
                                                 return true;
                                             }).map((item) => (
-                                                <button
+                                                <div
                                                     key={item.id}
                                                     onClick={() => addToCart(item)}
                                                     style={{ contentVisibility: 'auto', containIntrinsicSize: '200px' }}
-                                                    className="group relative bg-[#0F0A1F] hover:bg-[#1A1A2E] border border-white/5 hover:border-purple-500/50 rounded-xl overflow-hidden text-left transition-all duration-300 hover:shadow-xl hover:-translate-y-1 flex flex-col"
+                                                    className="group cursor-pointer relative bg-[#0F0A1F] hover:bg-[#1A1A2E] border border-white/5 hover:border-purple-500/50 rounded-xl overflow-hidden text-left transition-all duration-300 hover:shadow-xl hover:-translate-y-1 flex flex-col"
                                                 >
                                                     {/* Image */}
                                                     <div className="h-28 overflow-hidden relative bg-white/10 animate-pulse skeleton-bg">
@@ -1872,10 +1849,27 @@ function Kasir() {
                                                         </div>
                                                         <div className="flex items-center justify-between mt-2">
                                                             <span className="text-sm font-bold text-green-400">{formatCurrency(item.price)}</span>
-                                                            <span className="w-6 h-6 rounded-lg bg-white/5 flex items-center justify-center text-purple-400 group-hover:bg-purple-500 group-hover:text-white transition-colors">+</span>
+                                                            <div className="flex items-center gap-1">
+                                                                {cart.find(c => c.id === item.id) && (
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={(e) => { e.stopPropagation(); updateQty(item.id, -1); }}
+                                                                        className="w-6 h-6 rounded-lg bg-white/5 hover:bg-red-500 flex items-center justify-center text-red-400 hover:text-white transition-colors"
+                                                                    >
+                                                                        -
+                                                                    </button>
+                                                                )}
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={(e) => { e.stopPropagation(); addToCart(item); }}
+                                                                    className="w-6 h-6 rounded-lg bg-white/5 hover:bg-purple-500 flex items-center justify-center text-purple-400 hover:text-white transition-colors"
+                                                                >
+                                                                    +
+                                                                </button>
+                                                            </div>
                                                         </div>
                                                     </div>
-                                                </button>
+                                                </div>
                                             ))}
                                         </div>
 
@@ -1936,6 +1930,50 @@ function Kasir() {
                                             />
                                         </div>
                                     </div>
+
+                                    {/* Section 4: Payment Input (Only when Wajib Bayar Dulu = ON) */}
+                                    {settings?.isCashPrepaymentRequired && cart.length > 0 && (
+                                        <div className="bg-gradient-to-r from-purple-500/10 to-blue-500/10 rounded-2xl p-4 border border-purple-500/20">
+                                            <h4 className="text-sm font-bold text-purple-300 mb-3 flex items-center gap-2">
+                                                💸 Pembayaran Langsung
+                                                <span className="text-[10px] font-normal bg-orange-500/20 text-orange-300 px-2 py-0.5 rounded-full border border-orange-500/30">Wajib Bayar Dulu</span>
+                                            </h4>
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                {/* Total */}
+                                                <div className="bg-black/20 rounded-xl p-3 border border-white/5">
+                                                    <p className="text-xs text-gray-400 mb-1">Total Tagihan</p>
+                                                    <p className="text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-emerald-400">
+                                                        {formatCurrency(cartTotal)}
+                                                    </p>
+                                                </div>
+
+                                                {/* Cash Input */}
+                                                {paymentMethod === 'cash' && (
+                                                    <div>
+                                                        <label className="block text-xs font-medium text-gray-400 mb-1.5 ml-1">Uang Diterima</label>
+                                                        <div className="relative">
+                                                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-medium text-sm">Rp</span>
+                                                            <input
+                                                                type="number"
+                                                                value={modalPaymentInput}
+                                                                onChange={(e) => setModalPaymentInput(e.target.value)}
+                                                                className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-black/20 border border-purple-500/20 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 text-white text-right text-lg font-bold placeholder-gray-600 outline-none transition-all"
+                                                                placeholder="0"
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+
+                                            {/* Kembalian */}
+                                            {paymentMethod === 'cash' && modalPaymentInput && Number(modalPaymentInput) >= cartTotal && (
+                                                <div className="flex justify-between items-center mt-3 bg-green-500/10 p-3 rounded-xl border border-green-500/20">
+                                                    <span className="text-sm font-medium text-green-300">Kembalian</span>
+                                                    <span className="font-bold text-lg text-green-400">{formatCurrency(Number(modalPaymentInput) - cartTotal)}</span>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
                                 </div>
                             </div>
 
@@ -1950,12 +1988,20 @@ function Kasir() {
                                 <button
                                     onClick={createOrder}
                                     disabled={submitting || cart.length === 0}
-                                    className="px-8 py-3 rounded-xl bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white font-bold shadow-lg shadow-purple-500/25 disabled:opacity-50 disabled:grayscale transition-all transform active:scale-95 flex items-center gap-2"
+                                    className={`px-8 py-3 rounded-xl font-bold shadow-lg disabled:opacity-50 disabled:grayscale transition-all transform active:scale-95 flex items-center gap-2 ${
+                                        settings?.isCashPrepaymentRequired
+                                            ? 'bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 shadow-green-500/25'
+                                            : 'bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 shadow-purple-500/25'
+                                    } text-white`}
                                 >
                                     {submitting ? (
                                         <>
                                             <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
                                             <span>Proses...</span>
+                                        </>
+                                    ) : settings?.isCashPrepaymentRequired ? (
+                                        <>
+                                            <span>💸 Bayar & Proses</span>
                                         </>
                                     ) : (
                                         <>

@@ -10,6 +10,18 @@ const getSettings = async (req, res) => {
         settings.forEach(s => {
             settingsMap[s.key] = s.value;
         });
+
+        // Also fetch singleton settings containing payment & system config
+        const singletonSettings = await Settings.findOne({ key: 'businessSettings' }).lean();
+        if (singletonSettings) {
+            // Merge singleton fields into settingsMap
+            Object.keys(singletonSettings).forEach(key => {
+                if (key !== '_id' && key !== '__v' && key !== 'key' && key !== 'tenantId') {
+                    settingsMap[key] = singletonSettings[key];
+                }
+            });
+        }
+
         res.json(settingsMap);
     } catch (err) {
         res.status(500).json({ error: 'Server error' });
@@ -56,26 +68,65 @@ const updateSettings = async (req, res) => {
     try {
         const updates = req.body;
 
+        // Keys that belong to the Settings singleton (businessSettings document)
+        const singletonKeys = [
+            'isCashPrepaymentRequired', 'allowStaffEditInventory', 'enableQris', 
+            'qrisImage', 'bankName', 'bankAccount', 'bankAccountName', 
+            'ewalletType', 'ewalletNumber', 'ewalletName', 'notificationSoundUrl',
+            'loyaltySettings', 'tax', 'customUnits', 'name', 'phone', 'address', 'openTime', 'closeTime', 'wifiName', 'wifiPassword' // all from Settings schema
+        ];
+
         // Case 1: Single update (legacy or specific usage: { key, value })
         if (updates.key && updates.value !== undefined) {
-            const setting = await Setting.findOneAndUpdate(
-                { key: updates.key },
-                { $set: { value: updates.value, updatedAt: new Date() } },
-                { upsert: true, new: true }
-            );
-            return res.json({ success: true, setting });
+            if (singletonKeys.includes(updates.key)) {
+                const setting = await Settings.findOneAndUpdate(
+                    { key: 'businessSettings' },
+                    { $set: { [updates.key]: updates.value, updatedAt: new Date() } },
+                    { upsert: true, new: true }
+                );
+                return res.json({ success: true, setting });
+            } else {
+                const setting = await Setting.findOneAndUpdate(
+                    { key: updates.key },
+                    { $set: { value: updates.value, updatedAt: new Date() } },
+                    { upsert: true, new: true }
+                );
+                return res.json({ success: true, setting });
+            }
         }
 
         // Case 2: Bulk update (frontend sends entire settings object)
-        const promises = Object.keys(updates).map(async (key) => {
+        const singletonUpdates = {};
+        const kvUpdates = {};
+
+        Object.keys(updates).forEach(key => {
+            if (singletonKeys.includes(key)) {
+                singletonUpdates[key] = updates[key];
+            } else {
+                kvUpdates[key] = updates[key];
+            }
+        });
+
+        // Update KV store
+        const promises = Object.keys(kvUpdates).map(async (key) => {
             return Setting.findOneAndUpdate(
                 { key },
-                { $set: { value: updates[key], updatedAt: new Date() } },
+                { $set: { value: kvUpdates[key], updatedAt: new Date() } },
                 { upsert: true, new: true }
             );
         });
 
         await Promise.all(promises);
+
+        // Update Singleton store
+        if (Object.keys(singletonUpdates).length > 0) {
+            await Settings.findOneAndUpdate(
+                { key: 'businessSettings' },
+                { $set: { ...singletonUpdates, updatedAt: new Date() } },
+                { upsert: true, new: true }
+            );
+        }
+
         res.json({ success: true, message: 'Settings updated' });
     } catch (err) {
         console.error('Update settings error:', err);
