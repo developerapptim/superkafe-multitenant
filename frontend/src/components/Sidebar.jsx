@@ -263,7 +263,7 @@ function Sidebar({ onLogout, isCollapsed, toggleSidebar }) {
       handleStaffLogout();
     } catch (err) {
       console.error(err);
-      toast.error('Gagal menutup shift');
+      toast.error(err.response?.data?.message || 'Gagal menutup shift');
     }
   };
 

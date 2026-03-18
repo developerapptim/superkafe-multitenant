@@ -189,13 +189,42 @@ const googleAuth = async (req, res) => {
           });
         }
 
-        return { user, isNewUser };
+        return { user, isNewUser, tenant };
       }
     );
 
-    const { user, isNewUser } = result;
+    const { user, isNewUser, tenant: userTenant } = result;
 
-    // Generate JWT token untuk akses Dashboard
+    // PIN SECURITY LAYER CHECK
+    if (user.isPinSecurityEnabled) {
+      console.log(`[GOOGLE AUTH] User ${user.email} memiliki PIN Security aktif. Mengalihkan ke verifikasi PIN.`);
+      // Generate temp token untuk verifikasi PIN (berlaku 10 menit)
+      const tempToken = jwt.sign(
+        { 
+          id: user.id || user._id.toString(),
+          type: 'pin_verification',
+          tenant: tenantSlug,
+          tenantDbName: userTenant.dbName
+        },
+        process.env.JWT_SECRET || 'change_this_secret',
+        { expiresIn: '10m' }
+      );
+
+      return res.json({
+        success: true,
+        requiresPin: true,
+        tempToken: tempToken,
+        email: user.email,
+        message: 'Silakan masukkan PIN Keamanan Anda',
+        tenant: {
+          slug: userTenant.slug,
+          name: userTenant.name,
+          status: userTenant.status
+        }
+      });
+    }
+
+    // Generate JWT token untuk akses Dashboard (Jika tidak ada PIN / disabled)
     const token = jwt.sign(
       {
         id: user.id,
@@ -365,13 +394,31 @@ const googleCallback = async (req, res) => {
           await user.save();
         }
 
-        return { user, isNewUser };
+        return { user, isNewUser, tenant };
       }
     );
 
-    const { user, isNewUser } = result;
+    const { user, isNewUser, tenant: userTenant } = result;
 
-    // Generate JWT
+    // PIN SECURITY LAYER CHECK (Untuk OAuth Callback Flow)
+    if (user.isPinSecurityEnabled) {
+      // Sama seperti di atas, kita perlu redirect ke frontend dengan indikasi requiresPin
+      const tempToken = jwt.sign(
+        { 
+          id: user.id || user._id.toString(),
+          type: 'pin_verification',
+          tenant: tenantSlug,
+          tenantDbName: userTenant.dbName
+        },
+        process.env.JWT_SECRET || 'change_this_secret',
+        { expiresIn: '10m' }
+      );
+      
+      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5174';
+      return res.redirect(`${frontendUrl}/auth/callback?requiresPin=true&tempToken=${tempToken}&email=${user.email}&tenant=${tenantSlug}`);
+    }
+
+    // Generate JWT (Jika tidak ada PIN)
     const token = jwt.sign(
       {
         id: user.id,

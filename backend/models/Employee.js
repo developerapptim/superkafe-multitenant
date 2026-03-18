@@ -30,6 +30,10 @@ const EmployeeSchema = new mongoose.Schema({
     // PIN Brute-Force Protection
     pinFailedAttempts: { type: Number, default: 0 },
     pinLockedUntil: { type: Date, default: null },
+    // Google OAuth PIN Security Layer
+    isPinSecurityEnabled: { type: Boolean, default: false },
+    pinResetCode: { type: String, default: null },
+    pinResetCodeExpiry: { type: Date, default: null },
     createdAt: { type: Date, default: Date.now }
 });
 

@@ -9,6 +9,7 @@ import { Capacitor } from '@capacitor/core';
 import { GoogleAuth } from '@codetrix-studio/capacitor-google-auth';
 import { loadGoogleScript } from '../../utils/googleAuth';
 import { checkActiveSession, getDashboardUrl } from '../../utils/authHelper';
+import PinSecurityModal from '../../components/auth/PinSecurityModal';
 
 // Detect if running inside Capacitor native app
 const isNativePlatform = Capacitor.isNativePlatform();
@@ -27,6 +28,12 @@ const SimpleLogin = () => {
   const [googleReady, setGoogleReady] = useState(isNativePlatform); // Native is always ready
   const [showPassword, setShowPassword] = useState(false);
   const [checkingSession, setCheckingSession] = useState(true);
+
+  // PIN Security States
+  const [showPinModal, setShowPinModal] = useState(false);
+  const [pinTempToken, setPinTempToken] = useState('');
+  const [pinEmail, setPinEmail] = useState('');
+  const [pinTenantSlug, setPinTenantSlug] = useState('');
 
   // Handle pending plan from URL
   useEffect(() => {
@@ -178,6 +185,15 @@ const SimpleLogin = () => {
 
   // Helper: process Google auth response from backend
   const processGoogleAuthResponse = (backendResponse) => {
+    // Check if it requires PIN verification
+    if (backendResponse.data.requiresPin) {
+      setPinTempToken(backendResponse.data.tempToken);
+      setPinEmail(backendResponse.data.email);
+      setPinTenantSlug(backendResponse.data.tenant?.slug || localStorage.getItem('tenant_slug') || 'demo');
+      setShowPinModal(true);
+      return;
+    }
+
     if (backendResponse.data.success) {
       // Simpan token dan user data
       localStorage.setItem('token', backendResponse.data.token);
@@ -452,6 +468,20 @@ const SimpleLogin = () => {
           </div>
         </motion.div>
       )}
+
+      {/* PIN Security Modal */}
+      <PinSecurityModal
+        isOpen={showPinModal}
+        onClose={() => setShowPinModal(false)}
+        tempToken={pinTempToken}
+        email={pinEmail}
+        tenantSlug={pinTenantSlug}
+        onSuccess={(data) => {
+          setShowPinModal(false);
+          // Pass the successful data as if it came from the initial backend response
+          processGoogleAuthResponse({ data });
+        }}
+      />
     </div>
   );
 };

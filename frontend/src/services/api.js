@@ -432,4 +432,15 @@ export const paymentAPI = {
     getPricing: () => api.get('/payments/pricing')
 };
 
+// ========== PIN SECURITY API ==========
+export const pinAPI = {
+    verifyGooglePin: (data) => api.post('/auth/verify-google-pin', data),
+    requestPinReset: (data) => api.post('/auth/request-pin-reset', data),
+    resetGooglePin: (data) => api.post('/auth/reset-google-pin', data),
+    getPinStatus: () => api.get('/auth/pin-status'),
+    togglePinSecurity: (data) => api.post('/auth/toggle-pin-security', data),
+    changePin: (data) => api.post('/auth/change-pin', data),
+    setPin: (data) => api.post('/auth/set-pin-security', data),
+};
+
 export default api;

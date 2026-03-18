@@ -100,6 +100,20 @@ const endShift = async (req, res) => {
             return res.status(404).json({ error: 'No open shift found' });
         }
 
+        // 1.5. ENFORCEMENT: Check for pending orders before closing
+        // If there are any un-completed / un-cancelled orders, block shift closure
+        const pendingOrdersCount = await Order.countDocuments({
+            status: { $in: ['new', 'process', 'pending_payment'] },
+            is_archived_from_pos: { $ne: true }
+        });
+
+        if (pendingOrdersCount > 0) {
+            return res.status(400).json({ 
+                error: 'pending_orders', 
+                message: `Tidak bisa menutup shift. Selesaikan atau batalkan semua pesanan yang menggantung terlebih dahulu (${pendingOrdersCount} pesanan aktif).` 
+            });
+        }
+
         const actualEndCash = Number(endCash) || 0;
         const endTime = new Date();
 

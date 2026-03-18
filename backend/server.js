@@ -31,6 +31,8 @@ const swaggerUi = require('swagger-ui-express');
 
 // Initialize App
 const app = express();
+app.set('trust proxy', 1); // For production behind Nginx/CDNs
+app.set('trust proxy', 'loopback'); // For localhost/dev
 const http = require('http'); // New: Required for Socket.io
 const { Server } = require("socket.io"); // New: Socket.io
 const server = http.createServer(app); // New: Create HTTP server

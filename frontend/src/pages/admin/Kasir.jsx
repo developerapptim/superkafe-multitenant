@@ -116,16 +116,21 @@ function Kasir() {
 
         // Keep active/unpaid orders regardless of date so they don't disappear at midnight 
         if (o.status === 'new' || o.status === 'process' || o.status === 'pending_payment' || o.paymentStatus !== 'paid') {
-            return true;
+            // Except if it's already explicitly cancelled, in which case we fall through to the shift check below
+            if (o.status !== 'cancel') return true;
         }
 
-        // Keep all orders from the active shift
-        if (shiftData?.startTime) {
+        // For Done or Cancelled orders, STRICTLY enforce that they only show if they belong to the CURRENT OPEN SHIFT
+        if (o.status === 'done' || o.status === 'cancel') {
+            if (!shiftData?.startTime) return false; // No open shift -> hide all old done/cancelled orders
+
             const orderTime = new Date(o.timestamp || o.createdAt).getTime();
             const shiftStart = new Date(shiftData.startTime).getTime();
-            if (orderTime >= shiftStart) return true;
+            
+            return orderTime >= shiftStart;
         }
 
+        // Fallback for any other edge case statues
         // Strict Filter: Show completed orders ONLY from TODAY (Local Time) to avoid clutter
         // Get order's LOCAL date
         const getLocalDate = (timestamp) => {

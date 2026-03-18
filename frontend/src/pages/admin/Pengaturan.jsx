@@ -9,10 +9,13 @@ import { useRefresh } from '../../context/RefreshContext';
 import { useTheme } from '../../context/ThemeContext';
 import ThemeSelector from '../../components/admin/ThemeSelector';
 import usePlatform from '../../hooks/usePlatform';
+import { useNavigate } from 'react-router-dom';
 import { useTourGuide } from '../../context/TourGuideContext';
 
 // Import admin theme generated CSS classes
 import '../../styles/admin-theme.css';
+
+import PinModal from '../../components/admin/PinModal';
 
 // Fetcher
 const fetcher = url => api.get(url).then(res => res.data);
@@ -71,15 +74,17 @@ function Pengaturan() {
     // Theme management
     const { currentTheme, setTheme, isLoading: themeLoading } = useTheme();
     const [tenantId, setTenantId] = useState(null);
+    const [userRole, setUserRole] = useState(null);
     const [themeSaving, setThemeSaving] = useState(false);
 
-    // Get tenantId from JWT token
+    // Get tenantId and role from JWT token
     useEffect(() => {
         const token = localStorage.getItem('token');
         if (token) {
             try {
                 const decoded = jwtDecode(token);
                 setTenantId(decoded.tenantId);
+                setUserRole(decoded.role || 'staff');
             } catch (error) {
                 console.error('[Pengaturan] Failed to decode token:', error);
             }
@@ -187,6 +192,35 @@ function Pengaturan() {
         confirmPassword: ''
     });
     const [passwordSaving, setPasswordSaving] = useState(false);
+
+    // PIN Security State - using direct API call instead of SWR for reliability
+    const [pinStatus, setPinStatus] = useState({ isPinSecurityEnabled: false, hasPinInstalled: false });
+    const [pinLoading, setPinLoading] = useState(false);
+    const [isPinModalOpen, setIsPinModalOpen] = useState(false);
+    const [pinModalMode, setPinModalMode] = useState('set'); // 'set' or 'change'
+    
+    // Add navigate 
+    const navigate = useNavigate();
+    const tenantSlug = localStorage.getItem('tenant_slug');
+
+    // Fetch PIN status on mount
+    const fetchPinStatus = async () => {
+        try {
+            const res = await api.get('/auth/pin-status');
+            if (res.data && res.data.success) {
+                setPinStatus({
+                    isPinSecurityEnabled: res.data.isPinSecurityEnabled || false,
+                    hasPinInstalled: res.data.hasPinInstalled || false
+                });
+            }
+        } catch (err) {
+            console.warn('PIN status fetch failed:', err.message);
+        }
+    };
+
+    useEffect(() => {
+        fetchPinStatus();
+    }, []);
 
     // Sync SWR data to local state
     useEffect(() => {
@@ -356,6 +390,31 @@ function Pengaturan() {
             toast.error(err.response?.data?.error || 'Gagal mengubah password', { id: toastId });
         } finally {
             setPasswordSaving(false);
+        }
+    };
+
+    const handleTogglePinSecurity = async () => {
+        const isEnable = !pinStatus.isPinSecurityEnabled;
+
+        // Jika mau mengaktifkan tapi belum pernah set PIN
+        if (isEnable && !pinStatus.hasPinInstalled) {
+            setPinModalMode('set');
+            setIsPinModalOpen(true);
+            return;
+        }
+
+        const toastId = toast.loading('Menyimpan pengaturan PIN...');
+        try {
+            setPinLoading(true);
+            const res = await api.post('/auth/toggle-pin-security', { isEnabled: isEnable });
+            if (res.data?.success) {
+                setPinStatus(prev => ({ ...prev, isPinSecurityEnabled: isEnable }));
+            }
+            toast.success(isEnable ? 'Keamanan PIN diaktifkan' : 'Keamanan PIN dinonaktifkan', { id: toastId });
+        } catch (error) {
+            toast.error(error.response?.data?.message || 'Gagal mengubah pengaturan PIN', { id: toastId });
+        } finally {
+            setPinLoading(false);
         }
     };
 
@@ -994,16 +1053,22 @@ function Pengaturan() {
                 </AccordionSection>
             )}
 
-            {/* Account Security (Change Password) */}
+            {/* Account Security (Change Password & PIN) */}
             <AccordionSection
                 id="security"
                 title="Keamanan Akun"
                 icon="🔒"
                 isOpen={openSection === 'security'}
                 onToggle={() => toggleSection('security')}
-                isDirty={false} // Password form has its own state but isn't part of 'settings' object tracking
+                isDirty={false} 
             >
-                <form onSubmit={handleChangePassword} className="space-y-4">
+                <div className="space-y-8">
+                    {/* ==== UBAH PASSWORD ==== */}
+                    <div>
+                        <h4 className="font-bold admin-text-primary mb-4 flex items-center gap-2">
+                            <span>🔑</span> Ubah Password Dashboard
+                        </h4>
+                        <form onSubmit={handleChangePassword} className="space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div>
                             <label className="block text-sm opacity-80 admin-text-primary font-medium mb-1">Password Saat Ini</label>
@@ -1058,7 +1123,64 @@ function Pengaturan() {
                         </button>
                     </div>
                 </form>
+                </div>
+
+                {/* ==== KEAMANAN PIN (KHUSUS ADMIN) ==== */}
+                {userRole === 'admin' && (
+                    <div className="border-t admin-border-accent pt-6">
+                        <h4 className="font-bold admin-text-primary mb-4 flex items-center gap-2">
+                            <span>🛡️</span> Keamanan Login Google (PIN)
+                        </h4>
+                        
+                        <div className="flex items-center justify-between p-4 bg-black/5 rounded-xl border border-amber-500/30">
+                            <div>
+                                <p className="font-medium text-amber-600 dark:text-amber-400">Wajibkan PIN Saat Login Google</p>
+                                <p className="text-sm opacity-70 admin-text-primary">Tambahkan lapisan keamanan 6-digit PIN setelah login dengan Google Account.</p>
+                            </div>
+                            <button
+                                onClick={handleTogglePinSecurity}
+                                disabled={pinLoading}
+                                className={`w-12 h-6 rounded-full transition-all flex-shrink-0 disabled:opacity-50 ${pinStatus.isPinSecurityEnabled ? 'bg-amber-500' : 'bg-gray-400 dark:bg-gray-600'}`}
+                            >
+                                <div className={`w-5 h-5 rounded-full bg-white transition-all ${pinStatus.isPinSecurityEnabled ? 'ml-6' : 'ml-0.5'}`}></div>
+                            </button>
+                        </div>
+
+                        {/* Tombol Setel/Ubah PIN */}
+                        <div className="mt-4 flex flex-wrap gap-3">
+                            {!pinStatus.hasPinInstalled ? (
+                                <button
+                                    onClick={() => {
+                                        setPinModalMode('set');
+                                        setIsPinModalOpen(true);
+                                    }}
+                                    className="px-4 py-2 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 font-bold border border-amber-500/30 transition-all flex items-center gap-2 text-sm"
+                                >
+                                    <span>🆕</span> Setel PIN Keamanan
+                                </button>
+                            ) : (
+                                <button
+                                    onClick={() => {
+                                        setPinModalMode('change');
+                                        setIsPinModalOpen(true);
+                                    }}
+                                    className="px-4 py-2 rounded-lg bg-blue-500/10 hover:bg-blue-500/20 text-blue-500 font-bold border border-blue-500/30 transition-all flex items-center gap-2 text-sm"
+                                >
+                                    <span>🔄</span> Ubah PIN Keamanan
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                )}
+                </div>
             </AccordionSection>
+
+            <PinModal 
+                isOpen={isPinModalOpen} 
+                onClose={() => setIsPinModalOpen(false)} 
+                mode={pinModalMode} 
+                onSuccess={fetchPinStatus}
+            />
 
             {/* Tour Guide Reset Button */}
             <div className="pt-6 pb-2 text-center">
