@@ -125,6 +125,21 @@ api.interceptors.response.use(
             localStorage.setItem('subscription_expired', 'true');
         }
 
+        // Handle Tenant Not Found / Inactive globally to prevent infinite loops and zombie states
+        if (error.response?.data?.code === 'TENANT_NOT_FOUND' || error.response?.data?.code === 'TENANT_INACTIVE') {
+            const currentPath = window.location.pathname;
+            const isAuthPage = currentPath.startsWith('/auth') || currentPath === '/login' || currentPath === '/';
+            
+            if (!isAuthPage) {
+                console.error('[SECURITY] Tenant invalid or inactive. Forcing logout to prevent infinite errors.');
+                localStorage.removeItem('token');
+                localStorage.removeItem('user');
+                localStorage.removeItem('tenant_slug');
+                // Menggunakan href untuk melakukan hard reload dan membersihkan semua state/interval
+                window.location.href = '/';
+            }
+        }
+
         return Promise.reject(error);
     }
 );
