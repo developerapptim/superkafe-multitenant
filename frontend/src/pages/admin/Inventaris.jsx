@@ -166,8 +166,9 @@ function Inventaris() {
     const [stats, setStats] = useState({
         totalItems: 0,
         lowStock: 0,
+        emptyStock: 0,
         assetValue: 0,
-        assetWithPPN: 0
+        budgetRestock: 0
     });
 
     // Modal states
@@ -480,7 +481,8 @@ function Inventaris() {
         setHistoryLoading(true);
         try {
             const res = await api.get(`/inventory/${item.id}/history`);
-            setHistoryData(res.data);
+            const filteredHistory = res.data.filter(hist => hist.type !== 'out');
+            setHistoryData(filteredHistory);
         } catch (err) {
             console.error('Error fetching history:', err);
             toast.error('Gagal memuat riwayat');
@@ -766,23 +768,35 @@ function Inventaris() {
 
             {/* Stats Cards - Hide financial cards for Staf */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
-                <div className="glass rounded-xl p-3 md:p-4">
+                <div className="glass rounded-xl p-3 md:p-4 hover:bg-white/5 transition-colors">
                     <p className="text-[10px] md:text-xs text-gray-400">Total Bahan</p>
                     <p className="text-lg md:text-xl font-bold">{stats.totalItems}</p>
                 </div>
-                <div className="glass rounded-xl p-3 md:p-4">
+                <div className="glass rounded-xl p-3 md:p-4 hover:bg-white/5 transition-colors">
                     <p className="text-[10px] md:text-xs text-gray-400">Stok Rendah</p>
-                    <p className="text-lg md:text-xl font-bold text-red-400">{stats.lowStock}</p>
+                    <div className="flex items-baseline gap-2">
+                        <p className={`text-lg md:text-xl font-bold ${
+                            stats.emptyStock > 0 ? 'text-red-500' :
+                            stats.lowStock > 0 ? 'text-amber-400' : 'text-emerald-400'
+                        }`}>
+                            {stats.lowStock + (stats.emptyStock || 0)}
+                        </p>
+                        {(stats.lowStock > 0 || stats.emptyStock > 0) && (
+                            <span className="text-[10px] text-gray-500 hidden md:inline">
+                                ({stats.lowStock} rendah, <span className="text-red-400/80">{stats.emptyStock} habis</span>)
+                            </span>
+                        )}
+                    </div>
                 </div>
                 {isAdmin && (
                     <>
-                        <div className="glass rounded-xl p-3 md:p-4">
+                        <div className="glass rounded-xl p-3 md:p-4 hover:bg-white/5 transition-colors">
                             <p className="text-[10px] md:text-xs text-gray-400">Nilai Aset Stok</p>
                             <SmartText className="text-lg md:text-xl font-bold text-green-400">{formatCurrency(stats.assetValue)}</SmartText>
                         </div>
-                        <div className="glass rounded-xl p-3 md:p-4">
-                            <p className="text-[10px] md:text-xs text-gray-400">Nilai + PPN</p>
-                            <SmartText className="text-lg md:text-xl font-bold text-purple-400">{formatCurrency(stats.assetWithPPN)}</SmartText>
+                        <div className="glass rounded-xl p-3 md:p-4 hover:bg-white/5 transition-colors">
+                            <p className="text-[10px] md:text-xs text-gray-400">Budget Restock</p>
+                            <SmartText className="text-lg md:text-xl font-bold text-amber-500">{formatCurrency(stats.budgetRestock)}</SmartText>
                         </div>
                     </>
                 )}

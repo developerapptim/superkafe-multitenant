@@ -30,7 +30,7 @@ const LandingPage = () => {
       title: 'SuperKafe POS: Kelola Kafe lebih Mudah dan Untung',
       description: 'Sistem kasir lengkap untuk efisiensi dan pertumbuhan bisnis kafe Anda',
       cta: {
-        text: 'Order Now',
+        text: 'Daftar Gratis',
         action: () => navigate('/auth/register')
       }
     },
@@ -206,7 +206,7 @@ const LandingPage = () => {
                 </li>
                 <li className="flex items-center gap-2">
                   <FiPhone className="w-4 h-4 text-amber-400 flex-shrink-0" />
-                  <a href="tel:+62081919371357" className="hover:text-amber-400 transition-colors">
+                  <a href="tel:+6281919371357" className="hover:text-amber-400 transition-colors">
                     081919371357
                   </a>
                 </li>

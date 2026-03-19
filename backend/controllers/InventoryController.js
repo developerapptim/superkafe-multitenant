@@ -1,4 +1,4 @@
-﻿const Ingredient = require('../models/Ingredient');
+const Ingredient = require('../models/Ingredient');
 const Gramasi = require('../models/Gramasi');
 const StockHistory = require('../models/StockHistory');
 const MenuItem = require('../models/MenuItem'); // For error msg
@@ -71,25 +71,49 @@ const getInventoryStats = async (req, res) => {
                     totalItems: { $sum: 1 },
                     lowStock: {
                         $sum: {
-                            $cond: [{ $lte: ["$stok", "$stok_min"] }, 1, 0]
+                            $cond: [
+                                { $and: [{ $lte: ["$stok", "$stok_min"] }, { $gt: ["$stok", 0] }] },
+                                1,
+                                0
+                            ]
+                        }
+                    },
+                    emptyStock: {
+                        $sum: {
+                            $cond: [{ $lte: ["$stok", 0] }, 1, 0]
                         }
                     },
                     assetValue: {
                         $sum: {
                             $multiply: ["$stok", "$harga_modal"] // Use harga_modal (Moving Average)
                         }
+                    },
+                    budgetRestock: {
+                        $sum: {
+                            $cond: [
+                                { $lt: ["$stok", "$stok_min"] },
+                                {
+                                    $multiply: [
+                                        { $subtract: ["$stok_min", "$stok"] },
+                                        "$harga_modal"
+                                    ]
+                                },
+                                0
+                            ]
+                        }
                     }
                 }
             }
         ]);
 
-        const result = stats[0] || { totalItems: 0, lowStock: 0, assetValue: 0 };
+        const result = stats[0] || { totalItems: 0, lowStock: 0, emptyStock: 0, assetValue: 0, budgetRestock: 0 };
 
         res.json({
             totalItems: result.totalItems,
             lowStock: result.lowStock,
+            emptyStock: result.emptyStock,
             assetValue: result.assetValue,
-            assetWithPPN: result.assetValue * 1.11
+            budgetRestock: result.budgetRestock
         });
     } catch (err) {
         res.status(500).json({ error: 'Server error' });
