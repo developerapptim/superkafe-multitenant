@@ -29,7 +29,7 @@ const createReservation = async (req, res) => {
         // Support both single tableId and array tableIds
         const targetTableIds = tableIds || (tableId ? [tableId] : []);
 
-        if (createdBy === 'staff' && targetTableIds.length > 0) {
+        if (['staff', 'admin', 'owner'].includes(createdBy) && targetTableIds.length > 0) {
             const tables = await Table.find({ id: { $in: targetTableIds } });
 
             if (tables.length !== targetTableIds.length) {

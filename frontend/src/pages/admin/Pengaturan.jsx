@@ -9,7 +9,7 @@ import { useRefresh } from '../../context/RefreshContext';
 import { useTheme } from '../../context/ThemeContext';
 import ThemeSelector from '../../components/admin/ThemeSelector';
 import usePlatform from '../../hooks/usePlatform';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useOutletContext } from 'react-router-dom';
 import { useTourGuide } from '../../context/TourGuideContext';
 
 // Import admin theme generated CSS classes
@@ -64,6 +64,8 @@ const AccordionSection = ({ id, title, icon, isOpen, onToggle, isDirty, children
 function Pengaturan() {
     const { isWeb } = usePlatform();
     const { resetTour } = useTourGuide();
+    const outletContext = useOutletContext();
+    const isSidebarCollapsed = outletContext?.isSidebarCollapsed ?? false;
     const { data: settingsData, error } = useSWR('/settings', fetcher);
     const isLoading = !settingsData && !error;
     const [saving, setSaving] = useState(false);
@@ -1192,7 +1194,7 @@ function Pengaturan() {
                 </button>
             </div>
 
-            <div className="fixed bottom-0 left-0 right-0 p-4 bg-gray-900/80 backdrop-blur-lg border-t border-white/10 md:static md:bg-transparent md:border-t-0 md:p-0 z-10">
+            <div className={`fixed bottom-0 right-0 p-4 bg-gray-900/80 backdrop-blur-lg border-t border-white/10 md:static md:bg-transparent md:border-t-0 md:p-0 z-10 transition-all duration-300 ${isSidebarCollapsed ? 'left-0' : 'left-20'}`}>
                 <button
                     onClick={handleSave}
                     disabled={saving}

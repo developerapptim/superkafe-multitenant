@@ -141,41 +141,41 @@ const ThemeSelector = ({ currentTheme, onThemeChange, disabled = false, disableP
                                 </p>
 
                                 {/* Visual Preview - Simplified */}
-                                <div className="flex justify-between items-center mt-2 border-t border-white/10 pt-3">
+                                <div className="flex justify-between items-center mt-2 border-t border-white/10 pt-3 gap-1 sm:gap-2">
                                     {/* Main Background Preview */}
-                                    <div className="flex flex-col items-center gap-2">
+                                    <div className="flex flex-col items-center gap-1 sm:gap-2">
                                         <div
-                                            className="w-10 h-10 rounded-full shadow-md border-2 border-white/10"
+                                            className="w-7 h-7 sm:w-8 sm:h-8 md:w-10 md:h-10 shrink-0 rounded-full shadow-md border-2 border-white/10"
                                             style={{ backgroundColor: themeConfig.bgMain }}
                                             title="Background Utama"
                                         />
-                                        <p className="text-[10px] text-gray-400">Bg Utama</p>
+                                        <p className="text-[9px] sm:text-[10px] text-gray-400 text-center leading-tight">Bg Utama</p>
                                     </div>
 
                                     {/* Sidebar Background Preview */}
-                                    <div className="flex flex-col items-center gap-2">
+                                    <div className="flex flex-col items-center gap-1 sm:gap-2">
                                         <div
-                                            className="w-10 h-10 rounded-full shadow-md border-2 border-white/10"
+                                            className="w-7 h-7 sm:w-8 sm:h-8 md:w-10 md:h-10 shrink-0 rounded-full shadow-md border-2 border-white/10"
                                             style={{ backgroundColor: themeConfig.bgSidebar }}
                                             title="Background Sidebar"
                                         />
-                                        <p className="text-[10px] text-gray-400">Bg Sidebar</p>
+                                        <p className="text-[9px] sm:text-[10px] text-gray-400 text-center leading-tight">Bg Sidebar</p>
                                     </div>
 
                                     {/* Accent Color Preview */}
-                                    <div className="flex flex-col items-center gap-2">
+                                    <div className="flex flex-col items-center gap-1 sm:gap-2">
                                         <div
-                                            className="w-10 h-10 rounded-full shadow-md border-2 border-white/10"
+                                            className="w-7 h-7 sm:w-8 sm:h-8 md:w-10 md:h-10 shrink-0 rounded-full shadow-md border-2 border-white/10"
                                             style={{ backgroundColor: themeConfig.accentColor }}
                                             title="Warna Aksen"
                                         />
-                                        <p className="text-[10px] text-gray-400">Aksen</p>
+                                        <p className="text-[9px] sm:text-[10px] text-gray-400 text-center leading-tight">Aksen</p>
                                     </div>
 
                                     {/* Text Color Preview */}
-                                    <div className="flex flex-col items-center gap-2">
+                                    <div className="flex flex-col items-center gap-1 sm:gap-2">
                                         <div
-                                            className="w-10 h-10 rounded-full shadow-md border-2 border-white/10 flex items-center justify-center font-bold"
+                                            className="w-7 h-7 sm:w-8 sm:h-8 md:w-10 md:h-10 shrink-0 rounded-full shadow-md border-2 border-white/10 flex items-center justify-center font-bold text-xs"
                                             style={{
                                                 backgroundColor: themeConfig.bgMain,
                                                 color: themeConfig.textPrimary
@@ -184,7 +184,7 @@ const ThemeSelector = ({ currentTheme, onThemeChange, disabled = false, disableP
                                         >
                                             Aa
                                         </div>
-                                        <p className="text-[10px] text-gray-400">Teks</p>
+                                        <p className="text-[9px] sm:text-[10px] text-gray-400 text-center leading-tight">Teks</p>
                                     </div>
                                 </div>
 

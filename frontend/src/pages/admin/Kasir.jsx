@@ -146,10 +146,9 @@ function Kasir() {
     // Filter state
     const [filter, setFilter] = useState('all');
     const [showModal, setShowModal] = useState(false);
-    const [selectedProof, setSelectedProof] = useState(null); // For Payment Proof Modal
-    const [showCashDrawer, setShowCashDrawer] = useState(false);
-    // Removed duplicate soundEnabled state
+    const [selectedProofOrder, setSelectedProofOrder] = useState(null); // Updated: Store full order for proof modal
     const [isRefreshing, setIsRefreshing] = useState(false);
+    const [loadingProof, setLoadingProof] = useState(false); // New: Loading state for proof fetch
 
     const [submitting, setSubmitting] = useState(false);
     const [processingOrderId, setProcessingOrderId] = useState(null); // Prevent double-submit
@@ -614,6 +613,25 @@ function Kasir() {
             console.error(err);
             toast.error('Gagal memproses pembayaran', { id: toastId });
             mutate('/shift/current-balance'); // Rollback on error
+        }
+    };
+
+    // View Payment Proof Logic
+    const handleViewProof = async (order) => {
+        setLoadingProof(true);
+        try {
+            // Fetch full order to get the image URL (since it's excluded from list)
+            const res = await ordersAPI.getById(order.id);
+            if (res.data && res.data.paymentProofImage) {
+                setSelectedProofOrder(res.data);
+            } else {
+                toast.error('Gagal memuat gambar bukti pembayaran');
+            }
+        } catch (err) {
+            console.error('Error fetching proof:', err);
+            toast.error('Gambar tidak ditemukan atau sudah dihapus');
+        } finally {
+            setLoadingProof(false);
         }
     };
 
@@ -1176,14 +1194,15 @@ function Kasir() {
                                         </div>
                                     )}
 
-                                    {/* Payment Proof Button */}
-                                    {order.paymentProofImage && (
+                                    {/* Payment Proof Button - Updated to use flag */}
+                                    {order.hasPaymentProof && (
                                         <div className="mb-3">
                                             <button
-                                                onClick={() => setSelectedProof(order.paymentProofImage)}
-                                                className="w-full py-1.5 rounded-lg bg-purple-500/20 border border-purple-500/30 text-purple-300 text-xs hover:bg-purple-500/30 flex items-center justify-center gap-2"
+                                                onClick={() => handleViewProof(order)}
+                                                disabled={loadingProof}
+                                                className="w-full py-1.5 rounded-lg bg-orange-500/20 border border-orange-500/30 text-orange-300 text-xs hover:bg-orange-500/30 flex items-center justify-center gap-2 transition-colors disabled:opacity-50"
                                             >
-                                                📷 Lihat Bukti Bayar
+                                                {loadingProof ? '⏳ Memuat...' : '📷 Lihat Bukti Bayar'}
                                             </button>
                                         </div>
                                     )}
@@ -1602,35 +1621,64 @@ function Kasir() {
                 </div>
             )}
 
-            {/* Payment Proof Modal */}
+            {/* Payment Proof Modal with Confirmation */}
             {
-                selectedProof && (
-                    <div className="modal-overlay" onClick={() => setSelectedProof(null)}>
-                        <div className="bg-transparent p-4 rounded-xl max-w-2xl max-h-[90vh] relative flex flex-col items-center" onClick={e => e.stopPropagation()}>
-                            <button
-                                onClick={() => setSelectedProof(null)}
-                                className="absolute -top-10 right-0 text-white hover:text-red-400 transition-colors bg-black/50 rounded-full w-8 h-8 flex items-center justify-center border border-white/20"
-                            >
-                                ✕
-                            </button>
-                            <img
-                                src={selectedProof.startsWith('http') ? selectedProof : `${API_BASE_URL}${selectedProof}`}
-                                alt="Bukti Pembayaran"
-                                className="w-full h-full object-contain rounded-xl shadow-2xl border border-white/10 bg-black/50"
-                                onError={(e) => {
-                                    e.target.onerror = null;
-                                    e.target.src = 'https://via.placeholder.com/400x300?text=Gagal+Memuat+Gambar';
-                                }}
-                            />
-                            <div className="mt-4 flex gap-3">
-                                <a
-                                    href={selectedProof.startsWith('http') ? selectedProof : `${API_BASE_URL}${selectedProof}`}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors"
+                selectedProofOrder && (
+                    <div className="modal-overlay" onClick={() => setSelectedProofOrder(null)}>
+                        <div className="bg-white rounded-2xl p-4 max-w-lg w-full max-h-[90vh] relative flex flex-col items-center shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
+                            <div className="w-full flex justify-between items-center mb-4 pb-2 border-b border-gray-100">
+                                <h3 className="font-bold text-gray-800">Bukti Pembayaran: {selectedProofOrder.customerName}</h3>
+                                <button
+                                    onClick={() => setSelectedProofOrder(null)}
+                                    className="text-gray-400 hover:text-gray-600 p-1"
                                 >
-                                    🔍 Buka Full Size
-                                </a>
+                                    ✕
+                                </button>
+                            </div>
+                            
+                            <div className="w-full flex-1 overflow-auto bg-gray-50 rounded-xl mb-4 flex items-center justify-center min-h-[300px]">
+                                <img
+                                    src={getImageUrl(selectedProofOrder.paymentProofImage)}
+                                    alt="Bukti Pembayaran"
+                                    className="max-w-full max-h-full object-contain cursor-zoom-in"
+                                    onClick={() => window.open(getImageUrl(selectedProofOrder.paymentProofImage), '_blank')}
+                                    onError={(e) => {
+                                        e.target.onerror = null;
+                                        e.target.src = 'https://via.placeholder.com/400x300?text=Gagal+Memuat+Gambar';
+                                    }}
+                                />
+                            </div>
+
+                            <div className="w-full space-y-3">
+                                <div className="flex justify-between items-center px-2 py-2 bg-purple-50 rounded-lg">
+                                    <span className="text-sm text-purple-700 font-medium">Tagihan:</span>
+                                    <span className="text-lg font-bold text-purple-800">{formatCurrency(selectedProofOrder.total)}</span>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-3">
+                                    <button
+                                        onClick={() => setSelectedProofOrder(null)}
+                                        className="py-3 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-sm transition-all"
+                                    >
+                                        Tutup
+                                    </button>
+                                    
+                                    {selectedProofOrder.paymentStatus !== 'paid' && (
+                                        <button
+                                            onClick={() => {
+                                                handleOpenPayment(selectedProofOrder);
+                                                setSelectedProofOrder(null);
+                                            }}
+                                            className="py-3 rounded-xl bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-bold text-sm shadow-lg shadow-green-500/20 transition-all flex items-center justify-center gap-2"
+                                        >
+                                            ✅ Konfirmasi Bayar
+                                        </button>
+                                    )}
+                                </div>
+
+                                <p className="text-[10px] text-center text-gray-400">
+                                    Klik gambar untuk memperbesar di tab baru
+                                </p>
                             </div>
                         </div>
                     </div>

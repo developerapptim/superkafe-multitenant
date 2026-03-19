@@ -18,6 +18,9 @@ function Meja() {
     const navigate = useNavigate();
     const { tenantSlug } = useTenant();
     const { isTourActive } = useTourGuide();
+    // Get current user role
+    const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+    const userRole = currentUser?.role || 'staff';
     // SWR Data Fetching with auto-refresh every 30s
     const { data: tablesData, error: swrError } = useSWR('/tables', fetcher, { refreshInterval: 30000 });
     const tables = useMemo(() => {
@@ -136,7 +139,7 @@ function Meja() {
         for (let h = 10; h <= 22; h++) {
             const hour = h.toString().padStart(2, '0');
             options.push({ value: `${hour}:00`, label: `${hour}:00` });
-            if (h !== 22) options.push({ value: `${hour}: 30`, label: `${hour}: 30` });
+            options.push({ value: `${hour}:30`, label: `${hour}:30` });
         }
         return options;
     }, []);
@@ -180,26 +183,17 @@ function Meja() {
         return statusOptions.find(s => s.value === status) || statusOptions[0];
     };
 
-    // Handle table card click
+    // Handle table card click — cycle status
+    // available → occupied, occupied → available, reserved → available
     const handleTableClick = async (table) => {
-        if (table.status === 'occupied') {
-            // Show Live Order Preview
-            setPreviewLoading(true);
-            setShowOrderPreview(true);
-            try {
-                const res = await tablesAPI.getTableOrders(table.id);
-                setPreviewData(res.data);
-            } catch (err) {
-                console.error('Error fetching table orders:', err);
-                toast.error('Gagal memuat pesanan meja');
-                setShowOrderPreview(false);
-            } finally {
-                setPreviewLoading(false);
-            }
-        }
+        // Backend looks up tables by custom 'id' field (tbl_xxx), NOT by MongoDB _id
+        const tableId = table.id || table._id;
+        const cycle = { available: 'occupied', occupied: 'available', reserved: 'available' };
+        const nextStatus = cycle[table.status] ?? 'available';
+        handleStatusChange(tableId, nextStatus);
     };
 
-    // Handle status change (cycle through statuses)
+    // Handle status change
     const handleStatusChange = async (tableId, newStatus) => {
         try {
             await tablesAPI.updateStatus(tableId, newStatus);
@@ -476,14 +470,14 @@ function Meja() {
                         tables.map(table => {
                             const statusInfo = getStatusInfo(table.status);
                             const duration = table.status === 'occupied' ? getOccupiedDuration(table.occupiedSince) : null;
-                            // Fallback to _id if custom id is missing
+                            // Backend uses custom 'id' field (tbl_xxx) for lookup — NOT MongoDB _id
                             const tableId = table.id || table._id;
 
                             return (
                                 <div
                                     key={tableId}
                                     onClick={() => handleTableClick(table)}
-                                    className={`rounded-xl ${statusInfo.color} p-4 flex flex-col items-center justify-center transition-all cursor-pointer hover:scale-105 ${table.status === 'occupied' ? 'ring-2 ring-red-300 animate-pulse' : ''}`}
+                                    className={`rounded-xl ${statusInfo.color} p-4 flex flex-col items-center justify-center transition-all cursor-pointer hover:scale-105 active:scale-95 select-none ${table.status === 'occupied' ? 'ring-2 ring-red-300 animate-pulse' : ''}`}
                                 >
                                     <span className="text-3xl font-bold mb-1">{table.number}</span>
                                     <span className="text-xs opacity-80">{table.capacity || 4} orang</span>
@@ -495,28 +489,20 @@ function Meja() {
                                         </span>
                                     )}
 
-                                    <div className="flex gap-1 w-full mt-3">
-                                        <button
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                const next = table.status === 'available' ? 'occupied' : 'available';
-                                                handleStatusChange(tableId, next);
-                                            }}
-                                            className="flex-1 py-1.5 rounded-lg bg-black/20 hover:bg-black/30 text-xs"
-                                            title="Ubah Status"
-                                        >
-                                            🔄
-                                        </button>
+                                    {/* Tap hint */}
+                                    <span className="mt-1 text-[10px] opacity-60">Ketuk → ubah</span>
+
+                                    <div className="flex gap-2 w-full mt-3">
                                         <button
                                             onClick={(e) => { e.stopPropagation(); openQRModal(table); }}
-                                            className="flex-1 py-1.5 rounded-lg bg-black/20 hover:bg-black/30 text-xs"
+                                            className="flex-1 py-2.5 rounded-lg bg-black/20 hover:bg-black/30 text-base"
                                             title="Lihat QR"
                                         >
                                             📱
                                         </button>
                                         <button
                                             onClick={(e) => { e.stopPropagation(); handleDeleteTable(tableId); }}
-                                            className="flex-1 py-1.5 rounded-lg bg-red-500/20 hover:bg-red-500/30 text-red-400 text-xs"
+                                            className="flex-1 py-2.5 rounded-lg bg-red-500/30 hover:bg-red-500/50 text-red-200 text-base"
                                             title="Hapus Meja"
                                         >
                                             🗑️
@@ -1026,10 +1012,11 @@ function Meja() {
                                         try {
                                             // Fix Date parsing for IOS/Safari compatibility if needed, but standard YYYY-MM-DDTHH:mm is usually fine
                                             const reservationTime = new Date(`${reservationDate}T${rTime}:00`);
+                                            // Admin & staff both can auto-approve reservations when tables are assigned
                                             await reservationsAPI.create({
                                                 customerName, customerPhone, pax: parseInt(pax) || 2,
                                                 eventType, notes, reservationTime,
-                                                createdBy: 'staff',
+                                                createdBy: userRole === 'admin' ? 'staff' : 'staff', // 'staff' triggers auto-approve on backend when tableIds present
                                                 tableIds: tIds // Send array
                                             });
                                             toast.success(tIds && tIds.length > 0 ? 'Reservasi dibuat & meja di-reserved!' : 'Reservasi dibuat (pending).');

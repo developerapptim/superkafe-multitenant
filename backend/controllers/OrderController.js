@@ -257,15 +257,22 @@ const getOrders = async (req, res) => {
 
         // Fetch Paginated Data
         const orders = await Order.find(query)
-            .select('-paymentProofImage -__v -updatedAt') // Exclude heavy image data from list view
+            .select('-__v -updatedAt') // Keep paymentProofImage temporarily for flag check
             .sort({ timestamp: -1 })
             .skip(skip)
             .limit(limitNum)
             .lean(); // Use lean() for performance
 
+        // Add hasPaymentProof flag, then strip heavy image data
+        const ordersWithFlag = orders.map(order => {
+            const hasPaymentProof = !!order.paymentProofImage;
+            delete order.paymentProofImage; // Remove heavy data from response
+            return { ...order, hasPaymentProof };
+        });
+
         // Return Structured Response
         res.json({
-            data: orders,
+            data: ordersWithFlag,
             pagination: {
                 currentPage: pageNum,
                 totalPages,

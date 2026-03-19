@@ -207,8 +207,10 @@ function Dashboard() {
                                     <span className="text-lg w-6">{index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `${index + 1}.`}</span>
                                     <div className="flex-1">
                                         <div className="flex justify-between text-sm mb-1">
-                                            <SmartText className="flex-1">{item.name}</SmartText>
-                                            <span className="text-purple-400 ml-2">{item.sold}</span>
+                                            <div className="flex-1 min-w-0 pr-2">
+                                                <SmartText>{item.name}</SmartText>
+                                            </div>
+                                            <span className="text-purple-400 shrink-0">{item.sold}</span>
                                         </div>
                                         <div className="h-1.5 bg-gray-700 rounded-full overflow-hidden">
                                             <div
@@ -230,9 +232,9 @@ function Dashboard() {
                         <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
                             {lowStockItems.length > 0 ? (
                                 lowStockItems.map((item) => (
-                                    <div key={item.name} className="flex justify-between items-center p-2 bg-red-500/10 rounded-lg">
-                                        <span className="text-sm">{item.name}</span>
-                                        <span className="text-sm text-red-400">{item.stock} {item.unit}</span>
+                                    <div key={item.name} className="flex justify-between items-center p-2 bg-red-500/10 rounded-lg gap-2">
+                                        <span className="text-sm truncate min-w-0">{item.name}</span>
+                                        <span className="text-sm text-red-400 shrink-0">{item.stock} {item.unit}</span>
                                     </div>
                                 ))
                             ) : (
@@ -344,17 +346,17 @@ function Dashboard() {
                     )}
                 </div>
                 {/* Color Legend */}
-                <div className="flex items-center gap-6 mt-4 text-xs text-gray-400">
-                    <div className="flex items-center gap-1.5">
-                        <span className="w-3 h-3 rounded-full bg-green-500"></span>
+                <div className="flex flex-wrap items-center justify-between sm:justify-start gap-2 sm:gap-6 mt-4 text-xs text-gray-400">
+                    <div className="flex items-center gap-1.5 whitespace-nowrap">
+                        <span className="w-3 h-3 rounded-full bg-green-500 shrink-0"></span>
                         Tersedia
                     </div>
-                    <div className="flex items-center gap-1.5">
-                        <span className="w-3 h-3 rounded-full bg-red-500"></span>
+                    <div className="flex items-center gap-1.5 whitespace-nowrap">
+                        <span className="w-3 h-3 rounded-full bg-red-500 shrink-0"></span>
                         Terisi
                     </div>
-                    <div className="flex items-center gap-1.5">
-                        <span className="w-3 h-3 rounded-full bg-blue-500"></span>
+                    <div className="flex items-center gap-1.5 whitespace-nowrap">
+                        <span className="w-3 h-3 rounded-full bg-blue-500 shrink-0"></span>
                         Dipesan
                     </div>
                 </div>
