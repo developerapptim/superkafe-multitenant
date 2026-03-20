@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import useSWR from 'swr';
 import SmartText from '../../components/SmartText';
 import ConfirmationModal from '../../components/ConfirmationModal';
@@ -82,10 +82,10 @@ function Laporan() {
         fetchTransactions(nextPage, false);
         setPage(nextPage);
     };
-    // Fetch analytics data from backend
-    const { data: analyticsData, error } = useSWR(
-        '/analytics/report',
-        () => fetcher(`/analytics/report?period=${period}&timezone=%2B07:00`),
+    // Fetch analytics data from backend (key includes period for proper re-fetch)
+    const { data: analyticsData, error, mutate } = useSWR(
+        `/analytics/report?period=${period}&timezone=%2B07:00`,
+        fetcher,
         { refreshInterval: 60000 }
     );
     const isLoading = !analyticsData && !error;
@@ -96,15 +96,16 @@ function Laporan() {
     useEffect(() => {
         return registerRefreshHandler(async () => {
             await Promise.all([
-                mutate((key) => key.startsWith('/analytics/report')), // Invalidate all analytics keys
+                mutate(), // Invalidate current analytics key
                 fetchTransactions(1, true)
             ]);
         });
-    }, [registerRefreshHandler, period, startDate, endDate, statusFilter]); // Dependencies ensure handler uses latest state closure
+    }, [registerRefreshHandler, mutate, period, startDate, endDate, statusFilter]);
 
     // Default empty data to prevent crashes
-    const { stats, paymentStats, topMenu, bottomMenu, peakHours, retention, topCombinations } = analyticsData || {
+    const { stats, profitStats: serverProfitStats, paymentStats, topMenu, bottomMenu, peakHours, retention, topCombinations } = analyticsData || {
         stats: { revenue: 0, orders: 0, avgOrderValue: 0, growthRate: 0 },
+        profitStats: { totalHPP: 0, grossProfit: 0, avgMargin: 0, integratedOrders: 0 },
         paymentStats: { cashCount: 0, nonCashCount: 0, cashPercent: 0, nonCashPercent: 0 },
         topMenu: [],
         bottomMenu: [],
@@ -113,14 +114,8 @@ function Laporan() {
         topCombinations: []
     };
 
-    // Calculate profit stats (Client-side derivation from backend revenue)
-    const profitStats = useMemo(() => {
-        const revenue = stats.revenue || 0;
-        const totalHPP = revenue * 0.35; // Estimate 35% HPP
-        const grossProfit = revenue - totalHPP;
-        const avgMargin = revenue > 0 ? ((revenue - totalHPP) / revenue * 100) : 0;
-        return { totalHPP, grossProfit, avgMargin, integratedOrders: stats.orders };
-    }, [stats.revenue, stats.orders]);
+    // Use profitStats from backend (real HPP data)
+    const profitStats = serverProfitStats || { totalHPP: 0, grossProfit: 0, avgMargin: 0, integratedOrders: 0 };
 
 
 

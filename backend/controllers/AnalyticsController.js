@@ -15,8 +15,13 @@ const CACHE_TTL = {
     yearly: 30 * 60 * 1000   // 30 minutes
 };
 
-// Removed dependency injection
-const setOrderModel = (orderModel) => { };
+// Common match filter for valid orders (done OR paid)
+const VALID_ORDER_MATCH = {
+    $or: [
+        { status: 'done' },
+        { paymentStatus: 'paid' }
+    ]
+};
 
 /**
  * GET /api/analytics/report
@@ -38,7 +43,7 @@ const getReportData = async (req, res) => {
         if (reportCache.has(cacheKey)) {
             const cached = reportCache.get(cacheKey);
             if (cacheNow - cached.timestamp < CACHE_TTL[period]) {
-                console.log(`[Analytics]Serving merged cache for ${period}`);
+                console.log(`[Analytics] Serving cache for ${period}`);
                 return res.json(cached.data);
             }
         }
@@ -59,11 +64,10 @@ const getReportData = async (req, res) => {
             prevEndDate.setDate(startDate.getDate() - 1);
             prevEndDate.setHours(23, 59, 59, 999);
         } else if (period === 'weekly') {
-            const now = new Date(); // Explicit initialization to prevent TypeError
-            const day = now.getDay() || 7; // 1 (Mon) - 7 (Sun)
+            const day = now.getDay() || 7;
             startDate.setHours(0, 0, 0, 0);
-            startDate.setDate(now.getDate() - day + 1); // Monday
-            endDate = new Date(); // Until now
+            startDate.setDate(now.getDate() - day + 1);
+            endDate = new Date();
 
             prevStartDate = new Date(startDate);
             prevStartDate.setDate(startDate.getDate() - 7);
@@ -77,7 +81,7 @@ const getReportData = async (req, res) => {
             prevStartDate = new Date(startDate);
             prevStartDate.setMonth(startDate.getMonth() - 1);
             prevEndDate = new Date(startDate);
-            prevEndDate.setDate(0); // Last day of prev month
+            prevEndDate.setDate(0);
         } else if (period === 'yearly') {
             startDate.setMonth(0, 1);
             startDate.setHours(0, 0, 0, 0);
@@ -94,17 +98,22 @@ const getReportData = async (req, res) => {
         const prevStartTs = prevStartDate.getTime();
         const prevEndTs = prevEndDate.getTime();
 
-        // --- PIPELINES ---
-        // Tenant scoping is automatic via plugin - all queries below automatically filter by tenantId
+        // --- Build common match with timestamp ---
+        const periodMatch = {
+            ...VALID_ORDER_MATCH,
+            timestamp: { $gte: startTs, $lte: endTs }
+        };
 
-        // 1. Main Stats & Payment Analysis (Single Pipeline)
+        const prevPeriodMatch = {
+            ...VALID_ORDER_MATCH,
+            timestamp: { $gte: prevStartTs, $lte: prevEndTs }
+        };
+
+        // --- PIPELINES ---
+
+        // 1. Main Stats & Payment Analysis
         const mainStatsPromise = Order.aggregate([
-            {
-                $match: {
-                    status: { $in: ['done', 'paid'] },
-                    timestamp: { $gte: startTs, $lte: endTs }
-                }
-            },
+            { $match: periodMatch },
             {
                 $group: {
                     _id: null,
@@ -123,12 +132,7 @@ const getReportData = async (req, res) => {
 
         // 2. Previous Period Revenue (for Growth Rate)
         const prevStatsPromise = Order.aggregate([
-            {
-                $match: {
-                    status: { $in: ['done', 'paid'] },
-                    timestamp: { $gte: prevStartTs, $lte: prevEndTs }
-                }
-            },
+            { $match: prevPeriodMatch },
             {
                 $group: {
                     _id: null,
@@ -137,40 +141,43 @@ const getReportData = async (req, res) => {
             }
         ]);
 
-        // 3. Top Products (Menu Terlaris)
+        // 3. Top Products (Menu Terlaris — Top 5)
         const topProductsPromise = Order.aggregate([
-            {
-                $match: {
-                    status: { $in: ['done', 'paid'] },
-                    timestamp: { $gte: startTs, $lte: endTs }
-                }
-            },
+            { $match: periodMatch },
             { $unwind: '$items' },
             {
                 $group: {
                     _id: '$items.name',
-                    count: { $sum: '$items.qty' }
+                    count: { $sum: { $ifNull: ['$items.qty', { $ifNull: ['$items.count', 1] }] } }
                 }
             },
             { $sort: { count: -1 } },
             { $limit: 5 }
         ]);
 
-        // 4. Peak Hours (Timezone Aware)
-        // User requested: timezone: 'Asia/Makassar' OR +08:00
-        const peakHoursPromise = Order.aggregate([
+        // 4. Bottom Products (Menu Kurang Diminati — Bottom 5)
+        const bottomProductsPromise = Order.aggregate([
+            { $match: periodMatch },
+            { $unwind: '$items' },
             {
-                $match: {
-                    status: { $in: ['done', 'paid'] },
-                    timestamp: { $gte: startTs, $lte: endTs }
+                $group: {
+                    _id: '$items.name',
+                    count: { $sum: { $ifNull: ['$items.qty', { $ifNull: ['$items.count', 1] }] } }
                 }
             },
+            { $sort: { count: 1 } },
+            { $limit: 5 }
+        ]);
+
+        // 5. Peak Hours (Timezone Aware)
+        const peakHoursPromise = Order.aggregate([
+            { $match: periodMatch },
             {
                 $project: {
                     hour: {
                         $hour: {
                             date: { $add: [new Date(0), '$timestamp'] },
-                            timezone: timezone // e.g., "+08:00"
+                            timezone: timezone
                         }
                     }
                 }
@@ -184,23 +191,105 @@ const getReportData = async (req, res) => {
             { $sort: { _id: 1 } }
         ]);
 
-        // 5. Unique Customers (Retention/Active)
-        const uniqueCustomersPromise = Order.aggregate([
+        // 6. Customer Retention (New vs Returning)
+        const retentionPromise = Order.aggregate([
+            { $match: { ...periodMatch, phone: { $exists: true, $ne: null, $ne: '' } } },
             {
-                $match: {
-                    status: { $in: ['done', 'paid'] },
-                    timestamp: { $gte: startTs, $lte: endTs },
-                    customerPhone: { $exists: true, $ne: null }
+                $group: {
+                    _id: '$phone',
+                    orderCount: { $sum: 1 }
                 }
             },
             {
                 $group: {
-                    _id: '$customerPhone'
+                    _id: null,
+                    totalUnique: { $sum: 1 },
+                    newCustomers: {
+                        $sum: { $cond: [{ $eq: ['$orderCount', 1] }, 1, 0] }
+                    },
+                    returningCustomers: {
+                        $sum: { $cond: [{ $gt: ['$orderCount', 1] }, 1, 0] }
+                    }
+                }
+            }
+        ]);
+
+        // 7. HPP Profitability (from items.hpp_locked)
+        const hppPromise = Order.aggregate([
+            { $match: periodMatch },
+            { $unwind: '$items' },
+            {
+                $group: {
+                    _id: null,
+                    totalHPP: {
+                        $sum: {
+                            $multiply: [
+                                { $ifNull: ['$items.hpp_locked', 0] },
+                                { $ifNull: ['$items.qty', { $ifNull: ['$items.count', 1] }] }
+                            ]
+                        }
+                    },
+                    integratedOrders: { $addToSet: '$id' }
                 }
             },
             {
-                $count: 'unique_customers'
+                $project: {
+                    totalHPP: 1,
+                    integratedOrders: { $size: '$integratedOrders' }
+                }
             }
+        ]);
+
+        // 8. Top Combinations (Frequently Bought Together)
+        const combinationsPromise = Order.aggregate([
+            { $match: periodMatch },
+            // Only orders with 2+ items
+            { $match: { 'items.1': { $exists: true } } },
+            { $unwind: '$items' },
+            {
+                $group: {
+                    _id: '$_id',
+                    itemNames: { $push: '$items.name' }
+                }
+            },
+            // Generate all pairs
+            {
+                $project: {
+                    pairs: {
+                        $reduce: {
+                            input: { $range: [0, { $subtract: [{ $size: '$itemNames' }, 1] }] },
+                            initialValue: [],
+                            in: {
+                                $concatArrays: [
+                                    '$$value',
+                                    {
+                                        $map: {
+                                            input: { $range: [{ $add: ['$$this', 1] }, { $size: '$itemNames' }] },
+                                            as: 'j',
+                                            in: {
+                                                $cond: {
+                                                    if: { $lt: [{ $arrayElemAt: ['$itemNames', '$$this'] }, { $arrayElemAt: ['$itemNames', '$$j'] }] },
+                                                    then: { $concat: [{ $arrayElemAt: ['$itemNames', '$$this'] }, ' + ', { $arrayElemAt: ['$itemNames', '$$j'] }] },
+                                                    else: { $concat: [{ $arrayElemAt: ['$itemNames', '$$j'] }, ' + ', { $arrayElemAt: ['$itemNames', '$$this'] }] }
+                                                }
+                                            }
+                                        }
+                                    }
+                                ]
+                            }
+                        }
+                    }
+                }
+            },
+            { $unwind: '$pairs' },
+            {
+                $group: {
+                    _id: '$pairs',
+                    count: { $sum: 1 }
+                }
+            },
+            { $sort: { count: -1 } },
+            { $limit: 5 }
         ]);
 
         // --- EXECUTE ALL ---
@@ -208,30 +297,34 @@ const getReportData = async (req, res) => {
             mainStatsResult,
             prevStatsResult,
             topProductsResult,
+            bottomProductsResult,
             peakHoursResult,
-            uniqueCustomersResult
+            retentionResult,
+            hppResult,
+            combinationsResult
         ] = await Promise.all([
             mainStatsPromise,
             prevStatsPromise,
             topProductsPromise,
+            bottomProductsPromise,
             peakHoursPromise,
-            uniqueCustomersPromise
+            retentionPromise,
+            hppPromise,
+            combinationsPromise
         ]);
 
         // --- FORMAT RESULT ---
         const currentStats = mainStatsResult[0] || { totalRevenue: 0, totalOrders: 0, cashOrders: 0, nonCashOrders: 0, avgTransaction: 0 };
         const prevStats = prevStatsResult[0] || { totalRevenue: 0 };
-        const uniqueCount = uniqueCustomersResult[0] ? uniqueCustomersResult[0].unique_customers : 0;
+        const retentionData = retentionResult[0] || { totalUnique: 0, newCustomers: 0, returningCustomers: 0 };
+        const hppData = hppResult[0] || { totalHPP: 0, integratedOrders: 0 };
 
-        // Basic calculations
         const { totalRevenue, totalOrders, avgTransaction, cashOrders, nonCashOrders } = currentStats;
         const prevRevenue = prevStats.totalRevenue;
         const growthRate = prevRevenue > 0 ? ((totalRevenue - prevRevenue) / prevRevenue) * 100 : 0;
-
-        // Note: avgOrderValue in response should be avgTransaction from pipeline
         const avgOrderValue = avgTransaction || 0;
 
-        // Payment Stats Object (Frontend compatibility)
+        // Payment Stats
         const totalPayments = cashOrders + nonCashOrders;
         const paymentStats = {
             cashCount: cashOrders,
@@ -240,10 +333,14 @@ const getReportData = async (req, res) => {
             nonCashPercent: totalPayments > 0 ? 100 - Math.round((cashOrders / totalPayments) * 100) : 0
         };
 
-        // Menu Objects (Top 5 only)
+        // Menu Objects
         const topMenu = topProductsResult.map(m => ({ name: m._id, count: m.count }));
+        const bottomMenu = bottomProductsResult.map(m => ({ name: m._id, count: m.count }));
 
-        // Peak Hours map
+        // Top Combinations
+        const topCombinations = combinationsResult.map(c => ({ name: c._id, count: c.count }));
+
+        // Peak Hours map (8-22)
         const peakHoursMap = {};
         peakHoursResult.forEach(ph => peakHoursMap[ph._id] = ph.count);
         const peakHours = [];
@@ -251,11 +348,23 @@ const getReportData = async (req, res) => {
             peakHours.push({ hour: h, count: peakHoursMap[h] || 0 });
         }
 
-        // Frontend expects "retention" object. Mapping "Unique Customers" to it.
+        // Customer Retention
         const retention = {
-            new: uniqueCount, // Total active unique customers
-            returning: 0,     // Not calculated in this optimized pipeline
-            totalUnique: uniqueCount // Extra field if needed
+            new: retentionData.newCustomers,
+            returning: retentionData.returningCustomers,
+            totalUnique: retentionData.totalUnique
+        };
+
+        // HPP Profitability
+        const totalHPP = Math.round(hppData.totalHPP);
+        const grossProfit = totalRevenue - totalHPP;
+        const avgMargin = totalRevenue > 0 ? (grossProfit / totalRevenue) * 100 : 0;
+
+        const profitStats = {
+            totalHPP,
+            grossProfit,
+            avgMargin: parseFloat(avgMargin.toFixed(1)),
+            integratedOrders: hppData.integratedOrders
         };
 
         // Construct Response
@@ -264,15 +373,16 @@ const getReportData = async (req, res) => {
                 revenue: totalRevenue,
                 orders: totalOrders,
                 avgOrderValue,
-                growthRate,
+                growthRate: parseFloat(growthRate.toFixed(1)),
                 prevRevenue
             },
+            profitStats,
             paymentStats,
             topMenu,
-            bottomMenu: [], // Not requested in optimized pipeline
+            bottomMenu,
             peakHours,
             retention,
-            topCombinations: [] // Not requested in optimized pipeline
+            topCombinations
         };
 
         // Cache the result
@@ -290,6 +400,5 @@ const getReportData = async (req, res) => {
 };
 
 module.exports = {
-    setOrderModel,
     getReportData
 };

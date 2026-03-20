@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import toast from 'react-hot-toast';
 import useSWR, { mutate } from 'swr';
-import api, { menuAPI, ordersAPI, tablesAPI, shiftAPI, API_BASE_URL } from '../../services/api';
+import api, { menuAPI, ordersAPI, tablesAPI, shiftAPI, API_BASE_URL, getImageUrl } from '../../services/api';
 import PrintButton from '../../components/PrintButton';
 import CustomSelect from '../../components/CustomSelect';
 import { useSocket } from '../../context/SocketContext';
@@ -143,9 +143,9 @@ function Kasir() {
         return orderDate === today;
     });
 
-    // Filter state
     const [filter, setFilter] = useState('all');
     const [showModal, setShowModal] = useState(false);
+    const [showCashDrawer, setShowCashDrawer] = useState(false);
     const [selectedProofOrder, setSelectedProofOrder] = useState(null); // Updated: Store full order for proof modal
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [loadingProof, setLoadingProof] = useState(false); // New: Loading state for proof fetch
@@ -1200,7 +1200,7 @@ function Kasir() {
                                             <button
                                                 onClick={() => handleViewProof(order)}
                                                 disabled={loadingProof}
-                                                className="w-full py-1.5 rounded-lg bg-orange-500/20 border border-orange-500/30 text-orange-300 text-xs hover:bg-orange-500/30 flex items-center justify-center gap-2 transition-colors disabled:opacity-50"
+                                                className="w-full py-1.5 rounded-lg bg-orange-500 text-white font-bold border-b-2 border-orange-600 text-xs hover:bg-orange-600 flex items-center justify-center gap-2 transition-colors disabled:opacity-50 shadow-sm"
                                             >
                                                 {loadingProof ? '⏳ Memuat...' : '📷 Lihat Bukti Bayar'}
                                             </button>
@@ -1644,7 +1644,8 @@ function Kasir() {
                                     onClick={() => window.open(getImageUrl(selectedProofOrder.paymentProofImage), '_blank')}
                                     onError={(e) => {
                                         e.target.onerror = null;
-                                        e.target.src = 'https://via.placeholder.com/400x300?text=Gagal+Memuat+Gambar';
+                                        // Inline SVG fallback to guarantee rendering without network requests (since via.placeholder.com is dead/blocked)
+                                        e.target.src = 'data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22400%22%20height%3D%22300%22%20viewBox%3D%220%200%20400%20300%22%3E%3Crect%20fill%3D%22%23f3f4f6%22%20width%3D%22400%22%20height%3D%22300%22%2F%3E%3Ctext%20fill%3D%22%239ca3af%22%20font-family%3D%22sans-serif%22%20font-size%3D%2216%22%20font-weight%3D%22bold%22%20x%3D%2250%25%22%20y%3D%2250%25%22%20text-anchor%3D%22middle%22%20dominant-baseline%3D%22middle%22%3EGambar%20Tidak%20Ditemukan%20di%20Local%3C%2Ftext%3E%3Ctext%20fill%3D%22%23d1d5db%22%20font-family%3D%22sans-serif%22%20font-size%3D%2212%22%20x%3D%2250%25%22%20y%3D%2260%25%22%20text-anchor%3D%22middle%22%20dominant-baseline%3D%22middle%22%3E(File%20fisik%20hanya%20ada%20di%20Server%20VPS)%3C%2Ftext%3E%3C%2Fsvg%3E';
                                     }}
                                 />
                             </div>

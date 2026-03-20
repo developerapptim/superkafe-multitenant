@@ -27,7 +27,7 @@ const LandingPage = () => {
   const slides = [
     {
       image: 'https://res.cloudinary.com/dhjqb65mf/image/upload/v1771858573/Gemini_Generated_Image_3z933g3z933g3z93_z0h9jb.png',
-      title: 'SuperKafe POS: Kelola Kafe lebih Mudah dan Untung',
+      title: 'SuperKafe POS: Kelola Kafe dan Resto lebih Mudah dan Untung',
       description: 'Sistem kasir lengkap untuk efisiensi dan pertumbuhan bisnis kafe Anda',
       cta: {
         text: 'Daftar Gratis',
