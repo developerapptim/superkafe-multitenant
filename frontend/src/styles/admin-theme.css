@@ -252,7 +252,8 @@
 /* Fix table headers and arbitrary purple fills */
 [data-theme="light-coffee"] .bg-\[\#0F0A1F\],
 [data-theme="light-coffee"] .bg-\[\#1A1A2E\],
-[data-theme="light-coffee"] .bg-\[\#1e1e2d\] {
+[data-theme="light-coffee"] .bg-\[\#1e1e2d\],
+[data-theme="light-coffee"] .bg-\[\#151525\] {
   background-color: var(--bg-sidebar) !important;
   color: var(--text-primary) !important;
   border-bottom: 2px solid #D4A373 !important;
