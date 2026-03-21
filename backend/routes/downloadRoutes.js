@@ -14,13 +14,19 @@ const fs = require('fs');
  */
 router.get('/download-app', (req, res) => {
     try {
-        const uploadsDir = path.join(__dirname, '..', 'public', 'uploads');
+        // Deteksi apakah sedang jalan di Docker VPS (dimana volume dimount ke /app/public/uploads)
+        // atau sedang jalan di local development (__dirname/../public/uploads)
+        const dockerUploadsDir = '/app/public/uploads';
+        const localUploadsDir = path.join(__dirname, '..', 'public', 'uploads');
+        const uploadsDir = fs.existsSync(dockerUploadsDir) ? dockerUploadsDir : localUploadsDir;
+        
         const versionFilePath = path.join(uploadsDir, 'app-version.json');
         const apkFilePath = path.join(uploadsDir, 'superkafe.apk');
 
         // 1. Check if APK file exists
         if (!fs.existsSync(apkFilePath)) {
-            return res.status(404).json({ error: 'File APK tidak ditemukan di server.' });
+            // Mengirim teks biasa (bukan JSON) agar NGINX tidak membajak layar 404 menjadi React UI
+            return res.status(404).send('MAAF: File APK tidak ditemukan di server. Pastikan FileZilla telah terupload ke ./backend/public/uploads/superkafe.apk');
         }
 
         // 2. Read version from config file (fallback to 1.0.0 if missing)
