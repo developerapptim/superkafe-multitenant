@@ -286,6 +286,7 @@ app.use('/api/feedback', require('./routes/feedbackRoutes'));
 app.use('/api/service-request', require('./routes/serviceRequestRoutes'));
 app.use('/api/reservations', require('./routes/reservationRoutes'));
 app.use('/api', require('./routes/marketingRoutes')); // Marketing: vouchers, banners, apply-voucher
+app.use('/api', require('./routes/downloadRoutes')); // Public: APK download endpoint
 
 // ==== SENTRY DEBUG ROUTE ====
 app.get('/api/debug-sentry', function mainHandler(req, res) {

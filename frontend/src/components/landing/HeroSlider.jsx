@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiChevronLeft, FiChevronRight } from 'react-icons/fi';
+import { FiChevronLeft, FiChevronRight, FiSmartphone } from 'react-icons/fi';
+import { API_BASE_URL } from '../../services/api';
 
 const HeroSlider = ({ slides }) => {
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -64,14 +65,23 @@ const HeroSlider = ({ slides }) => {
                   <p className="text-lg md:text-xl text-white/90 mb-8">
                     {slides[currentSlide].description}
                   </p>
-                  {slides[currentSlide].cta && (
-                    <button
-                      onClick={slides[currentSlide].cta.action}
-                      className="px-8 py-3 bg-gradient-to-r from-amber-700 to-amber-800 text-white font-semibold rounded-lg hover:shadow-lg hover:shadow-amber-700/50 transition-all transform hover:scale-105"
+                  <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+                    {slides[currentSlide].cta && (
+                      <button
+                        onClick={slides[currentSlide].cta.action}
+                        className="px-8 py-3 bg-gradient-to-r from-amber-700 to-amber-800 text-white font-semibold rounded-lg hover:shadow-lg hover:shadow-amber-700/50 transition-all transform hover:scale-105"
+                      >
+                        {slides[currentSlide].cta.text}
+                      </button>
+                    )}
+                    <a
+                      href={`${API_BASE_URL}/download-app`}
+                      className="px-6 py-3 border-2 border-amber-500 text-amber-500 font-semibold rounded-lg hover:bg-amber-500/10 hover:shadow-lg hover:shadow-amber-500/20 transition-all transform hover:scale-105 flex items-center justify-center gap-2 bg-transparent"
                     >
-                      {slides[currentSlide].cta.text}
-                    </button>
-                  )}
+                      <FiSmartphone className="w-5 h-5" />
+                      Download Apk
+                    </a>
+                  </div>
                 </div>
               </div>
             </div>

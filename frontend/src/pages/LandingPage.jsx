@@ -39,7 +39,7 @@ const LandingPage = () => {
       title: 'Sitem Order Digital dengan Super FItur Lengkap',
       description: 'Kelola Pesanan, Pembayaran, Laporan, dan Managemen Stok yang terintegrasi',
       cta: {
-        text: 'Coba Gratis Sekarang',
+        text: 'Daftar Gratis',
         action: () => navigate('/auth/register')
       }
     }
