@@ -71,10 +71,12 @@ jobs:
           password: ${{ secrets.SSH_PASSWORD }}
           envs: MONGODB_URI,JWT_SECRET,API_KEY,SMTP_USER,SMTP_PASS,DUITKU_MERCHANT_CODE,DUITKU_API_KEY,DUITKU_MODE,DUITKU_CALLBACK_URL,FRONTEND_URL,BACKEND_URL,N8N_WEBHOOK_URL,SENTRY_DSN,VITE_SENTRY_DSN,DUITKU_URL 
           script: |
+            [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
             cd /root/superkafe-multitenant
             git fetch --all
             git reset --hard origin/main
 
+            # Configure environment variables
             echo "MONGODB_URI=$MONGODB_URI" > backend/.env
             echo "JWT_SECRET=$JWT_SECRET" >> backend/.env
             echo "API_KEY=$API_KEY" >> backend/.env
@@ -92,6 +94,7 @@ jobs:
             echo "VITE_SENTRY_DSN=$VITE_SENTRY_DSN" >> frontend/.env
             echo "DUITKU_URL=$DUITKU_URL" >> backend/.env
 
+            # Deploy using Docker Compose
             docker compose down --remove-orphans
             docker compose pull
             docker compose up -d
@@ -100,4 +103,4 @@ jobs:
             
             # Run automated deployment script (validates env, checks DB, auto-initializes if needed)
             docker compose exec backend npm run deploy
-            docker image prune -f
+            docker image prune -f
