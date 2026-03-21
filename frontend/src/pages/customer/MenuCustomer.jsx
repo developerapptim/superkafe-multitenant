@@ -250,13 +250,13 @@ function MenuCustomer() {
 
             {/* Menu Grid */}
             {filteredItems.length === 0 ? (
-                <div className="text-center py-12">
+                <div className="text-center py-12 min-h-[60vh]">
                     <div className="text-6xl mb-4">📋</div>
                     <p className="text-gray-400">Tidak ada menu ditemukan</p>
                 </div>
             ) : (
                 <motion.div
-                    className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6 min-h-[60vh]"
+                    className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6 items-start content-start"
                     initial="hidden"
                     animate="visible"
                     variants={{

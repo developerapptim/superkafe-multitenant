@@ -1441,7 +1441,7 @@ function Inventaris() {
             {
                 showModal && createPortal(
                     <div className="modal-overlay">
-                        <div id="tour-bahan-modal" className="glass rounded-2xl p-6 w-full max-w-lg max-h-[90vh] overflow-auto relative z-10 bg-[#1f2937]">
+                        <div id="tour-bahan-modal" className="glass rounded-2xl p-6 w-full max-w-lg max-h-[90vh] overflow-auto relative z-10 admin-bg-main">
                             <div className="flex items-center justify-between mb-6">
                                 <h3 className="text-xl font-bold">
                                     {editingItem ? '✏️ Edit Bahan' : '➕ Tambah Bahan Baru'}
@@ -1506,8 +1506,8 @@ function Inventaris() {
                                                     <div className="fixed inset-0 z-40" onClick={() => { setIsUnitDropdownOpen(false); setUnitSearch(''); }}></div>
 
                                                     {/* Dropdown Menu */}
-                                                    <div className="absolute z-50 w-full mt-1 bg-[#1f2937] border border-purple-500/30 rounded-lg shadow-xl flex flex-col animate-in fade-in zoom-in-95 duration-100">
-                                                        <div className="p-2 border-b border-purple-500/30 sticky top-0 bg-[#1f2937] z-10 rounded-t-lg">
+                                                    <div className="absolute z-50 w-full mt-1 admin-bg-main border border-purple-500/30 rounded-lg shadow-xl flex flex-col animate-in fade-in zoom-in-95 duration-100">
+                                                        <div className="p-2 border-b border-purple-500/30 sticky top-0 admin-bg-main z-10 rounded-t-lg">
                                                             <input
                                                                 type="text"
                                                                 autoFocus
@@ -1616,8 +1616,8 @@ function Inventaris() {
                                                             <div className="fixed inset-0 z-40" onClick={() => { setIsProductUnitDropdownOpen(false); setProdUnitSearch(''); }}></div>
 
                                                             {/* Dropdown Menu */}
-                                                            <div className="absolute z-50 w-full mt-1 bg-[#1f2937] border border-purple-500/30 rounded-lg shadow-xl flex flex-col animate-in fade-in zoom-in-95 duration-100">
-                                                                <div className="p-2 border-b border-purple-500/30 sticky top-0 bg-[#1f2937] z-10 rounded-t-lg">
+                                                            <div className="absolute z-50 w-full mt-1 admin-bg-main border border-purple-500/30 rounded-lg shadow-xl flex flex-col animate-in fade-in zoom-in-95 duration-100">
+                                                                <div className="p-2 border-b border-purple-500/30 sticky top-0 admin-bg-main z-10 rounded-t-lg">
                                                                     <input
                                                                         type="text"
                                                                         autoFocus
@@ -1666,7 +1666,7 @@ function Inventaris() {
                                 )}
 
                                 {!formData.use_konversi && (
-                                    <div id="tour-bahan-hpp" className="p-3 bg-white/5 rounded-lg border border-white/5 relative z-20 bg-[#1f2937]/90">
+                                    <div id="tour-bahan-hpp" className="p-3 bg-white/5 rounded-lg border border-white/5 relative z-20 admin-bg-main">
                                         <p className="text-sm text-gray-400 mb-1">Harga Modal Dasar</p>
                                         <p className="text-lg font-bold text-green-400">
                                             {formatCurrency(formData.harga_beli)}
@@ -1776,7 +1776,7 @@ function Inventaris() {
             {
                 showHistoryModal && createPortal(
                     <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-                        <div className="bg-[#1f2937] border border-white/10 rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl">
+                        <div className="admin-bg-main border border-white/10 rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl">
                             <div className="p-6 border-b border-white/10 flex justify-between items-center bg-white/5">
                                 <div>
                                     <h3 className="text-xl font-bold text-white flex items-center gap-2">
@@ -1798,8 +1798,8 @@ function Inventaris() {
                                         <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-amber-500"></div>
                                     </div>
                                 ) : (
-                                    <table className="w-full text-sm text-left">
-                                        <thead className="bg-white/5 text-gray-400 sticky top-0 backdrop-blur-md">
+                                    <table className="w-full min-w-max text-sm text-left">
+                                        <thead className="bg-white/5 text-gray-400 sticky top-0 backdrop-blur-md whitespace-nowrap">
                                             <tr>
                                                 <th className="px-6 py-3 font-medium">Tanggal</th>
                                                 <th className="px-6 py-3 font-medium">Tipe</th>
@@ -1818,7 +1818,7 @@ function Inventaris() {
                                                 </tr>
                                             ) : (
                                                 historyData.map((hist) => (
-                                                    <tr key={hist._id || hist.id} className="hover:bg-white/5 transition-colors">
+                                                    <tr key={hist._id || hist.id} className="hover:bg-white/5 transition-colors whitespace-nowrap">
                                                         <td className="px-6 py-3 text-gray-300">
                                                             <div className="flex flex-col">
                                                                 <span className="font-medium">{hist.date}</span>
@@ -1834,9 +1834,9 @@ function Inventaris() {
                                                                     hist.type === 'out' ? 'Keluar' : 'Koreksi'}
                                                             </span>
                                                         </td>
-                                                        <td className={`px-6 py-3 text-right font-bold ${hist.qty > 0 ? 'text-emerald-400' : 'text-red-400'
+                                                        <td className={`px-6 py-3 text-right font-bold ${(hist.type === 'out' || (hist.stokSesudah !== undefined && hist.stokSesudah < hist.stokSebelum)) ? 'text-red-400' : 'text-emerald-400'
                                                             }`}>
-                                                            {hist.type === 'out' ? '-' : '+'}{hist.qty} {editingItem?.satuan_prod || 'unit'}
+                                                            {(hist.type === 'out' || (hist.stokSesudah !== undefined && hist.stokSesudah < hist.stokSebelum)) ? '-' : '+'}{hist.qty} {editingItem?.satuan_prod || 'unit'}
                                                         </td>
                                                         <td className="px-6 py-3 text-right text-emerald-300">
                                                             {(hist.type === 'restock' || hist.type === 'in') && hist.hargaBeli
@@ -1993,7 +1993,7 @@ function StockHistoryTable() {
                     </button>
 
                     {isDatePickerOpen && (
-                        <div className="absolute right-0 sm:right-auto sm:left-0 mt-1 w-64 bg-[#1f2937] border border-purple-500/30 rounded-lg shadow-xl z-50 p-4 animate-fade">
+                        <div className="absolute right-0 sm:right-auto sm:left-0 mt-1 w-64 admin-bg-main border border-purple-500/30 rounded-lg shadow-xl z-50 p-4 animate-fade">
                             {/* Calendar Header */}
                             <div className="flex justify-between items-center mb-4">
                                 <button onClick={() => changeMonth(-1)} className="p-1 hover:bg-white/10 rounded">&lt;</button>
@@ -2057,7 +2057,7 @@ function StockHistoryTable() {
                     </button>
 
                     {isDropdownOpen && (
-                        <div className="absolute right-0 mt-1 w-full bg-[#1f2937] border border-purple-500/30 rounded-lg shadow-xl z-50 overflow-hidden animate-fade">
+                        <div className="absolute right-0 mt-1 w-full admin-bg-main border border-purple-500/30 rounded-lg shadow-xl z-50 overflow-hidden animate-fade">
                             {['semua', 'in', 'out', 'opname'].map(opt => (
                                 <button
                                     key={opt}
@@ -2073,10 +2073,10 @@ function StockHistoryTable() {
             </div>
 
             {/* Scrollable Table Container */}
-            <div className="border border-white/5 rounded-xl overflow-hidden bg-[#1f2937]/50">
+            <div className="border border-white/5 rounded-xl overflow-hidden bg-white/5">
                 <div className="overflow-y-auto max-h-[60vh] custom-scrollbar">
                     <table className="w-full text-sm">
-                        <thead className="sticky top-0 z-10 bg-[#1f2937] shadow-md">
+                        <thead className="sticky top-0 z-10 bg-white/10 border-b border-white/5 shadow-md whitespace-nowrap">
                             <tr>
                                 <th className="px-4 py-3 text-left font-semibold text-gray-300">Waktu</th>
                                 <th className="px-4 py-3 text-left font-semibold text-gray-300">Bahan</th>
@@ -2092,7 +2092,7 @@ function StockHistoryTable() {
                                 <tr><td colSpan={5} className="text-center py-8 text-gray-500">Belum ada riwayat yang cocok</td></tr>
                             ) : (
                                 displayedHistory.map((item) => (
-                                    <tr key={item._id || item.id} className="hover:bg-white/5 transition-colors">
+                                    <tr key={item._id || item.id} className="hover:bg-white/5 transition-colors whitespace-nowrap">
                                         <td className="px-4 py-3 text-gray-300">
                                             <div className="font-medium">{item.date}</div>
                                             <div className="text-xs text-gray-500">{item.time}</div>
@@ -2110,9 +2110,9 @@ function StockHistoryTable() {
                                                         item.type.toUpperCase()}
                                             </span>
                                         </td>
-                                        <td className={`px-4 py-3 text-right font-mono font-bold ${item.type === 'out' ? 'text-red-400' : 'text-emerald-400'
+                                        <td className={`px-4 py-3 text-right font-mono font-bold ${(item.type === 'out' || (item.stokSesudah !== undefined && item.stokSesudah < item.stokSebelum)) ? 'text-red-400' : 'text-emerald-400'
                                             }`}>
-                                            {item.type === 'out' ? '-' : '+'}{item.qty}
+                                            {(item.type === 'out' || (item.stokSesudah !== undefined && item.stokSesudah < item.stokSebelum)) ? '-' : '+'}{item.qty}
                                         </td>
                                         <td className="px-4 py-3 text-gray-400 text-xs max-w-xs">
                                             <SmartText>{item.note || '-'}</SmartText>

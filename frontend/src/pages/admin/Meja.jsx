@@ -519,7 +519,7 @@ function Meja() {
                 <div className="flex flex-wrap gap-4 mt-4 pt-4 border-t border-white/10 text-sm">
                     {statusOptions.map(s => (
                         <div key={s.value} className="flex items-center gap-2">
-                            <span className={`w - 4 h - 4 rounded ${s.color} `}></span>
+                            <span className={`w-4 h-4 rounded-full ${s.color}`}></span>
                             <span className="text-gray-400">{s.label}</span>
                         </div>
                     ))}

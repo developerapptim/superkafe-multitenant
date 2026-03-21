@@ -100,6 +100,54 @@ const exportData = async (req, res) => {
             }));
             sheetName = 'Laporan Stok';
 
+        } else if (type === 'template-menu') {
+            data = [{
+                'ID Menu': '',
+                'Nama Menu': 'Contoh Kopi Susu',
+                'Deskripsi': 'Kopi susu gula aren dengan espresso pilihan',
+                'Kategori': 'kopi',
+                'Harga Ritel (Rp)': 15000,
+                'Harga Coret (Rp)': 18000,
+                'Label': 'best seller',
+                'Status Ketersediaan': 'Tersedia'
+            }, {
+                'ID Menu': '',
+                'Nama Menu': 'Nasi Goreng Spesial',
+                'Deskripsi': 'Nasi goreng dengan telur, sosis, dan ayam',
+                'Kategori': 'makanan',
+                'Harga Ritel (Rp)': 25000,
+                'Harga Coret (Rp)': 30000,
+                'Label': 'new',
+                'Status Ketersediaan': 'Tersedia'
+            }];
+            sheetName = 'Template Menu';
+
+        } else if (type === 'template-stock') {
+            data = [{
+                'ID Bahan': '',
+                'Nama Bahan': 'Biji Kopi Arabica',
+                'Satuan Pakai': 'gram',
+                'Stok Tersedia': 1000,
+                'Batas Minimum Stok': 200,
+                'Satuan Beli': 'kg',
+                'Harga Beli (Rp)': 150000,
+                'Harga Modal/Unit (Rp)': 150,
+                'Isi per Kemasan': 1000,
+                'Konversi Aktif': 'Ya'
+            }, {
+                'ID Bahan': '',
+                'Nama Bahan': 'Susu UHT',
+                'Satuan Pakai': 'ml',
+                'Stok Tersedia': 5000,
+                'Batas Minimum Stok': 1000,
+                'Satuan Beli': 'liter',
+                'Harga Beli (Rp)': 18000,
+                'Harga Modal/Unit (Rp)': 18,
+                'Isi per Kemasan': 1000,
+                'Konversi Aktif': 'Ya'
+            }];
+            sheetName = 'Template Stok';
+
         } else {
             return res.status(400).json({ error: 'Tipe export tidak valid' });
         }

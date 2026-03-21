@@ -53,14 +53,14 @@ const TrialStatusBanner = ({ subscriptionData }) => {
 
   const { daysRemaining, status, expiresAt, trialExpiresAt, isGracePeriod, gracePeriodEndsAt } = trialInfo;
 
-  // Show badge for: grace period, expired, or ≤ 10 days remaining
+  // Show badge for: grace period, expired, or ≤ 1 days remaining
   const isExpiredOrGrace = status === 'grace' || status === 'expired';
-  if (!isExpiredOrGrace && daysRemaining > 10) return null;
+  if (!isExpiredOrGrace && daysRemaining > 1) return null;
 
   // Determine styling
   let bgColor, borderColor, textColor, badgeBgColor, icon, statusText;
   const isCritical = daysRemaining <= 0 || status === 'expired';
-  const isWarning = isGracePeriod || (daysRemaining > 0 && daysRemaining <= 3);
+  const isWarning = isGracePeriod || (daysRemaining > 0 && daysRemaining <= 1);
 
   if (isGracePeriod) {
     bgColor = 'bg-orange-500/10';
@@ -112,11 +112,11 @@ const TrialStatusBanner = ({ subscriptionData }) => {
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
         onClick={() => setShowDropdown(!showDropdown)}
-        className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border backdrop-blur-sm cursor-pointer transition-colors ${badgeBgColor} ${showDropdown ? 'shadow-lg brightness-125' : ''}`}
+        className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] md:text-xs font-medium border backdrop-blur-sm cursor-pointer transition-colors max-w-[130px] sm:max-w-none ${badgeBgColor} ${showDropdown ? 'shadow-lg brightness-125' : ''}`}
         title="Info Langganan"
       >
-        <span className={isCritical || isWarning || isGracePeriod ? "animate-pulse" : ""}>{icon}</span>
-        <span>{badgeLabel}</span>
+        <span className={`shrink-0 ${isCritical || isWarning || isGracePeriod ? "animate-pulse" : ""}`}>{icon}</span>
+        <span className="whitespace-nowrap overflow-hidden text-ellipsis">{badgeLabel}</span>
       </motion.button>
 
       {/* DROPDOWN */}
@@ -165,15 +165,12 @@ const TrialStatusBanner = ({ subscriptionData }) => {
                 <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
                   <motion.div
                     initial={{ width: 0 }}
-                    animate={{ width: `${Math.max(0, (daysRemaining / 10) * 100)}%` }}
-                    className={`h-full ${daysRemaining > 3
-                      ? 'bg-gradient-to-r from-green-400 to-emerald-400'
-                      : 'bg-gradient-to-r from-yellow-400 to-red-400'
-                      }`}
+                    animate={{ width: `${Math.max(0, (daysRemaining / 1) * 100)}%` }}
+                    className={`h-full bg-gradient-to-r from-yellow-400 to-red-400`}
                   />
                 </div>
                 <p className="text-[10px] text-white/40 mt-1 text-right font-medium tracking-wide">
-                  Sisa {daysRemaining} / 10 Hari Akhir
+                  Sisa {daysRemaining} Hari Akhir
                 </p>
               </div>
             )}

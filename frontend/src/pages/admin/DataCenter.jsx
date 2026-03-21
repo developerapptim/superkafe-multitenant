@@ -13,7 +13,8 @@ export default function DataCenter() {
     const [activeTab, setActiveTab] = useState('export'); // export, import, audit, backup, danger
     const [startDate, setStartDate] = useState('');
     const [endDate, setEndDate] = useState('');
-    const [importFile, setImportFile] = useState(null);
+    const [importFileMenu, setImportFileMenu] = useState(null);
+    const [importFileStock, setImportFileStock] = useState(null);
     const [isLoading, setIsLoading] = useState(false);
 
     // Modal State
@@ -69,11 +70,11 @@ export default function DataCenter() {
         }
     };
 
-    const handleImport = async (type) => {
-        if (!importFile) return toast.error('Pilih file terlebih dahulu');
+    const handleImport = async (type, file) => {
+        if (!file) return toast.error('Pilih file terlebih dahulu');
 
         const formData = new FormData();
-        formData.append('file', importFile);
+        formData.append('file', file);
 
         try {
             setIsLoading(true);
@@ -84,9 +85,14 @@ export default function DataCenter() {
                 }
             });
             toast.success(`Import Berhasil: ${res.data.created} baru, ${res.data.updated} diperbarui`);
-            setImportFile(null);
-            // Reset file input value manually if needed
-            document.getElementById('fileInput').value = '';
+            // Clear specific states
+            if (type === 'menu') {
+                setImportFileMenu(null);
+                document.getElementById('fileInputMenu').value = '';
+            } else {
+                setImportFileStock(null);
+                document.getElementById('fileInputStock').value = '';
+            }
         } catch (err) {
             console.error(err);
             toast.error(err.response?.data?.error || 'Gagal import data');
@@ -294,13 +300,13 @@ export default function DataCenter() {
                                 <h3 className="font-bold mb-2">Import Menu</h3>
                                 <p className="text-xs text-gray-400 mb-4">Upgrade daftar menu secara massal.</p>
                                 {/* In a real app, provide a link to a static template file */}
-                                <button className="text-purple-400 text-sm hover:underline mb-4">Download Template Menu</button>
+                                <button onClick={() => handleExport('template-menu')} className="text-purple-400 text-sm hover:underline mb-4">Download Template Menu</button>
 
                                 <input
                                     type="file"
-                                    id="fileInput"
+                                    id="fileInputMenu"
                                     accept=".xlsx, .xls"
-                                    onChange={e => setImportFile(e.target.files[0])}
+                                    onChange={e => setImportFileMenu(e.target.files[0])}
                                     className="block w-full text-sm text-gray-400
                         file:mr-4 file:py-2 file:px-4
                         file:rounded-full file:border-0
@@ -310,7 +316,7 @@ export default function DataCenter() {
                         mb-4"
                                 />
                                 <button
-                                    onClick={() => handleImport('menu')}
+                                    onClick={() => handleImport('menu', importFileMenu)}
                                     disabled={isLoading}
                                     className="w-full bg-purple-600 hover:bg-purple-500 text-white py-2 rounded-lg transition-colors disabled:opacity-50"
                                 >
@@ -322,12 +328,13 @@ export default function DataCenter() {
                                 <div className="text-5xl mb-4">🥬</div>
                                 <h3 className="font-bold mb-2">Import Bahan Baku</h3>
                                 <p className="text-xs text-gray-400 mb-4">Update inventaris & stok awal.</p>
-                                <button className="text-purple-400 text-sm hover:underline mb-4">Download Template Stok</button>
+                                <button onClick={() => handleExport('template-stock')} className="text-purple-400 text-sm hover:underline mb-4">Download Template Stok</button>
 
                                 <input
                                     type="file"
+                                    id="fileInputStock"
                                     accept=".xlsx, .xls"
-                                    onChange={e => setImportFile(e.target.files[0])}
+                                    onChange={e => setImportFileStock(e.target.files[0])}
                                     className="block w-full text-sm text-gray-400
                         file:mr-4 file:py-2 file:px-4
                         file:rounded-full file:border-0
@@ -337,7 +344,7 @@ export default function DataCenter() {
                         mb-4"
                                 />
                                 <button
-                                    onClick={() => handleImport('stock')}
+                                    onClick={() => handleImport('stock', importFileStock)}
                                     disabled={isLoading}
                                     className="w-full bg-purple-600 hover:bg-purple-500 text-white py-2 rounded-lg transition-colors disabled:opacity-50"
                                 >

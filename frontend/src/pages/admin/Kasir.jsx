@@ -149,6 +149,7 @@ function Kasir() {
     const [selectedProofOrder, setSelectedProofOrder] = useState(null); // Updated: Store full order for proof modal
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [loadingProof, setLoadingProof] = useState(false); // New: Loading state for proof fetch
+    const [zoomedImageUrl, setZoomedImageUrl] = useState(null); // Fullscreen image zoom
 
     const [submitting, setSubmitting] = useState(false);
     const [processingOrderId, setProcessingOrderId] = useState(null); // Prevent double-submit
@@ -1641,7 +1642,7 @@ function Kasir() {
                                     src={getImageUrl(selectedProofOrder.paymentProofImage)}
                                     alt="Bukti Pembayaran"
                                     className="max-w-full max-h-full object-contain cursor-zoom-in"
-                                    onClick={() => window.open(getImageUrl(selectedProofOrder.paymentProofImage), '_blank')}
+                                    onClick={() => setZoomedImageUrl(getImageUrl(selectedProofOrder.paymentProofImage))}
                                     onError={(e) => {
                                         e.target.onerror = null;
                                         // Inline SVG fallback to guarantee rendering without network requests (since via.placeholder.com is dead/blocked)
@@ -1678,13 +1679,35 @@ function Kasir() {
                                 </div>
 
                                 <p className="text-[10px] text-center text-gray-400">
-                                    Klik gambar untuk memperbesar di tab baru
+                                    Klik gambar untuk memperbesar
                                 </p>
                             </div>
                         </div>
                     </div>
                 )
             }
+
+            {/* Fullscreen Image Zoom Overlay */}
+            {zoomedImageUrl && (
+                <div
+                    className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-sm flex items-center justify-center p-4 cursor-zoom-out"
+                    onClick={() => setZoomedImageUrl(null)}
+                >
+                    <button
+                        onClick={() => setZoomedImageUrl(null)}
+                        className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center text-xl font-bold transition-all z-10 backdrop-blur-md border border-white/20"
+                        title="Tutup"
+                    >
+                        ✕
+                    </button>
+                    <img
+                        src={zoomedImageUrl}
+                        alt="Bukti Pembayaran (Diperbesar)"
+                        className="max-w-[95vw] max-h-[90vh] object-contain rounded-lg shadow-2xl"
+                        onClick={(e) => e.stopPropagation()}
+                    />
+                </div>
+            )}
 
             {/* New Order Modal - Modern Redesign */}
             {

@@ -256,7 +256,7 @@ app.use('/api/settings', require('./routes/settingsRoutes'));
 app.use('/api/analytics', require('./routes/analyticsRoutes'));
 app.use('/api/admin/audit-logs', require('./routes/auditLogRoutes'));
 app.use('/api/admin/export', require('./routes/exportRoutes'));
-
+app.use('/api/admin/import', require('./routes/importRoutes'));
 // New Routes (Refactored)
 app.use('/api', require('./routes/authRoutes')); // Mounts /login -> /api/login (LEGACY)
 app.use('/api/auth', require('./routes/unifiedAuthRoutes')); // NEW: Unified auth (no tenant)
