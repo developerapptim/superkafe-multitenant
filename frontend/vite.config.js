@@ -43,6 +43,7 @@ export default defineConfig({
       workbox: {
         // Precaching all JS, CSS, and HTML files
         globPatterns: ['**/*.{js,css,html,ico,png,svg,webp}'],
+        navigateFallbackDenylist: [/^\/api/],
         runtimeCaching: [
           {
             // Cache images from backend APIs

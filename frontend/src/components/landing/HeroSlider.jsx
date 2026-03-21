@@ -76,6 +76,7 @@ const HeroSlider = ({ slides }) => {
                     )}
                     <a
                       href={`${API_BASE_URL}/download-app`}
+                      download="SuperKafe.apk"
                       className="px-6 py-3 border-2 border-amber-500 text-amber-500 font-semibold rounded-lg hover:bg-amber-500/10 hover:shadow-lg hover:shadow-amber-500/20 transition-all transform hover:scale-105 flex items-center justify-center gap-2 bg-transparent"
                     >
                       <FiSmartphone className="w-5 h-5" />
