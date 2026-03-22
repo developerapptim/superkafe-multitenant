@@ -16,10 +16,10 @@ import { useRefresh } from '../../context/RefreshContext';
 import { ThemeProvider, useTheme } from '../../context/ThemeContext';
 import FirstTimeThemePopup from '../../components/admin/FirstTimeThemePopup';
 import FirstTimePinPopup from '../../components/admin/FirstTimePinPopup';
-import { TourGuideProvider } from '../../context/TourGuideContext';
 import TrialStatusBanner from '../../components/TrialStatusBanner';
 import SubscriptionLockScreen from '../../components/SubscriptionLockScreen';
 import { useSocket } from '../../context/SocketContext';
+import SetupModal from '../../components/admin/SetupModal';
 
 // Import admin theme generated CSS classes
 import '../../styles/admin-theme.css';
@@ -42,6 +42,18 @@ function AdminLayout() {
     const isStaff = userRole === 'staf';
     const isAdmin = userRole === 'admin';
     const tenantSlug = localStorage.getItem('tenant_slug');
+    
+    const [hasCompletedSetup, setHasCompletedSetup] = useState(
+        localStorage.getItem('has_completed_setup') === 'true'
+    );
+
+    useEffect(() => {
+        const handleSetupStatus = () => {
+            setHasCompletedSetup(localStorage.getItem('has_completed_setup') === 'true');
+        };
+        window.addEventListener('setup_status_changed', handleSetupStatus);
+        return () => window.removeEventListener('setup_status_changed', handleSetupStatus);
+    }, []);
 
     // Subscription state for lock screen & banner
     const [subscriptionData, setSubscriptionData] = useState(null);
@@ -399,12 +411,10 @@ function AdminLayout() {
         }
     };
 
-    // Only start tour if no blocking popups are active AND user is admin
-    const isReadyForTour = !showPinPopup && !showThemePopup && hasSeenThemePopup && isAdmin;
+    // No longer need Tour Guide
 
     return (
         <ThemeProvider initialTheme={tenantInfo.initialTheme} tenantId={tenantInfo.tenantId}>
-          <TourGuideProvider tenantId={tenantInfo.tenantId} tenantSlug={tenantSlug} isReady={isReadyForTour}>
             <div
                 id="adminPage"
                 className="flex flex-col h-screen overflow-hidden admin-gradient-bg admin-text-primary"
@@ -458,7 +468,16 @@ function AdminLayout() {
                                 </h1>
                                 <TrialStatusBanner subscriptionData={subscriptionData} />
                             </div>
-                            <div className="mr-2">
+                            <div className="mr-2 flex items-center gap-2">
+                                {isAdmin && !hasCompletedSetup && (
+                                    <div className="relative flex items-center">
+                                        <span className="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full animate-ping"></span>
+                                        <span className="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full"></span>
+                                        <span className="text-[10px] text-red-400 bg-red-500/10 px-2 py-0.5 rounded-full border border-red-500/20 mr-1">
+                                            Setup !
+                                        </span>
+                                    </div>
+                                )}
                                 <NotificationBell />
                             </div>
 
@@ -501,6 +520,15 @@ function AdminLayout() {
                                 <TrialStatusBanner subscriptionData={subscriptionData} />
                             </div>
                             <div className="flex items-center gap-4">
+                                {isAdmin && !hasCompletedSetup && (
+                                    <div className="flex items-center gap-2 px-3 py-1 bg-red-500/10 border border-red-500/30 rounded-full cursor-pointer hover:bg-red-500/20 transition-all" onClick={() => navigate(tenantSlug ? `/${tenantSlug}/admin/dashboard` : '/admin/dashboard')}>
+                                        <div className="relative">
+                                            <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full animate-ping"></span>
+                                            <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+                                        </div>
+                                        <span className="text-xs font-bold text-red-400">Setup Belum Selesai</span>
+                                    </div>
+                                )}
                                 <NotificationBell />
                                 <div className="flex items-center gap-2 px-3 py-1.5 bg-white/5 rounded-full border border-white/10">
                                     <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
@@ -613,13 +641,15 @@ function AdminLayout() {
                         onSkip={handleSkipThemeSelection}
                     />
 
+                    {/* Setup Modal untuk Pengguna Baru */}
+                    <SetupModal />
+
                     {/* Subscription Lock Screen — blocks all access when expired */}
                     {showLockScreen && (
                         <SubscriptionLockScreen tenantSlug={tenantSlug} />
                     )}
                 </div>
             </div>
-          </TourGuideProvider>
         </ThemeProvider>
     );
 }

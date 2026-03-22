@@ -4,13 +4,12 @@ import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaChevronDown, FaChevronUp, FaCircle } from 'react-icons/fa';
 import { jwtDecode } from 'jwt-decode';
-import api, { settingsAPI, userAPI, API_BASE_URL } from '../../services/api';
+import api, { settingsAPI, userAPI, API_BASE_URL, getImageUrl } from '../../services/api';
 import { useRefresh } from '../../context/RefreshContext';
 import { useTheme } from '../../context/ThemeContext';
 import ThemeSelector from '../../components/admin/ThemeSelector';
 import usePlatform from '../../hooks/usePlatform';
 import { useNavigate, useOutletContext } from 'react-router-dom';
-import { useTourGuide } from '../../context/TourGuideContext';
 
 // Import admin theme generated CSS classes
 import '../../styles/admin-theme.css';
@@ -63,7 +62,6 @@ const AccordionSection = ({ id, title, icon, isOpen, onToggle, isDirty, children
 
 function Pengaturan() {
     const { isWeb } = usePlatform();
-    const { resetTour } = useTourGuide();
     const outletContext = useOutletContext();
     const isSidebarCollapsed = outletContext?.isSidebarCollapsed ?? false;
     const { data: settingsData, error } = useSWR('/settings', fetcher);
@@ -136,17 +134,6 @@ function Pengaturan() {
     // State to track open accordion section
     // Default open: 'profile'
     const [openSection, setOpenSection] = useState('profile');
-
-    // Subscribe to Tour Guide events to open accordions automatically
-    useEffect(() => {
-        const handleOpenAccordion = (e) => {
-            if (e.detail?.section) {
-                setOpenSection(e.detail.section);
-            }
-        };
-        window.addEventListener('tour:open-accordion', handleOpenAccordion);
-        return () => window.removeEventListener('tour:open-accordion', handleOpenAccordion);
-    }, []);
 
     const [settings, setSettings] = useState({
         businessName: 'Warkop Santai',
@@ -281,26 +268,50 @@ function Pengaturan() {
         }
     };
 
-    const handleLogoUpload = (e) => {
+    const handleLogoUpload = async (e) => {
         const file = e.target.files[0];
         if (!file) return;
 
-        const reader = new FileReader();
-        reader.onload = () => {
-            setSettings({ ...settings, logo: reader.result });
-        };
-        reader.readAsDataURL(file);
+        const toastId = toast.loading('Mengunggah logo...');
+        try {
+            const formData = new FormData();
+            formData.append('image', file);
+            
+            const response = await api.post('/upload/images/general', formData);
+
+            if (response.data && response.data.success) {
+                setSettings({ ...settings, logo: response.data.imageUrl });
+                toast.success('Logo berhasil diunggah', { id: toastId });
+            } else {
+                throw new Error('Upload failed');
+            }
+        } catch (error) {
+            console.error('Upload error:', error);
+            toast.error('Gagal mengunggah logo', { id: toastId });
+        }
     };
 
-    const handleQrisUpload = (e) => {
+    const handleQrisUpload = async (e) => {
         const file = e.target.files[0];
         if (!file) return;
 
-        const reader = new FileReader();
-        reader.onload = () => {
-            setSettings({ ...settings, qrisImage: reader.result });
-        };
-        reader.readAsDataURL(file);
+        const toastId = toast.loading('Mengunggah QRIS...');
+        try {
+            const formData = new FormData();
+            formData.append('image', file);
+            
+            const response = await api.post('/upload/images/general', formData);
+
+            if (response.data && response.data.success) {
+                setSettings({ ...settings, qrisImage: response.data.imageUrl });
+                toast.success('QRIS berhasil diunggah', { id: toastId });
+            } else {
+                throw new Error('Upload failed');
+            }
+        } catch (error) {
+            console.error('Upload error:', error);
+            toast.error('Gagal mengunggah QRIS', { id: toastId });
+        }
     };
 
     const handleSoundUpload = async (e) => {
@@ -483,7 +494,7 @@ function Pengaturan() {
                         <div className="flex items-center gap-4">
                             <div className="w-20 h-20 rounded-xl bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center overflow-hidden shadow-sm">
                                 {settings.logo ? (
-                                    <img src={settings.logo} alt="Logo" className="theme-aware-logo w-full h-full object-cover" />
+                                    <img src={getImageUrl(settings.logo)} alt="Logo" className="theme-aware-logo w-full h-full object-cover" />
                                 ) : (
                                     <span className="text-3xl">☕</span>
                                 )}
@@ -758,7 +769,7 @@ function Pengaturan() {
                             <label className="block text-sm opacity-80 admin-text-primary font-medium mb-2">Upload Gambar QRIS</label>
                             <div className="flex items-center gap-4">
                                 {settings.qrisImage && (
-                                    <img src={settings.qrisImage} alt="QRIS" className="w-24 h-24 object-contain rounded-lg bg-white p-1 border border-gray-200" />
+                                    <img src={getImageUrl(settings.qrisImage)} alt="QRIS" className="w-24 h-24 object-contain rounded-lg bg-white p-1 border border-gray-200" />
                                 )}
                                 <input type="file" accept="image/*" onChange={handleQrisUpload} className="hidden" id="qrisInput" />
                                 <button
@@ -1184,15 +1195,7 @@ function Pengaturan() {
                 onSuccess={fetchPinStatus}
             />
 
-            {/* Tour Guide Reset Button */}
-            <div className="pt-6 pb-2 text-center">
-                <button
-                    onClick={resetTour}
-                    className="px-6 py-3 rounded-xl bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 font-bold border border-indigo-500/30 transition-all flex items-center gap-2 mx-auto"
-                >
-                    <span>🎯</span> Mulai Ulang Tour Guide Aplikasi
-                </button>
-            </div>
+
 
             <div className={`fixed bottom-0 right-0 p-4 bg-gray-900/80 backdrop-blur-lg border-t border-white/10 md:static md:bg-transparent md:border-t-0 md:p-0 z-10 transition-all duration-300 ${isSidebarCollapsed ? 'left-0' : 'left-20'}`}>
                 <button

@@ -5,7 +5,6 @@ import CustomSelect from '../../components/CustomSelect';
 import useSWR, { mutate } from 'swr';
 import api, { menuAPI, inventoryAPI, recipesAPI } from '../../services/api';
 import { useRefresh } from '../../context/RefreshContext';
-import { useTourGuide } from '../../context/TourGuideContext';
 
 // Fetcher
 const fetcher = url => api.get(url).then(res => res.data);
@@ -22,7 +21,6 @@ function Gramasi() {
     // Admin checking: Is explicitly admin OR has wildcard role_access
     const isAdmin = userRole === 'admin' || userRoleAccess.includes('*');
     const isStaff = userRole === 'staf';
-    const { isTourActive } = useTourGuide();
     
     // Add debug log to verify permissions in browser console
     useEffect(() => {
@@ -69,23 +67,6 @@ function Gramasi() {
     const menuWithoutRecipe = useMemo(() => {
         return menuItems.filter(m => !recipes.find(r => r.menuId === m.id));
     }, [menuItems, recipes]);
-
-    // Tour Guide Integration for opening modal
-    useEffect(() => {
-        const handleTourAction = (e) => {
-            if (e.detail?.action === 'open-gramasi-modal') {
-                if (menuWithoutRecipe.length > 0) {
-                    openRecipeModal(menuWithoutRecipe[0]);
-                } else if (menuItems.length > 0) {
-                    openRecipeModal(menuItems[0]); // fallback if all have recipes
-                }
-            }
-        };
-        window.addEventListener('tour:action', handleTourAction);
-        return () => window.removeEventListener('tour:action', handleTourAction);
-    }, [menuWithoutRecipe, menuItems]);
-
-
 
     // Calculate modal per unit for ingredient
     const getModalPerUnit = (ing) => {
@@ -284,7 +265,6 @@ function Gramasi() {
                 {/* <h2 className="text-2xl font-bold hidden md:block">⚖️ Gramasi & HPP</h2> - Moved to Header */}
                 {canEdit && (
                     <button
-                        id="tour-tambah-gramasi"
                         onClick={() => {
                             if (menuWithoutRecipe.length > 0) {
                                 openRecipeModal(menuWithoutRecipe[0]);
@@ -425,7 +405,7 @@ function Gramasi() {
             {/* Recipe Modal */}
             {showModal && selectedMenu && createPortal(
                 <div className="modal-overlay">
-                    <div id="tour-gramasi-modal" className="glass rounded-2xl p-6 w-full max-w-2xl max-h-[90vh] overflow-auto relative z-10 bg-[#1f2937]">
+                    <div className="glass rounded-2xl p-6 w-full max-w-2xl max-h-[90vh] overflow-auto relative z-10 bg-[#1f2937]">
                         <div className="flex items-center justify-between mb-6">
                             <div className="w-full mr-8">
                                 <h3 className="text-xl font-bold mb-2">⚖️ Atur Resep Gramasi</h3>

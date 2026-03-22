@@ -20,9 +20,12 @@ const { runWithTenantContext } = require('../utils/tenantContext');
  * @returns {Object} Token payload with employee data
  */
 const getEmployeeTokenPayload = async (user) => {
+  // Default payload from User model
   let tokenPayload = {
-    userId: user._id,
+    id: user._id.toString(), // Default to MongoDB User _id
+    userId: user._id.toString(),
     email: user.email,
+    role: 'admin', // Default role for users who haven't setup yet or the owner
     hasCompletedSetup: user.hasCompletedSetup,
     tenantSlug: user.tenantSlug
   };
@@ -34,12 +37,38 @@ const getEmployeeTokenPayload = async (user) => {
     const tenant = await Tenant.findById(user.tenantId);
     if (tenant) {
       // Get employee data using tenant context
-      const employee = await runWithTenantContext(
+      let employee = await runWithTenantContext(
         { id: tenant._id.toString(), slug: tenant.slug, name: tenant.name, dbName: tenant.dbName },
         async () => {
-          return await Employee.findOne({ email: user.email });
+          return await Employee.findOne({ email: user.email.toLowerCase() });
         }
       );
+
+      // RECOVERY: If setup is completed but employee record is missing in tenant DB
+      if (!employee) {
+        console.log(`[UNIFIED AUTH] ⚠️ Employee record missing for ${user.email} in tenant ${tenant.slug}. Auto-repairing...`);
+        try {
+          const { seedAdminUser } = require('../utils/seedAdminUser');
+          const adminSeedResult = await runWithTenantContext(
+            { id: tenant._id.toString(), slug: tenant.slug, name: tenant.name, dbName: tenant.dbName },
+            async () => {
+              return await seedAdminUser(null, tenant.name, {
+                email: user.email,
+                name: user.name,
+                username: user.email.split('@')[0],
+                isVerified: true,
+                authProvider: user.authProvider,
+                googleId: user.googleId,
+                image: user.image
+              }, tenant._id);
+            }
+          );
+          employee = adminSeedResult.admin;
+          console.log(`[UNIFIED AUTH] ✅ Employee record auto-repaired for ${user.email}`);
+        } catch (repairError) {
+          console.error('[UNIFIED AUTH] ❌ Failed to auto-repair employee record:', repairError.message);
+        }
+      }
 
       if (employee) {
         // AUTO-FIX: Ensure role and role_access are set for admin users
@@ -49,11 +78,12 @@ const getEmployeeTokenPayload = async (user) => {
           needsSave = true;
           console.log('[UNIFIED AUTH] ⚠️ Auto-fixed missing role to admin for:', employee.email);
         }
+        
+        // Ensure role access is set
         if (!employee.role_access || employee.role_access.length === 0) {
           if (employee.role === 'admin') {
             employee.role_access = ['POS', 'Kitchen', 'Meja', 'Keuangan', 'Laporan', 'Menu', 'Pegawai', 'Pengaturan'];
             needsSave = true;
-            console.log('[UNIFIED AUTH] ⚠️ Auto-fixed missing role_access for admin:', employee.email);
           }
         }
 
@@ -67,14 +97,15 @@ const getEmployeeTokenPayload = async (user) => {
         }
 
         tokenPayload = {
-          id: employee._id.toString(),
+          id: employee.id || employee._id.toString(), // Use string ID from Employee if available
           email: employee.email,
-          role: employee.role,
+          role: employee.role || 'admin',
           tenant: tenant.slug,
-          tenantSlug: tenant.slug, // CRITICAL: Add tenantSlug for frontend header
+          tenantSlug: tenant.slug,
           tenantId: tenant._id.toString(),
           tenantDbName: tenant.dbName,
           userId: user._id.toString(),
+          hasCompletedSetup: true,
           hasPin: !!(employee.pin || employee.pin_code)
         };
 
@@ -82,10 +113,17 @@ const getEmployeeTokenPayload = async (user) => {
         employeeData = {
           id: employee.id || employee._id.toString(),
           role: employee.role,
-          role_access: employee.role_access,
+          role_access: (employee.role_access && employee.role_access.length > 0) ? employee.role_access : ['POS', 'Kitchen', 'Meja', 'Keuangan', 'Laporan', 'Menu', 'Pegawai', 'Pengaturan'],
           name: employee.name,
           image: employee.image
         };
+      } else {
+        // Fallback info if still no employee but tenant exists
+        tokenPayload.role = 'admin';
+        tokenPayload.tenant = tenant.slug;
+        tokenPayload.tenantSlug = tenant.slug;
+        tokenPayload.tenantId = tenant._id.toString();
+        tokenPayload.tenantDbName = tenant.dbName;
       }
     }
   }

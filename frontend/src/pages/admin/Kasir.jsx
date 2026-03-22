@@ -7,7 +7,6 @@ import CustomSelect from '../../components/CustomSelect';
 import { useSocket } from '../../context/SocketContext';
 import useOfflineSync from '../../hooks/useOfflineSync'; // New: Offline Hook
 import { useRefresh } from '../../context/RefreshContext';
-import { useTourGuide } from '../../context/TourGuideContext'; // New: Tour Guide
 
 // Fetcher for SWR
 const fetcher = url => api.get(url).then(res => res.data);
@@ -25,7 +24,6 @@ function Kasir() {
     const { isOnline, saveOrderOffline, getLocalMenu } = useOfflineSync(); // Offline Hook
     const socket = useSocket(); // New: Get Socket
     const { registerRefreshHandler } = useRefresh();
-    const { isTourActive } = useTourGuide(); // New: Tour Guide
 
     // Register Pull-to-Refresh Handler
     useEffect(() => {
@@ -253,18 +251,6 @@ function Kasir() {
         return () => {
             document.removeEventListener('mousedown', handleClickOutside);
         };
-    }, []);
-
-    // Tour guide custom events listener
-    useEffect(() => {
-        const handleTourAction = (e) => {
-            if (e.detail.action === 'open-order-modal') {
-                setShowModal(true);
-            }
-        };
-
-        window.addEventListener('tour:action', handleTourAction);
-        return () => window.removeEventListener('tour:action', handleTourAction);
     }, []);
 
     // Audio State
@@ -981,9 +967,8 @@ function Kasir() {
                         </button>
 
                         <button
-                            id="tour-tambah-pesanan"
                             onClick={() => setShowModal(true)}
-                            className={`h-11 bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 text-white px-4 rounded-xl font-bold flex items-center gap-2 shadow-lg shadow-purple-500/40 whitespace-nowrap transition-all ${isTourActive ? 'relative z-[9999]' : ''}`}
+                            className="h-11 bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 text-white px-4 rounded-xl font-bold flex items-center gap-2 shadow-lg shadow-purple-500/40 whitespace-nowrap transition-all"
                         >
                             <span className="text-xl">➕</span> <span className="text-base truncate hidden xl:inline">Pesanan Baru</span><span className="text-base xl:hidden">Baru</span>
                         </button>

@@ -6,7 +6,6 @@ import Swal from 'sweetalert2';
 import api, { inventoryAPI, settingsAPI } from '../../services/api';
 import SmartText from '../../components/SmartText';
 import { useRefresh } from '../../context/RefreshContext';
-import { useTourGuide } from '../../context/TourGuideContext';
 
 
 
@@ -139,7 +138,6 @@ function Inventaris() {
     // Determine edit permission, match Sidebar logic for user parsing
     const userRole = user?.role || 'admin';
     const userRoleAccess = user?.role_access || ['*'];
-    const { isTourActive } = useTourGuide();
 
     // Admin checking: Is explicitly admin OR has wildcard role_access
     const isAdmin = userRole === 'admin' || userRoleAccess.includes('*');
@@ -225,18 +223,6 @@ function Inventaris() {
 
 
     const { registerRefreshHandler } = useRefresh();
-
-    // Tour Guide Integration for opening modal
-    useEffect(() => {
-        const handleTourAction = (e) => {
-            if (e.detail?.action === 'open-bahan-modal') {
-                const fillData = e.detail?.autoFill;
-                openAddModal(fillData);
-            }
-        };
-        window.addEventListener('tour:action', handleTourAction);
-        return () => window.removeEventListener('tour:action', handleTourAction);
-    }, []);
 
     const fetchStats = async () => {
         try {

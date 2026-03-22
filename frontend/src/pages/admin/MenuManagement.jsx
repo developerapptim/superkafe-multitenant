@@ -176,16 +176,6 @@ function MenuManagement() {
     const [editingItem, setEditingItem] = useState(null);
     const [editingCategory, setEditingCategory] = useState(null); // New state for editing category
 
-    // Tour Guide Integration for opening modal
-    useEffect(() => {
-        const handleTourAction = (e) => {
-            if (e.detail?.action === 'open-menu-modal') {
-                openAddModal();
-            }
-        };
-        window.addEventListener('tour:action', handleTourAction);
-        return () => window.removeEventListener('tour:action', handleTourAction);
-    }, []);
 
     // Form states
     const [formData, setFormData] = useState({

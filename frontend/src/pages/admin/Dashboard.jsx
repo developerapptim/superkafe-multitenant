@@ -3,6 +3,7 @@ import SmartText from '../../components/SmartText';
 import { useRefresh } from '../../context/RefreshContext';
 import useSWR from 'swr';
 import api, { reportsAPI, tablesAPI, menuAPI } from '../../services/api';
+import SetupProgressCard from '../../components/admin/SetupProgressCard';
 
 // Generic fetcher
 const fetcher = url => api.get(url).then(res => res.data);
@@ -129,6 +130,8 @@ function Dashboard() {
     return (
         <section className="p-4 md:p-6 space-y-6">
 
+            {/* Setup Progress Checklist */}
+            <SetupProgressCard />
 
             {/* Stats Cards */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">

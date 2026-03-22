@@ -6,7 +6,6 @@ import toast from 'react-hot-toast';
 import imageCompression from 'browser-image-compression';
 import api, { voucherAPI, bannerAPI, getImageUrl } from '../../services/api';
 import { useRefresh } from '../../context/RefreshContext';
-import { useTourGuide } from '../../context/TourGuideContext';
 
 const fetcher = url => api.get(url).then(res => res.data);
 
@@ -32,7 +31,6 @@ const INITIAL_FORM = {
 
 function Marketing() {
     const [activeTab, setActiveTab] = useState('voucher');
-    const { isTourActive } = useTourGuide();
 
     // SWR Data Fetching
     const { data: vouchersData } = useSWR('/vouchers', fetcher);
@@ -54,20 +52,6 @@ function Marketing() {
             ]);
         });
     }, [registerRefreshHandler]);
-
-    // Tour Guide Integration for opening modal
-    useEffect(() => {
-        const handleTourAction = (e) => {
-            if (e.detail?.action === 'open-voucher-modal') {
-                setActiveTab('voucher'); // Ensure voucher tab is active
-                setTimeout(() => {
-                    openCreateVoucher();
-                }, 100); // small delay to allow tab switch
-            }
-        };
-        window.addEventListener('tour:action', handleTourAction);
-        return () => window.removeEventListener('tour:action', handleTourAction);
-    }, []);
 
     // ========== VOUCHER STATE ==========
     const [showVoucherModal, setShowVoucherModal] = useState(false);
@@ -240,7 +224,6 @@ function Marketing() {
                     <div className="flex items-center justify-between">
                         <h2 className="text-lg font-bold text-white">Daftar Voucher</h2>
                         <button
-                            id="tour-tambah-voucher"
                             onClick={openCreateVoucher}
                             className="px-4 py-2 bg-gradient-to-r from-purple-600 to-blue-600 text-white text-sm font-bold rounded-xl hover:shadow-lg hover:shadow-purple-500/25 transition-all"
                         >
