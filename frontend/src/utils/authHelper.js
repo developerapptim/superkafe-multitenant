@@ -68,6 +68,20 @@ export const checkActiveSession = () => {
         tenantSlug = actualTenant;
         localStorage.setItem('tenant_slug', actualTenant);
       }
+
+      // Sync status hasCompletedSetup secara otomatis dari Token (Single Source of Truth)
+      if (decoded.hasCompletedSetup && userStr) {
+        try {
+          const u = JSON.parse(userStr);
+          if (!u.hasCompletedSetup) {
+            u.hasCompletedSetup = true;
+            localStorage.setItem('user', JSON.stringify(u));
+            console.log('[AUTH] Auto-repaired hasCompletedSetup di LocalStorage berdasarkan Token');
+          }
+        } catch (e) {
+          console.error('[AUTH] Failed to update user data from token', e);
+        }
+      }
     } catch (e) {
       console.error('[AUTH] Failed to decode token for tenant check', e);
     }
