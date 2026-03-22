@@ -22,7 +22,9 @@ const setupTenant = async (req, res) => {
 
   try {
     const { cafeName, slug, adminName } = req.body;
-    const userId = req.user.id || req.user.userId; // Support both formats for compatibility
+    // CRITICAL FIX: Prioritaskan req.user.userId (ObjectId Global User) di atas req.user.id (Employee ID)
+    // Untuk mencegah CastError 'EMP-xxx' di Mongoose.
+    const userId = req.user.userId || req.user.id;
 
     // Validasi userId
     if (!userId) {
@@ -248,6 +250,7 @@ const setupTenant = async (req, res) => {
         tenantId: newTenant._id.toString(),
         tenantDbName: dbName,
         userId: user._id,
+        hasCompletedSetup: true,
         hasPin: false
       },
       process.env.JWT_SECRET || 'change_this_secret',
@@ -268,7 +271,10 @@ const setupTenant = async (req, res) => {
         role: adminUser.role,
         role_access: adminUser.role_access,
         isVerified: adminUser.isVerified,
-        authProvider: adminUser.authProvider
+        authProvider: adminUser.authProvider,
+        hasCompletedSetup: true,
+        tenantId: newTenant._id,
+        tenantSlug: newTenant.slug
       },
       tenant: {
         id: newTenant._id,
