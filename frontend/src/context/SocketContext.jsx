@@ -33,16 +33,19 @@ export const SocketProvider = ({ children }) => {
         if (typeof window !== 'undefined') {
             const origin = window.location.origin;
             const isLocalhost = origin.includes('localhost') || origin.includes('127.0.0.1');
+            const isCapacitor = window.Capacitor && window.Capacitor.isNativePlatform();
 
-            if (isLocalhost) {
-                // Dev: Connect directly to local backend
-                socketUrl = 'http://localhost:5001';
+            if (isLocalhost || isCapacitor) {
+                // Dev atau Emulator: Ambil URL dari Environment agar mengikuti konfigurasi 10.0.2.2 / Local IP
+                const envUrl = import.meta.env.VITE_API_URL || 'http://localhost:5001/api';
+                socketUrl = envUrl.replace(/\/api$/, '');
             } else {
                 // Prod: Connect through SAME origin (superkafe.com → Nginx → backend:5001)
                 socketUrl = origin;
             }
         } else {
-            socketUrl = 'http://localhost:5001';
+            const envUrl = import.meta.env.VITE_API_URL || 'http://localhost:5001/api';
+            socketUrl = envUrl.replace(/\/api$/, '');
         }
 
         console.log('🔌 Connecting to Socket.io at:', socketUrl);

@@ -62,14 +62,17 @@ jobs:
           FRONTEND_URL: ${{ secrets.FRONTEND_URL }}
           BACKEND_URL: ${{ secrets.BACKEND_URL }}
           N8N_WEBHOOK_URL: ${{ secrets.N8N_WEBHOOK_URL }}
+          DUITKU_URL: ${{ secrets.DUITKU_URL }}
           SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
           VITE_SENTRY_DSN: ${{ secrets.VITE_SENTRY_DSN }}
-          DUITKU_URL: ${{ secrets.DUITKU_URL }}
+          VITE_API_URL: ${{ secrets.VITE_API_URL }}
+          VITE_GOOGLE_CLIENT_ID: ${{ secrets.VITE_GOOGLE_CLIENT_ID }}
+
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           password: ${{ secrets.SSH_PASSWORD }}
-          envs: MONGODB_URI,JWT_SECRET,API_KEY,SMTP_USER,SMTP_PASS,DUITKU_MERCHANT_CODE,DUITKU_API_KEY,DUITKU_MODE,DUITKU_CALLBACK_URL,FRONTEND_URL,BACKEND_URL,N8N_WEBHOOK_URL,SENTRY_DSN,VITE_SENTRY_DSN,DUITKU_URL 
+          envs: MONGODB_URI,JWT_SECRET,API_KEY,SMTP_USER,SMTP_PASS,DUITKU_MERCHANT_CODE,DUITKU_API_KEY,DUITKU_MODE,DUITKU_CALLBACK_URL,FRONTEND_URL,BACKEND_URL,N8N_WEBHOOK_URL,DUITKU_URL,SENTRY_DSN,VITE_SENTRY_DSN,VITE_API_URL,VITE_GOOGLE_CLIENT_ID 
           script: |
             cd ~/superkafe-multitenant
             git fetch --all
@@ -89,9 +92,11 @@ jobs:
             echo "BACKEND_URL=$BACKEND_URL" >> backend/.env
             echo "DUITKU_CALLBACK_URL=$DUITKU_CALLBACK_URL" >> backend/.env
             echo "N8N_WEBHOOK_URL=$N8N_WEBHOOK_URL" >> backend/.env
-            echo "SENTRY_DSN=$SENTRY_DSN" >> backend/.env
-            echo "VITE_SENTRY_DSN=$VITE_SENTRY_DSN" >> frontend/.env
             echo "DUITKU_URL=$DUITKU_URL" >> backend/.env
+            echo "SENTRY_DSN=$SENTRY_DSN" >> backend/.env
+            echo "VITE_SENTRY_DSN=$VITE_SENTRY_DSN" > frontend/.env
+            echo "VITE_API_URL=$VITE_API_URL" >> frontend/.env
+            echo "VITE_GOOGLE_CLIENT_ID=$VITE_GOOGLE_CLIENT_ID" >> frontend/.env
 
             # Deploy using Docker Compose
             docker compose down --remove-orphans

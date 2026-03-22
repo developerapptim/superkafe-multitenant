@@ -32,3 +32,6 @@ Thumbs.db
 # IDE Folders
 .vscode/
 .idea/
+
+# Artifacts
+backend/public/uploads/*.apk
