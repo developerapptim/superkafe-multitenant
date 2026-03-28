@@ -428,7 +428,7 @@ export const verificationAPI = {
 
 // ========== GOOGLE AUTH API ==========
 export const googleAuthAPI = {
-    authenticate: (data) => api.post('/google-auth', data),
+    authenticate: (data) => api.post('/auth/google', data),
 };
 
 // ========== GLOBAL AUTH API (Modern System) ==========

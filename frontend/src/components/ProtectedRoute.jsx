@@ -105,7 +105,10 @@ const ProtectedRoute = ({ children, allowedRoles, requireTenant = true }) => {
                 allowedRoles,
                 timestamp: new Date().toISOString()
             });
-            toast.error('Akun Anda tidak memiliki role. Silakan hubungi admin.');
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            localStorage.removeItem('tenant_slug');
+            toast.error('Sesi Anda tidak valid atau akun tidak memiliki role. Silakan login kembali.');
             return <Navigate to="/auth/login" replace />;
         }
 

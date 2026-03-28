@@ -8,7 +8,6 @@ const tenantResolver = require('../middleware/tenantResolver');
 
 // Public
 router.post('/login', strictLimiter, AuthController.login);
-router.post('/auth/login', strictLimiter, AuthController.login); // Legacy
 
 // PIN Auth Public
 router.post('/auth/verify-google-pin', strictLimiter, PinAuthController.verifyGooglePin);

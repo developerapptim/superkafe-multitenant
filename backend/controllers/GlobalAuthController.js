@@ -41,11 +41,12 @@ exports.globalLogin = async (req, res) => {
     }
 
     // Determine token expiration based on personal device flag
-    const isAdmin = user.role === 'admin';
+    const userRole = user.role || 'admin';
+    const isAdmin = userRole === 'admin';
     const expiresIn = (isPersonalDevice && isAdmin) ? '30d' : '24h';
 
     const token = jwt.sign(
-      { userId: user._id, tenantId: user.tenantId, tenantSlug: tenant.slug, role: user.role, email: user.email },
+      { id: user._id, userId: user._id, tenantId: user.tenantId, tenantSlug: tenant.slug, role: userRole, email: user.email },
       JWT_SECRET,
       { expiresIn }
     );
@@ -58,7 +59,7 @@ exports.globalLogin = async (req, res) => {
         id: user._id,
         name: user.name,
         email: user.email,
-        role: user.role,
+        role: userRole,
         tenantId: user.tenantId,
         tenantSlug: tenant.slug
       },
