@@ -438,7 +438,7 @@ function AdminLayout() {
                             <img
                                 src={settings.logo}
                                 alt="Logo"
-                                className="theme-aware-logo w-8 h-8 rounded bg-transparent object-cover transition-transform shrink-0"
+                                className="w-8 h-8 rounded bg-transparent object-cover transition-transform shrink-0"
                             />
                             {/* Page Title */}
                             <div className="flex-1 flex items-center gap-2 overflow-hidden">

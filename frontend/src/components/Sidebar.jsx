@@ -319,7 +319,7 @@ function Sidebar({ onLogout, isCollapsed, toggleSidebar }) {
           <img
             src={settings.logo}
             alt="Logo"
-            className="theme-aware-logo w-8 h-8 rounded bg-transparent object-cover shrink-0 shadow-lg group-hover:scale-105 transition-transform"
+            className="w-8 h-8 rounded bg-transparent object-cover shrink-0 shadow-lg group-hover:scale-105 transition-transform"
           />
           <div className={`overflow-hidden transition-all duration-300 ${isCollapsed ? 'w-0 opacity-0' : 'w-auto opacity-100 hidden lg:block'}`}>
             <h1 className="font-bold text-white text-sm whitespace-nowrap">{settings.businessName}</h1>

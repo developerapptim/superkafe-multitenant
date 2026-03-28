@@ -494,7 +494,7 @@ function Pengaturan() {
                         <div className="flex items-center gap-4">
                             <div className="w-20 h-20 rounded-xl bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center overflow-hidden shadow-sm">
                                 {settings.logo ? (
-                                    <img src={getImageUrl(settings.logo)} alt="Logo" className="theme-aware-logo w-full h-full object-cover" />
+                                    <img src={getImageUrl(settings.logo)} alt="Logo" className="w-full h-full object-cover" />
                                 ) : (
                                     <span className="text-3xl">☕</span>
                                 )}
