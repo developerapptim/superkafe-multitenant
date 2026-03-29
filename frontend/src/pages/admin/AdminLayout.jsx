@@ -15,6 +15,7 @@ import PullToRefresh from 'react-simple-pull-to-refresh';
 import { useRefresh } from '../../context/RefreshContext';
 import { ThemeProvider, useTheme } from '../../context/ThemeContext';
 import FirstTimeThemePopup from '../../components/admin/FirstTimeThemePopup';
+import FirstTimeSetupPopup from '../../components/admin/FirstTimeSetupPopup';
 import FirstTimePinPopup from '../../components/admin/FirstTimePinPopup';
 import TrialStatusBanner from '../../components/TrialStatusBanner';
 import SubscriptionLockScreen from '../../components/SubscriptionLockScreen';
@@ -194,6 +195,19 @@ function AdminLayout() {
         setShowPinPopup(false);
     };
 
+    // First-time setup popup state
+    const [showSetupPopup, setShowSetupPopup] = useState(() => {
+        const hasSeenSetupLocal = localStorage.getItem('has_seen_first_time_setup') === 'true';
+        return (userRole === 'admin') &&
+            tenantInfo.tenantId &&
+            !hasSeenSetupLocal;
+    });
+
+    const handleSetupPopupComplete = () => {
+        localStorage.setItem('has_seen_first_time_setup', 'true');
+        setShowSetupPopup(false);
+    };
+
     // First-time theme popup state
     const [showThemePopup, setShowThemePopup] = useState(false);
     const [hasSeenThemePopup, setHasSeenThemePopup] = useState(true); // Default to true to avoid flash
@@ -210,7 +224,7 @@ function AdminLayout() {
                 setHasSeenThemePopup(hasSeenPopup);
 
                 // Show theme popup if user hasn't seen it yet and PIN popup is not showing
-                if (!hasSeenPopup && !showPinPopup) {
+                if (!hasSeenPopup && !showPinPopup && !showSetupPopup) {
                     setShowThemePopup(true);
                 }
             } catch (error) {
@@ -221,7 +235,7 @@ function AdminLayout() {
         };
 
         checkThemePopup();
-    }, [tenantInfo.tenantId, showPinPopup]);
+    }, [tenantInfo.tenantId, showPinPopup, showSetupPopup]);
 
     // Global Keyboard Shortcut (Ctrl + K)
     useEffect(() => {
@@ -632,6 +646,13 @@ function AdminLayout() {
                         isOpen={showPinPopup}
                         onSuccess={handlePinSetupComplete}
                         onSkip={handlePinSetupComplete}
+                    />
+
+                    {/* First-Time Setup Popup */}
+                    <FirstTimeSetupPopup
+                        isOpen={showSetupPopup}
+                        onComplete={handleSetupPopupComplete}
+                        onSkip={handleSetupPopupComplete}
                     />
 
                     {/* First-Time Theme Selection Popup */}

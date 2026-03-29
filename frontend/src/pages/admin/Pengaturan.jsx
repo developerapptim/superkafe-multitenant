@@ -64,6 +64,7 @@ function Pengaturan() {
     const { isWeb } = usePlatform();
     const outletContext = useOutletContext();
     const isSidebarCollapsed = outletContext?.isSidebarCollapsed ?? false;
+    const userInfo = JSON.parse(localStorage.getItem('user') || '{}');
     const { data: settingsData, error } = useSWR('/settings', fetcher);
     const isLoading = !settingsData && !error;
     const [saving, setSaving] = useState(false);
@@ -1076,6 +1077,35 @@ function Pengaturan() {
                 isDirty={false} 
             >
                 <div className="space-y-8">
+                    {/* ==== INFORMASI AKUN ==== */}
+                    <div className="p-5 bg-black/5 rounded-xl border admin-border-accent">
+                        <h4 className="font-bold admin-text-primary mb-4 flex items-center gap-2">
+                            <span>ℹ️</span> Informasi Akun Dasar
+                        </h4>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <div>
+                                <p className="text-sm opacity-60 admin-text-primary mb-1">Nama / Email</p>
+                                <p className="font-medium admin-text-primary truncate">
+                                    {userInfo?.name || 'Admin'} / {userInfo?.email || 'Tidak tersedia'}
+                                </p>
+                            </div>
+                            <div>
+                                <p className="text-sm opacity-60 admin-text-primary mb-1">Jenis Login</p>
+                                <p className="font-medium admin-text-primary">
+                                    {userInfo?.authProvider === 'google' ? 'Google OAuth' : 'Email & Password'}
+                                </p>
+                            </div>
+                            <div>
+                                <p className="text-sm opacity-60 admin-text-primary mb-1">Alamat Tenant Slug</p>
+                                <div className="flex items-center gap-2 mt-1">
+                                    <span className="font-medium admin-text-primary bg-black/10 px-3 py-1 rounded-md border admin-border-accent text-sm">
+                                        /{tenantSlug || 'Tidak ada'}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     {/* ==== UBAH PASSWORD ==== */}
                     <div>
                         <h4 className="font-bold admin-text-primary mb-4 flex items-center gap-2">

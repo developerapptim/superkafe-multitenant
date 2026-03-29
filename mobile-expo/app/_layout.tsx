@@ -9,6 +9,7 @@ import '../global.css'; // NativeWind CSS
 
 import { AuthProvider, useAuth } from '../src/context/AuthContext';
 import { useColorScheme } from '@/components/useColorScheme';
+import UpdateManager from '../src/components/UpdateManager';
 
 export {
   // Catch any errors thrown by the Layout component.
@@ -51,6 +52,7 @@ function RootLayoutNav() {
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
       <AuthProvider>
         <ProtectedRoute>
+          <UpdateManager />
           <Stack>
             <Stack.Screen name="(onboarding)" options={{ headerShown: false }} />
             <Stack.Screen name="(auth)" options={{ headerShown: false }} />
